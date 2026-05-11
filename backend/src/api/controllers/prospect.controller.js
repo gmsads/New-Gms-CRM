@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Prospect = require('../../domains/sales/prospects/prospect.model');
 
 // GET /api/prospects — list with filters
@@ -7,7 +8,12 @@ exports.list = async (req, res) => {
     const filter = {};
     if (stage) filter.stage = stage;
     if (priority) filter.priority = priority;
-    if (assignedTo) filter.assignedTo = assignedTo;
+    
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+      filter.assignedTo = req.user._id;
+    } else if (assignedTo) {
+      filter.assignedTo = assignedTo;
+    }
     if (search) filter.$or = [
       { name: { $regex: search, $options: 'i' } },
       { phone: { $regex: search, $options: 'i' } },
@@ -23,14 +29,20 @@ exports.list = async (req, res) => {
   }
 };
 
-// GET /api/prospects/search?phone=  — global phone search
+// GET /api/prospects/search — global search by phone or company
 exports.searchByPhone = async (req, res) => {
   try {
-    const { phone } = req.query;
-    if (!phone) return res.status(400).json({ success: false, message: 'Phone is required' });
-    const prospect = await Prospect.findOne({ phone })
+    const { phone, company } = req.query;
+    if (!phone && !company) return res.status(400).json({ success: false, message: 'Phone or Business Name is required' });
+    
+    const conditions = [];
+    if (phone) conditions.push({ phone });
+    if (company) conditions.push({ company: { $regex: new RegExp(`^${company}$`, 'i') } });
+
+    const prospect = await Prospect.findOne({ $or: conditions })
       .populate('assignedTo', 'name email')
       .lean();
+      
     if (!prospect) return res.json({ success: true, found: false });
     res.json({ success: true, found: true, data: prospect });
   } catch (err) {
@@ -41,11 +53,17 @@ exports.searchByPhone = async (req, res) => {
 // POST /api/prospects
 exports.create = async (req, res) => {
   try {
-    const prospect = new Prospect(req.body);
+    const data = { ...req.body };
+    if (!data.assignedTo && (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC')) {
+      data.assignedTo = req.user._id;
+    }
+    const prospect = new Prospect(data);
     await prospect.save();
     res.status(201).json({ success: true, data: prospect });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    let message = err.message;
+    if (err.code === 11000) message = 'Phone number already exists in our system.';
+    res.status(400).json({ success: false, message });
   }
 };
 
@@ -81,6 +99,40 @@ exports.remove = async (req, res) => {
   try {
     await Prospect.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+// GET /api/prospects/stats
+exports.stats = async (req, res) => {
+  try {
+    const filter = {};
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+      filter.assignedTo = new mongoose.Types.ObjectId(req.user._id);
+    }
+
+    const [total, inProgress, won, lost, hot, followUps, appointmentStage] = await Promise.all([
+      Prospect.countDocuments(filter),
+      Prospect.countDocuments({ ...filter, status: 'In-progress' }),
+      Prospect.countDocuments({ ...filter, stage: 'Won' }),
+      Prospect.countDocuments({ ...filter, stage: 'Lost' }),
+      Prospect.countDocuments({ ...filter, priority: 'Hot' }),
+      Prospect.countDocuments({ ...filter, stage: 'Follow-up' }),
+      Prospect.countDocuments({ ...filter, stage: 'Appointment' }),
+    ]);
+
+    res.json({
+      success: true,
+      data: { 
+        total, 
+        inProgress, 
+        won, 
+        lost, 
+        hot, 
+        pendingFollowups: followUps, // Match Follow-up stage count
+        appointmentStage 
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

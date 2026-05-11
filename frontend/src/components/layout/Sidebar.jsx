@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight, UserPlus
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { prospectApi, orderApi, appointmentApi } from '../../services/api';
+import { prospectApi, orderApi, appointmentApi, approvalApi } from '../../services/api';
 
 const menuConfig = [
   { title: 'Dashboard',        icon: LayoutDashboard, path: '/',          roles: ['ALL'] },
@@ -30,6 +30,9 @@ const menuConfig = [
       { title: 'Performance', path: '/hr/performance', icon: BarChart2 }
     ]
   },
+  { title: 'Orders',           icon: ShoppingCart,    path: '/orders',    roles: ['ADMIN','MD_CEO','SALES_MANAGER'] },
+  { title: 'Approvals',        icon: ShieldCheck,     path: '/approvals', roles: ['ADMIN','MD_CEO','SALES_MANAGER'] },
+  { title: 'Appointments',     icon: Calendar,        path: '/appointments', roles: ['ADMIN','MD_CEO','SALES_MANAGER','FIELD_EXEC'] },
   { title: 'HR Control Panel', icon: ShieldCheck,     path: '/admin-hr',  roles: ['ADMIN','MD_CEO'] },
   { title: 'Vendor Portal',    icon: FileText,        path: '/vendors',   roles: ['ADMIN','VENDOR','OPERATION_MANAGER'] },
   { title: 'Analytics',        icon: PieChart,        path: '/analytics', roles: ['ADMIN','SALES_MANAGER','OPERATION_MANAGER'] },
@@ -106,21 +109,48 @@ const Sidebar = ({ isOpen, setOpen }) => {
   const [prospectCount, setProspectCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
   const [appointmentCount, setAppointmentCount] = useState(0);
+  const [approvalCount, setApprovalCount] = useState(0);
 
   useEffect(() => {
-    if (user?.role === 'SALES_EXEC') {
-      prospectApi.list({}, user.token).then(res => {
-        if (res.success) setProspectCount(res.data.filter(p => p.status === 'In-progress' && p.nextFollowUpDate).length);
-      }).catch(console.error);
-      
-      orderApi.list({}, user.token).then(res => {
-        if (res.success) setOrderCount(res.data.length);
-      }).catch(console.error);
+    if (!user) return;
+    const token = user.token;
 
-      appointmentApi.list(user.token).then(res => {
-        if (res.success) setAppointmentCount(res.data.filter(a => !a.remark).length);
-      }).catch(console.error);
-    }
+    const fetchStats = () => {
+      // ── Approvals (Combined Orders + Payments)
+      if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SALES_EXEC'].includes(user.role)) {
+        approvalApi.stats(token).then(res => {
+          if (res.success) setApprovalCount(res.pendingCount);
+        }).catch(console.error);
+      }
+
+      // ── Appointments
+      if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'FIELD_EXEC', 'SALES_EXEC', 'AGENT'].includes(user.role)) {
+        if (['ADMIN', 'MD_CEO', 'SALES_MANAGER'].includes(user.role)) {
+          appointmentApi.stats(token).then(res => {
+            if (res.success) setAppointmentCount(res.pendingCount);
+          }).catch(console.error);
+        } else {
+          appointmentApi.list(token).then(res => {
+            if (res.success) setAppointmentCount(res.data.filter(a => !a.remark).length);
+          }).catch(console.error);
+        }
+      }
+
+      // ── Follow-ups (Sales Exec only)
+      if (user.role === 'SALES_EXEC') {
+        prospectApi.list({}, token).then(res => {
+          if (res.success) setProspectCount(res.data.filter(p => p.status === 'In-progress' && p.nextFollowUpDate).length);
+        }).catch(console.error);
+        
+        orderApi.list({}, token).then(res => {
+          if (res.success) setOrderCount(res.data.length);
+        }).catch(console.error);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 30000); // refresh every 30s
+    return () => clearInterval(interval);
   }, [user]);
 
   if (!user) return null;
@@ -142,6 +172,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     },
     { title: 'Appointments',  icon: Calendar,        path: '/appointments',badge: appointmentCount > 0 ? appointmentCount.toString() : null },
     { title: 'Orders',        icon: ShoppingCart,    path: '/orders',      badge: null },
+    { title: 'Approvals',     icon: ShieldCheck,     path: '/approvals',   badge: approvalCount > 0 ? approvalCount.toString() : null },
     { title: 'Payments',      icon: IndianRupee,      path: '/payments',    badge: null },
     { title: 'Performance',   icon: BarChart2,       path: '/performance', badge: null },
     { title: 'Settings',      icon: Settings,        path: '/settings',    badge: null },
@@ -149,7 +180,14 @@ const Sidebar = ({ isOpen, setOpen }) => {
 
   const filteredMenu = isSalesExec
     ? dynamicSalesExecMenu
-    : menuConfig.filter(item => item.roles.includes('ALL') || item.roles.includes(user.role));
+    : menuConfig
+        .filter(item => item.roles.includes('ALL') || item.roles.includes(user.role))
+        .map(item => {
+          // Inject badges into main menuConfig items for Managers
+          if (item.title === 'Approvals') return { ...item, badge: approvalCount > 0 ? approvalCount.toString() : null };
+          if (item.title === 'Appointments') return { ...item, badge: appointmentCount > 0 ? appointmentCount.toString() : null };
+          return item;
+        });
 
   return (
     <>

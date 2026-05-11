@@ -117,10 +117,30 @@ const HRMetrics = () => {
   );
 };
 
+import { employeeApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+
 // ── Employee List Tab ─────────────────────────────────────────────────────────
 const EmployeeList = () => {
-  const { data, loading, error } = useApi('/employees');
+  const { user: currentUser } = useAuth();
+  if (!currentUser) return null;
+  const { data, loading, error, refetch } = useApi('/employees');
   const employees = data?.employees || [];
+  const [updatingId, setUpdatingId] = useState(null);
+  const [targetValue, setTargetValue] = useState('');
+
+  const handleSetTarget = async (id) => {
+    try {
+      const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+      await employeeApi.updateTarget(id, { target: targetValue, month }, currentUser.token);
+      setUpdatingId(null);
+      setTargetValue('');
+      refetch();
+      alert('Target assigned successfully!');
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   if (loading) return <Spinner />;
   if (error)   return <div className="text-sm text-red-500 p-4">{error}</div>;
@@ -131,7 +151,7 @@ const EmployeeList = () => {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-xs uppercase text-muted-foreground bg-muted/50 border-b">
-            <tr>{['Employee','ID','Role','Dept','Status','Created'].map(h => <th key={h} className="px-5 py-3 text-left font-medium">{h}</th>)}</tr>
+            <tr>{['Employee','ID','Role','Dept','Status','Target','Actions'].map(h => <th key={h} className="px-5 py-3 text-left font-medium">{h}</th>)}</tr>
           </thead>
           <tbody className="divide-y divide-border">
             {employees.map(emp => (
@@ -146,7 +166,32 @@ const EmployeeList = () => {
                 <td className="px-5 py-3 text-xs">{(emp.role||'').replace(/_/g,' ')}</td>
                 <td className="px-5 py-3">{emp.department || '—'}</td>
                 <td className="px-5 py-3"><Badge value={emp.status} /></td>
-                <td className="px-5 py-3 text-xs text-muted-foreground">{emp.createdAt ? new Date(emp.createdAt).toLocaleDateString() : '—'}</td>
+                <td className="px-5 py-3">
+                  {updatingId === emp._id ? (
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number" 
+                        value={targetValue} 
+                        onChange={(e) => setTargetValue(e.target.value)}
+                        placeholder="₹ Amount"
+                        className="w-24 px-2 py-1 text-xs border rounded outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <button onClick={() => handleSetTarget(emp._id)} className="p-1 text-green-600 hover:bg-green-50 rounded"><CheckCircle className="h-4 w-4" /></button>
+                      <button onClick={() => setUpdatingId(null)} className="p-1 text-red-600 hover:bg-red-50 rounded"><AlertTriangle className="h-4 w-4" /></button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-blue-600">₹{(emp.monthlyTarget || 0).toLocaleString()}</span>
+                      {['ADMIN', 'MD_CEO', 'SALES_MANAGER'].includes(currentUser.role) && (
+                        <button onClick={() => { setUpdatingId(emp._id); setTargetValue(emp.monthlyTarget || ''); }} className="text-[10px] text-muted-foreground hover:text-primary underline">Edit</button>
+                      )}
+                    </div>
+                  )}
+                </td>
+                <td className="px-5 py-3 text-xs text-muted-foreground">
+                   {/* Placeholder for other actions like view details */}
+                   <span className="text-xs text-muted-foreground">{emp.createdAt ? new Date(emp.createdAt).toLocaleDateString() : '—'}</span>
+                </td>
               </tr>
             ))}
           </tbody>

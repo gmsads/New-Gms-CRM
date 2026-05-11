@@ -62,10 +62,18 @@ const AddEmployeeForm = ({ onCreated, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState(null);
 
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => {
+    let val = v;
+    if (k === 'name') val = v.replace(/[^a-zA-Z\s]/g, '');
+    if (k === 'phone') val = v.replace(/\D/g, '').slice(0, 10);
+    setForm(f => ({ ...f, [k]: val }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.phone && form.phone.length !== 10) {
+      return alert('Phone number must be exactly 10 digits');
+    }
     setLoading(true);
     try {
       const res = await request('POST', '/employees', form);

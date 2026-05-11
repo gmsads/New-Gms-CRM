@@ -93,8 +93,13 @@ const preventRoleEscalation = (req, res, next) => {
 const hrOnly = authorize('HR', 'ADMIN', 'MD_CEO');
 
 /**
+ * managerOnly — Shorthand: only Managers, ADMIN, MD_CEO can proceed.
+ */
+const managerOnly = authorize('SALES_MANAGER', 'ADMIN', 'MD_CEO');
+
+/**
  * adminOnly — Shorthand: only ADMIN and MD_CEO can proceed.
  */
 const adminOnly = authorize('ADMIN', 'MD_CEO');
 
-module.exports = { protect, authorize, preventRoleEscalation, hrOnly, adminOnly };
+module.exports = { protect, authorize, preventRoleEscalation, hrOnly, adminOnly, managerOnly };

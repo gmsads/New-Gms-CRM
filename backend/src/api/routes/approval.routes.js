@@ -1,13 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const c = require('../controllers/approval.controller');
-const { protect, adminOnly, hrOnly } = require('../../guards/auth.guard');
+const { protect, managerOnly } = require('../../guards/auth.guard');
 
 router.use(protect);
-router.get('/', adminOnly, c.getApprovals);
-router.post('/:id/approve', adminOnly, c.approveRequest);
-router.post('/:id/reject', adminOnly, c.rejectRequest);
-router.post('/:id/revise', adminOnly, c.reviseRequest);
-router.post('/:id/resubmit', hrOnly, c.resubmitRequest);
+router.get('/', c.list);
+router.get('/stats', c.getStats);
+router.post('/:id/approve', managerOnly, c.approve);
+router.post('/:id/reject', managerOnly, c.reject);
 
 module.exports = router;

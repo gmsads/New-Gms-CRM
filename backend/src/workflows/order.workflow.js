@@ -1,5 +1,5 @@
 /**
- * order.workflow.js
+s * order.workflow.js
  * Orchestrates the full order lifecycle:
  *
  * Draft → Confirmed → Design (if needed) → In_Production → Delivered → Completed
@@ -13,6 +13,7 @@
 
 const Order = require('../domains/orders/order.model');
 const Prospect = require('../domains/sales/prospects/prospect.model');
+const OrderApproval = require('../domains/approvals/approval.model');
 
 // ─── Valid order status transitions ──────────────────────────────────────────
 const ORDER_TRANSITIONS = {
@@ -89,6 +90,21 @@ const confirmOrder = async (orderId, user) => {
       `Advance ${advancePct.toFixed(1)}% is below 50%. Routed for admin approval.`,
       user
     );
+
+    // Create the approval tracking record if it doesn't exist
+    const existing = await OrderApproval.findOne({ order: order._id, status: 'Pending' });
+    if (!existing) {
+      await OrderApproval.create({
+        order: order._id,
+        orderNumber: order.orderNumber,
+        requestedBy: order.salesExec || user._id,
+        clientName: order.clientSnapshot?.name || 'Unknown',
+        grandTotal: order.grandTotal,
+        advancePaid: order.advancePaid,
+        advancePct: parseFloat(advancePct.toFixed(2)),
+        status: 'Pending'
+      });
+    }
   } else {
     order.status = 'Confirmed';
     order.addTimelineEvent('Order Confirmed', `Confirmed by ${user.role}: ${user.name}`, user);

@@ -292,3 +292,37 @@ exports.resetEmployeePassword = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+// ── PATCH /api/employees/:id/target ──────────────────────────────────────────
+exports.updateTarget = async (req, res) => {
+  try {
+    const { target, month } = req.body;
+    if (target === undefined) return res.status(400).json({ message: 'Target value is required.' });
+
+    // Permissions check
+    const allowedRoles = ['ADMIN', 'MD_CEO', 'SALES_MANAGER'];
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'You do not have permission to assign targets.' });
+    }
+
+    const employee = await User.findById(req.params.id);
+    if (!employee) return res.status(404).json({ message: 'Employee not found.' });
+
+    const previousTarget = employee.monthlyTarget;
+    employee.monthlyTarget = Number(target);
+    if (month) employee.targetMonth = month;
+    employee.lastModifiedBy = req.user._id;
+    await employee.save();
+
+    await createAuditLog({
+      action: 'TARGET_ASSIGNED', performedBy: req.user,
+      targetEmployee: employee,
+      previousValue: { monthlyTarget: previousTarget },
+      newValue: { monthlyTarget: target, targetMonth: month },
+      req,
+    });
+
+    res.json({ success: true, message: `Target of ₹${target} assigned to ${employee.name}.`, employee });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

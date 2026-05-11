@@ -16,6 +16,7 @@ const ctrl = require('../controllers/order.controller');
 router.use(protect);
 
 router.get('/',        can('orders:read'),   ctrl.list);
+router.get('/search',  can('orders:read'),   ctrl.searchClient);
 router.get('/stats',   can('orders:read'),   ctrl.stats);
 router.get('/:id',     can('orders:read'),   ctrl.getOne);
 
@@ -42,5 +43,6 @@ router.patch('/:id/status',
 );
 
 router.patch('/:id', can('orders:update'), ctrl.update);
+router.post('/:id/payments', can('orders:update'), ctrl.addPayment);
 
 module.exports = router;

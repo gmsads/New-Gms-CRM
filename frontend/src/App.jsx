@@ -14,6 +14,7 @@ import Analytics from './pages/Analytics'
 import Vendors from './pages/Vendors'
 import IT from './pages/IT'
 import AdminHR from './pages/AdminHR'
+import Approvals from './pages/Approvals'
 import { SalesProspects, SalesOrders, SalesPayments, SalesFollowups, SalesAppointments } from './pages/SalesExec/index'
 
 // ── Protected Route ────────────────────────────────────────────────────────────
@@ -59,6 +60,7 @@ const AppRoutes = () => {
           {/* Sales Executive Specific Routes */}
           <Route path="prospects"   element={<SalesProspects />} />
           <Route path="orders"      element={<SalesOrders />} />
+          <Route path="approvals"   element={<Approvals />} />
           <Route path="payments"    element={<SalesPayments />} />
           <Route path="followups"   element={<SalesFollowups />} />
           <Route path="appointments" element={<SalesAppointments />} />

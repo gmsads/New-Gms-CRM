@@ -43,12 +43,11 @@ const quotationSchema = new mongoose.Schema(
 );
 
 // Auto-generate quotation number before save
-quotationSchema.pre('save', async function (next) {
+quotationSchema.pre('save', async function () {
   if (this.isNew && !this.quotationNumber) {
     const count = await mongoose.model('Quotation').countDocuments();
     this.quotationNumber = `QT-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('Quotation', quotationSchema);

@@ -11,9 +11,8 @@ exports.list = async (req, res) => {
     if (orderId)     filter.order       = orderId;
     if (collectedBy) filter.collectedBy = collectedBy;
 
-    // Sales exec sees only their own payments
     if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
-      filter.collectedBy = req.user._id;
+      filter.collectedBy = new mongoose.Types.ObjectId(req.user._id);
     }
 
     const payments = await Payment.find(filter)
@@ -101,7 +100,14 @@ exports.getOne = async (req, res) => {
 // ── GET /api/payments/pending ─────────────────────────────────────────────────
 exports.pendingVerification = async (req, res) => {
   try {
-    const payments = await Payment.find({ status: 'Pending' })
+    const filter = { status: 'Pending' };
+    
+    // Sales exec only sees their own pending payments
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+      filter.collectedBy = new mongoose.Types.ObjectId(req.user._id);
+    }
+
+    const payments = await Payment.find(filter)
       .populate('order', 'orderNumber clientSnapshot grandTotal')
       .populate('collectedBy', 'name role')
       .sort({ createdAt: -1 })
@@ -112,3 +118,5 @@ exports.pendingVerification = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+const mongoose = require('mongoose');

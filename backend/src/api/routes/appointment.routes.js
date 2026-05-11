@@ -9,6 +9,9 @@ router.route('/')
   .get(appointmentController.list)
   .post(appointmentController.create);
 
+router.get('/stats', appointmentController.getStats);
+
+
 router.patch('/:id/assign', appointmentController.assign);
 router.patch('/:id/remark', appointmentController.updateRemark);
 

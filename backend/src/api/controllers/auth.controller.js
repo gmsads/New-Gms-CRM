@@ -184,6 +184,16 @@ exports.getUserProfile = async (req, res) => {
   }
 };
 
+// ── GET /api/auth/debug-me ────────────────────────────────────────────────────
+exports.debugMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).lean();
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Legacy — disabled
 exports.registerUser = async (req, res) => {
   res.status(410).json({ message: 'Self-registration is disabled. Contact HR.' });

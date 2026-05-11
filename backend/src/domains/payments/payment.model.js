@@ -42,12 +42,11 @@ const paymentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Auto-generate payment number
-paymentSchema.pre('save', async function (next) {
+paymentSchema.pre('save', async function () {
   if (this.isNew && !this.paymentNumber) {
     const count = await mongoose.model('Payment').countDocuments();
     this.paymentNumber = `PAY-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
   }
-  next();
 });
 
 paymentSchema.index({ order: 1 });

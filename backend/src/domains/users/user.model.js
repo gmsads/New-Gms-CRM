@@ -96,6 +96,10 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: { type: Date },
     passwordResetToken: { type: String, select: false },
     passwordResetExpires: { type: Date, select: false },
+
+    // ── Performance Targets ────────────────────────────────────
+    monthlyTarget: { type: Number, default: 0 },
+    targetMonth: { type: String }, // e.g. "2026-05"
   },
   { timestamps: true }
 );

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Target, CheckCircle, Clock, IndianRupee, Package, TrendingUp, AlertTriangle, PhoneCall, Calendar as CalendarIcon, Plus, UserPlus } from 'lucide-react';
+import { Target, CheckCircle, Clock, IndianRupee, Package, TrendingUp, AlertTriangle, PhoneCall, Calendar as CalendarIcon, Plus, UserPlus, RefreshCw, ShieldCheck } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ProspectTable } from './components/ProspectTable';
-import { OrderList, PaymentUploadModal, PhoneSearchModal, ProspectDetailsModal, CreateProspectModal, QuotationModal, UpdateStatusModal, ScheduleAppointmentModal, OrderSearchModal, OrderClientDetailsModal, CreateOrderModal } from './components/Panels';
-import { prospectApi, orderApi, appointmentApi } from '../../services/api';
+import { OrderList, PaymentUploadModal, OrderDetailsModal, PhoneSearchModal, ProspectDetailsModal, CreateProspectModal, QuotationModal, UpdateStatusModal, ScheduleAppointmentModal, OrderSearchModal, OrderClientDetailsModal, CreateOrderModal } from './components/Panels';
+import { prospectApi, orderApi, appointmentApi, paymentApi, approvalApi } from '../../services/api';
 
 const useProspectFlow = (user, onSaved) => {
   const [showPhoneSearch, setShowPhoneSearch] = useState(false);
@@ -16,17 +16,17 @@ const useProspectFlow = (user, onSaved) => {
   const [showScheduleAppointment, setShowScheduleAppointment] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
 
-  const handlePhoneSearch = async (phone) => {
+  const handlePhoneSearch = async (searchParams) => {
     setShowPhoneSearch(false);
     try {
-      const res = await prospectApi.searchPhone(phone, user?.token);
+      const res = await prospectApi.searchPhone(searchParams, user?.token);
       if (res.found && res.data) {
         setShowProspectDetails(res.data);
       } else {
-        setShowCreateProspect(phone);
+        setShowCreateProspect({ phone: searchParams.phone, company: searchParams.company });
       }
     } catch (err) {
-      setToastMsg('Error searching phone');
+      setToastMsg('Error searching prospect');
       setTimeout(() => setToastMsg(null), 3000);
     }
   };
@@ -44,7 +44,7 @@ const useProspectFlow = (user, onSaved) => {
         nextFollowUpDate: formData.nextFollowUpDate || undefined,
       };
 
-      if (typeof showCreateProspect === 'object' && showCreateProspect._id) {
+      if (showCreateProspect?._id) {
         await prospectApi.update(showCreateProspect._id, payload, user?.token);
         setToastMsg('Prospect updated successfully!');
       } else {
@@ -55,8 +55,8 @@ const useProspectFlow = (user, onSaved) => {
       setTimeout(() => setToastMsg(null), 3000);
       if (onSaved) onSaved();
     } catch (err) {
-      setToastMsg('Failed to save prospect');
-      setTimeout(() => setToastMsg(null), 3000);
+      setToastMsg(err.message || 'Failed to save prospect');
+      setTimeout(() => setToastMsg(null), 5000);
     }
   };
 
@@ -90,9 +90,9 @@ const useProspectFlow = (user, onSaved) => {
       )}
       {showCreateProspect && (
         <CreateProspectModal 
-          phone={typeof showCreateProspect === 'string' && showCreateProspect !== 'new' ? showCreateProspect : ''} 
+          phone={typeof showCreateProspect === 'string' && showCreateProspect !== 'new' ? showCreateProspect : (showCreateProspect?.phone || '')} 
           executiveName={user?.name || user?.username || 'Executive'}
-          initialData={typeof showCreateProspect === 'object' ? showCreateProspect : null}
+          initialData={showCreateProspect?._id ? showCreateProspect : null}
           onBack={() => setShowCreateProspect(null)} 
           onClose={() => setShowCreateProspect(null)}
           onSubmit={handleProspectSubmit} 
@@ -183,21 +183,21 @@ const useOrderFlow = (user, onSaved) => {
   const [showOrderSearch, setShowOrderSearch] = useState(false);
   const [showOrderClientDetails, setShowOrderClientDetails] = useState(null);
   const [showCreateOrder, setShowCreateOrder] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [paymentOrder, setPaymentOrder] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
 
-  const handleOrderSearch = async (query) => {
+  const handleOrderSearch = async (searchParams) => {
     setShowOrderSearch(false);
     try {
-      const res = await orderApi.searchClient(query, user?.token);
+      const res = await orderApi.searchClient(searchParams, user?.token);
       if (res && res.found && res.data) {
         setShowOrderClientDetails(res.data);
       } else {
-        const isPhone = /^\d+$/.test(query);
-        setShowCreateOrder(isPhone ? { phone: query } : { company: query });
+        setShowCreateOrder(searchParams);
       }
     } catch (err) {
-      const isPhone = /^\d+$/.test(query);
-      setShowCreateOrder(isPhone ? { phone: query } : { company: query });
+      setShowCreateOrder(searchParams);
     }
   };
 
@@ -209,8 +209,9 @@ const useOrderFlow = (user, onSaved) => {
       setTimeout(() => setToastMsg(null), 3000);
       if (onSaved) onSaved();
     } catch (err) {
-      setToastMsg('Failed to create order');
-      setTimeout(() => setToastMsg(null), 3000);
+      console.error('[ORDER_SUBMIT_ERROR]', err);
+      setToastMsg(err.message || 'Failed to create order');
+      setTimeout(() => setToastMsg(null), 4000);
     }
   };
 
@@ -239,10 +240,28 @@ const useOrderFlow = (user, onSaved) => {
           onSubmit={handleOrderSubmit} 
         />
       )}
+      {selectedOrder && (
+        <OrderDetailsModal 
+          orderId={selectedOrder._id || selectedOrder.id} 
+          onClose={() => setSelectedOrder(null)} 
+          onPaymentUpload={(o) => { setSelectedOrder(null); setPaymentOrder(o); }}
+        />
+      )}
+      {paymentOrder && (
+        <PaymentUploadModal 
+          order={paymentOrder} 
+          onClose={() => setPaymentOrder(null)} 
+          onSaved={() => {
+            setToastMsg('Payment proof uploaded!');
+            setTimeout(() => setToastMsg(null), 3000);
+            if (onSaved) onSaved();
+          }}
+        />
+      )}
     </>
   );
 
-  return { setShowOrderSearch, renderOrderModals, setToastMsg };
+  return { setShowOrderSearch, setShowCreateOrder, setSelectedOrder, setPaymentOrder, renderOrderModals, setToastMsg };
 };
 
 // ── KPI Card Component ─────────────────────────────────────────────────────────
@@ -269,235 +288,523 @@ const KpiCard = ({ title, value, subtext, icon: Icon, color, onClick }) => (
 // ── Main Dashboard View ────────────────────────────────────────────────────────
 const SalesExecDashboard = () => {
   const { user } = useAuth();
+  if (!user) return null;
   const navigate = useNavigate();
-  const { setShowPhoneSearch, renderModals } = useProspectFlow(user);
-  const { setShowOrderSearch, renderOrderModals } = useOrderFlow(user);
+  const [stats, setStats] = useState({
+    target: { assigned: 0, completed: 0 },
+    ordersCompleted: 0,
+    monthlyTotal: 0,
+    monthlyCompleted: 0,
+    pendingFollowups: 0,
+    appointments: 0,
+    pendingPayments: { amount: 0, count: 0 },
+    analysis: [
+      { name: 'Active Sales', value: 0, color: '#3b82f6' },
+      { name: 'Cancelled', value: 0, color: '#1e293b' },
+      { name: 'Pending', value: 0, color: '#f97316' },
+      { name: 'Delivered', value: 0, color: '#e2e8f0' },
+    ],
+    clientOverview: [],
+    recentOrders: []
+  });
+  const [loading, setLoading] = useState(true);
 
-  // Mock Target Data (Would come from API based on Admin assignment)
-  const targetData = {
-    assigned: 0,
-    completed: 0,
-    ordersCompletedThisMonth: 0,
-    pendingPaymentsAmount: 0,
-    pendingPaymentsCount: 0,
-    followups: 0,
-    appointments: 0
+  const [approvalCount, setApprovalCount] = useState(0);
+  const [approvalDetails, setApprovalDetails] = useState({ 
+    pending: 0, 
+    rejected: 0, 
+    orders: [], 
+    payments: [] 
+  });
+  const [activeApprovalTab, setActiveApprovalTab] = useState('Orders');
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const [orderStats, prospectStats, appointments, orders, approvals, approvalList, paymentList] = await Promise.all([
+        orderApi.stats(user.token),
+        prospectApi.stats(user.token),
+        appointmentApi.list(user.token),
+        orderApi.list({}, user.token),
+        approvalApi.stats(user.token),
+        approvalApi.list({ status: 'Pending,Rejected' }, user.token),
+        paymentApi.list({ status: 'Pending,Rejected' }, user.token)
+      ]);
+
+      if (approvals.success) {
+        const { details, pendingCount } = approvals;
+        setApprovalCount(pendingCount);
+        setApprovalDetails({
+          pending: (details.orders || 0) + (details.payments || 0),
+          rejected: (details.rejectedOrders || 0) + (details.rejectedPayments || 0),
+          orders: approvalList?.data || [],
+          payments: paymentList?.data || []
+        });
+      }
+
+      const oStats = orderStats.data || {};
+      const pStats = prospectStats.data || {};
+      const apps = appointments.data || [];
+      const ords = orders.data || [];
+
+      // Calculate pending payments
+      const pendingOrders = ords.filter(o => o.paymentStatus !== 'Paid' && o.status !== 'Cancelled');
+      const pendingAmount = pendingOrders.reduce((sum, o) => sum + (o.grandTotal - o.totalPaid), 0);
+
+      // Client overview (top 5 by order count)
+      const clientMap = {};
+      ords.forEach(o => {
+        const name = o.clientSnapshot?.company || o.clientSnapshot?.name || 'Unknown';
+        if (!clientMap[name]) clientMap[name] = { name, orders: 0, amount: 0, fill: '#3b82f6' };
+        clientMap[name].orders += 1;
+        clientMap[name].amount += o.grandTotal;
+      });
+      const clientOverview = Object.values(clientMap)
+        .sort((a, b) => b.orders - a.orders)
+        .slice(0, 5);
+
+      setStats({
+        target: { assigned: Number(oStats.monthlyTarget || 0), completed: Number(oStats.totalRevenue || 0) },
+        ordersCompleted: oStats.completed || 0,
+        monthlyTotal: oStats.monthlyTotal || 0,
+        monthlyCompleted: oStats.monthlyCompleted || 0,
+        pendingFollowups: pStats.pendingFollowups || 0,
+        appointments: apps.filter(a => a.status !== 'Canceled').length,
+        pendingPayments: { amount: pendingAmount, count: pendingOrders.length },
+        analysis: [
+          { name: 'Confirmed', value: oStats.confirmed || 0, color: '#3b82f6' },
+          { name: 'Cancelled', value: oStats.cancelled || 0, color: '#ef4444' },
+          { name: 'In Prod', value: oStats.inProduction || 0, color: '#f97316' },
+          { name: 'Completed', value: oStats.completed || 0, color: '#10b981' },
+        ],
+        clientOverview,
+        recentOrders: ords.slice(0, 5)
+      });
+    } catch (err) {
+      console.error('Error fetching dashboard stats:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const progressPercent = targetData.assigned > 0 ? Math.min(100, Math.round((targetData.completed / targetData.assigned) * 100)) : 0;
+  const { setShowPhoneSearch, renderModals, setShowCreateProspect } = useProspectFlow(user, fetchDashboardData);
+  const { setShowOrderSearch, setSelectedOrder, setPaymentOrder, renderOrderModals } = useOrderFlow(user, fetchDashboardData);
 
-  // Chart Data
-  const salesAnalysisData = [
-    { name: 'Active Sales', value: 0, color: '#3b82f6' },
-    { name: 'Cancelled', value: 0, color: '#1e293b' },
-    { name: 'Pending', value: 0, color: '#f97316' },
-    { name: 'Delivered', value: 0, color: '#e2e8f0' },
-  ];
+  React.useEffect(() => {
+    if (user?.token) fetchDashboardData();
+  }, [user?.token]);
 
-  const salesActivityData = [
-    { name: 'Sun', value: 4 },
-    { name: 'Mon', value: 2.5 },
-    { name: 'Tue', value: 6 },
-    { name: 'Wed', value: 4.2 },
-    { name: 'Thu', value: 8 },
-    { name: 'Fri', value: 5.8 },
-    { name: 'Sat', value: 2 },
-  ];
+  const progressPercent = stats.target.assigned > 0 ? Math.min(100, Math.round((stats.target.completed / stats.target.assigned) * 100)) : 0;
+  const remainingTarget = Math.max(0, stats.target.assigned - stats.target.completed);
 
-  const clientOverviewData = [];
+  if (loading) return (
+    <div className="flex h-[400px] items-center justify-center">
+      <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+    </div>
+  );
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-8 pb-12 animate-in fade-in duration-700">
       
-      {/* ── Header Actions ─────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
-          <p className="text-muted-foreground text-sm">Welcome back! Here's your sales overview.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setShowPhoneSearch(true)}
-            className="flex items-center gap-2 h-10 px-4 rounded-xl bg-white border shadow-sm text-sm font-semibold hover:bg-slate-50 transition-colors"
-          >
-            <UserPlus className="h-4 w-4 text-blue-600" /> Create Prospect
-          </button>
-          <button 
-            onClick={() => setShowOrderSearch(true)}
-            className="flex items-center gap-2 h-10 px-4 rounded-xl text-white text-sm font-semibold transition-opacity hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
-          >
-            <Plus className="h-4 w-4" /> Create Order
-          </button>
+      {/* ── Dashboard Hero: Revenue Command Center ────────────────────────── */}
+      <div className="relative overflow-hidden rounded-[2.5rem] bg-slate-900 p-8 text-white shadow-2xl">
+        {/* Decorative Background Elements */}
+        <div className="absolute -right-20 -top-20 h-96 w-96 rounded-full bg-blue-600/20 blur-[100px]" />
+        <div className="absolute -bottom-20 -left-20 h-96 w-96 rounded-full bg-indigo-600/10 blur-[100px]" />
+        
+        <div className="relative z-10 grid gap-8 lg:grid-cols-2 lg:items-center">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-blue-400">Monthly Performance Pulse</h2>
+              <h1 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">
+                Keep Pushing, <span className="text-blue-400">{user?.name?.split(' ')[0] || 'Sales Exec'}!</span>
+              </h1>
+              <p className="mt-4 text-lg text-slate-400 max-w-md">
+                You've achieved <span className="text-white font-bold">{progressPercent}%</span> of your revenue target. 
+                Focus on high-priority follow-ups to close the gap.
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap gap-4">
+              <button 
+                onClick={() => setShowPhoneSearch(true)}
+                className="flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3.5 font-bold transition-all hover:bg-blue-500 hover:shadow-lg active:scale-95"
+              >
+                <UserPlus className="h-5 w-5" />
+                <span>New Prospect</span>
+              </button>
+              <button 
+                onClick={() => navigate('/orders')}
+                className="flex items-center gap-2 rounded-2xl bg-white/10 px-6 py-3.5 font-bold backdrop-blur-md transition-all hover:bg-white/20 active:scale-95"
+              >
+                <Package className="h-5 w-5" />
+                <span>View Orders</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-white/5 p-8 backdrop-blur-xl border border-white/10">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Current Revenue</p>
+                <h3 className="text-4xl font-black text-white mt-1">₹{stats.target.completed.toLocaleString()}</h3>
+              </div>
+              <div className="h-14 w-14 rounded-2xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                <Target className="h-8 w-8 text-blue-400" />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex justify-between text-sm font-bold">
+                <span className="text-slate-300">Monthly Target: ₹{stats.target.assigned.toLocaleString()}</span>
+                <span className="text-blue-400">{progressPercent}%</span>
+              </div>
+              <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-600 to-indigo-400 rounded-full transition-all duration-1000 shadow-[0_0_20px_rgba(37,99,235,0.5)]" 
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-tighter">
+                Remaining: ₹{remainingTarget.toLocaleString()} to reach milestone
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── Targets & KPIs ─────────────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {/* Revenue Target (Takes 2 cols) */}
-        <div className="rounded-2xl border bg-white shadow-sm p-6 lg:col-span-2 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2 opacity-50" />
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Target className="h-4 w-4 text-blue-500" /> Monthly Target
-              </p>
-              <div className="flex items-end gap-3 mt-2">
-                <h3 className="text-4xl font-black tracking-tight text-blue-900">₹{targetData.completed.toLocaleString()}</h3>
-                <span className="text-lg font-bold text-muted-foreground mb-1">/ ₹{targetData.assigned.toLocaleString()}</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-bold">
-                <TrendingUp className="h-4 w-4" /> {progressPercent}% Achieved
-              </span>
-            </div>
-          </div>
-          
-          {/* Progress Bar */}
-          <div className="relative h-4 w-full rounded-full bg-muted overflow-hidden">
-            <div 
-              className="absolute top-0 left-0 h-full rounded-full transition-all duration-1000"
-              style={{ width: `${progressPercent}%`, background: 'linear-gradient(90deg, #3b82f6, #1d4ed8)' }}
-            />
-          </div>
-          <p className="text-sm font-medium text-muted-foreground mt-3">
-            ₹{(targetData.assigned - targetData.completed).toLocaleString()} remaining to hit target.
-          </p>
-        </div>
-
-        {/* Orders Completed */}
-        <KpiCard 
+      {/* ── Key Metrics Dashboard ────────────────────────────────────────── */}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard 
           title="Orders Completed" 
-          value={targetData.ordersCompletedThisMonth} 
-          subtext="Total fulfilled this month"
-          icon={Package} 
-          color="bg-purple-100 text-purple-600" 
+          value={stats.monthlyCompleted} 
+          total={stats.monthlyTotal}
+          subtext="Closed this month"
+          icon={CheckCircle} 
+          trend="+4 today"
+          color="emerald"
+          onClick={() => navigate('/followups?tab=orders')}
         />
-
-        {/* NEW: Follow-ups */}
-        <KpiCard 
+        <MetricCard 
           title="Pending Follow-ups" 
-          value={targetData.followups} 
-          subtext="Requires action today"
+          value={stats.pendingFollowups} 
+          subtext="Action required"
           icon={PhoneCall} 
-          color="bg-blue-100 text-blue-600" 
+          trend="Urgent"
+          color="amber"
           onClick={() => navigate('/followups')}
         />
-
-        {/* NEW: Appointments */}
-        <KpiCard 
+        <MetricCard 
           title="Upcoming Appointments" 
-          value={targetData.appointments} 
-          subtext="Scheduled for this week"
+          value={stats.appointments} 
+          subtext="Scheduled meetings"
           icon={CalendarIcon} 
-          color="bg-indigo-100 text-indigo-600" 
+          trend="Next 7 days"
+          color="indigo"
           onClick={() => navigate('/appointments')}
         />
-
-        {/* Pending Payments Alert */}
-        <KpiCard 
-          title="Pending Payments" 
-          value={`₹${targetData.pendingPaymentsAmount.toLocaleString()}`} 
-          subtext={`${targetData.pendingPaymentsCount} orders waiting for settlement`}
-          icon={AlertTriangle} 
-          color="bg-amber-100 text-amber-600" 
-          onClick={() => navigate('/orders')}
+        <MetricCard 
+          title="Governance Approvals" 
+          value={approvalCount} 
+          subtext={`${approvalDetails.pending} Awaiting Manager · ${approvalDetails.rejected} Need Action`}
+          icon={ShieldCheck} 
+          trend={approvalDetails.rejected > 0 ? "Action Required" : "Awaiting Manager"}
+          color={approvalDetails.rejected > 0 ? "rose" : "blue"}
+          onClick={() => navigate('/approvals')}
         />
       </div>
-
-      {/* ── Charts Grid ────────────────────────────────────────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Sales Analysis (Donut) */}
-        <div className="rounded-2xl border bg-white shadow-sm p-5 lg:col-span-1 flex flex-col">
-          <h3 className="font-bold text-lg mb-4 text-slate-800">Sales Analysis</h3>
-          <div className="h-[200px] flex-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={salesAnalysisData} innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
-                  {salesAnalysisData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+      
+      {/* ── Governance Tasks & Priority Alerts ────────────────────────────── */}
+      <div className="rounded-[2.5rem] border bg-white p-8 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h3 className="text-2xl font-black text-slate-900">Governance Hub</h3>
+            <p className="text-sm font-semibold text-slate-500">Track approvals for your orders and payments.</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 mt-4 shrink-0">
-            {salesAnalysisData.map(d => (
-              <div key={d.name} className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                <div className="h-3 w-3 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: d.color }} />
-                {d.name}
-              </div>
-            ))}
+          
+          <div className="flex p-1 bg-slate-100 rounded-2xl w-fit">
+            {['Orders', 'Payments'].map((tab) => {
+              const count = tab === 'Orders' 
+                ? approvalDetails.orders.filter(i => i.status === 'Pending').length 
+                : approvalDetails.payments.filter(i => i.status === 'Pending').length;
+              const rejectedCount = tab === 'Orders'
+                ? approvalDetails.orders.filter(i => i.status === 'Rejected').length
+                : approvalDetails.payments.filter(i => i.status === 'Rejected').length;
+
+              return (
+                <button 
+                  key={tab} 
+                  onClick={() => setActiveApprovalTab(tab)}
+                  className={`relative px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeApprovalTab === tab ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  {tab}
+                  {(count > 0 || rejectedCount > 0) && (
+                    <span className={`ml-2 px-1.5 py-0.5 text-[10px] rounded-full ${rejectedCount > 0 ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                      {count + rejectedCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Client Overview Chart + Summary */}
-        <div className="rounded-2xl border bg-white shadow-sm p-5 lg:col-span-2 flex flex-col">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-lg text-slate-800">Client Overview - Apr 2026</h3>
-            <span className="font-bold text-blue-700 text-sm">Total Amount: ₹0</span>
+        <div className="space-y-4">
+          {activeApprovalTab === 'Orders' ? (
+            approvalDetails.orders.length === 0 ? (
+              <div className="py-12 text-center border-2 border-dashed rounded-3xl bg-slate-50/50">
+                <ShieldCheck className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No order approvals</p>
+              </div>
+            ) : (
+              approvalDetails.orders.map((item) => (
+                <div 
+                  key={item._id} 
+                  className={`group bg-white border rounded-3xl p-6 shadow-sm transition-all flex flex-wrap lg:flex-nowrap gap-6 items-center ${item.status === 'Rejected' ? 'border-red-100 bg-red-50/30' : ''}`}
+                >
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="font-mono text-[10px] font-black text-blue-500 bg-blue-50 px-2.5 py-1 rounded-lg uppercase tracking-tighter">
+                        {item.orderNumber}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <div className={`h-2 w-2 rounded-full ${item.status === 'Approved' ? 'bg-green-500' : item.status === 'Pending' ? 'bg-red-500 animate-pulse' : 'bg-slate-400'}`} />
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${item.status === 'Approved' ? 'text-green-600' : item.status === 'Pending' ? 'text-red-600' : 'text-slate-500'}`}>
+                          {item.status}
+                        </span>
+                      </div>
+                    </div>
+                    <h3 className="font-black text-slate-900 text-xl tracking-tight">{item.clientName}</h3>
+                    {item.status === 'Rejected' && (
+                      <p className="text-xs text-red-600 mt-2 font-bold bg-red-100/50 px-3 py-1 rounded-lg w-fit italic">
+                        " {item.rejectionReason || 'Info correction required.'} "
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-8 px-6 border-x border-slate-100 h-12">
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Total</p>
+                      <p className="font-black text-slate-900">₹{item.grandTotal?.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Advance</p>
+                      <p className="font-black text-blue-600">₹{item.advancePaid?.toLocaleString()}</p>
+                    </div>
+                  </div>
+
+                  <div className="ml-auto flex items-center gap-4">
+                    <div className="px-4 py-2 bg-slate-50 border rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      {item.status === 'Pending' ? 'Awaiting Manager' : 'Processed'}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )
+          ) : (
+            approvalDetails.payments.length === 0 ? (
+              <div className="py-12 text-center border-2 border-dashed rounded-3xl bg-slate-50/50">
+                <IndianRupee className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No payment records</p>
+              </div>
+            ) : (
+              approvalDetails.payments.map((p) => (
+                <div 
+                  key={p._id} 
+                  className={`group bg-white border rounded-3xl p-6 shadow-sm transition-all flex flex-wrap lg:flex-nowrap gap-6 items-center ${p.status === 'Rejected' ? 'border-red-100 bg-red-50/30' : ''}`}
+                >
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="font-mono text-[10px] font-black text-amber-500 bg-amber-50 px-2.5 py-1 rounded-lg uppercase tracking-tighter">
+                        {p.paymentNumber}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <div className={`h-2 w-2 rounded-full ${p.status === 'Verified' ? 'bg-green-500' : p.status === 'Pending' ? 'bg-amber-400 animate-pulse' : 'bg-red-500'}`} />
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${p.status === 'Verified' ? 'text-green-600' : p.status === 'Pending' ? 'text-amber-600' : 'text-red-600'}`}>
+                          {p.status}
+                        </span>
+                      </div>
+                    </div>
+                    <h3 className="font-black text-slate-900 text-xl tracking-tight">{p.order?.clientSnapshot?.name || 'Client'}</h3>
+                    {p.status === 'Rejected' && (
+                      <p className="text-xs text-red-600 mt-2 font-bold bg-red-100/50 px-3 py-1 rounded-lg w-fit italic">
+                        " {p.rejectionNote || 'Payment proof verification failed.'} "
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-8 px-6 border-x border-slate-100 h-12">
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Amount</p>
+                      <p className="font-black text-emerald-600">₹{p.amount.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Order</p>
+                      <p className="font-black text-slate-900">#{p.order?.orderNumber}</p>
+                    </div>
+                  </div>
+
+                  <div className="ml-auto">
+                    <div className="px-4 py-2 bg-slate-50 border rounded-xl text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      {p.status === 'Pending' ? 'Awaiting Verification' : `Payment ${p.status}`}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )
+          )}
+        </div>
+      </div>
+
+      {/* ── Intelligence & Insights ──────────────────────────────────────── */}
+      <div className="grid gap-8 lg:grid-cols-3">
+        {/* Funnel Intelligence */}
+        <div className="lg:col-span-2 rounded-[2rem] border bg-white p-8 shadow-sm">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-xl font-black text-slate-900">Sales Funnel Efficiency</h3>
+              <p className="text-sm font-semibold text-slate-500">How your attributed orders are moving through the stages.</p>
+            </div>
           </div>
           
-          <div className="flex flex-col md:flex-row gap-6 flex-1">
-            {/* Chart */}
-            <div className="flex-1 h-[200px]">
+          <div className="grid gap-8 md:grid-cols-2 items-center">
+            <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={clientOverviewData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                  <Tooltip cursor={{ fill: '#f1f5f9' }} formatter={(value) => [`${value} orders`, 'Orders']} />
-                  <Bar dataKey="orders" radius={[2, 2, 0, 0]} barSize={40}>
-                    {clientOverviewData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                <PieChart>
+                  <Pie
+                    data={stats.analysis}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={100}
+                    paddingAngle={8}
+                    dataKey="value"
+                  >
+                    {stats.analysis.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} strokeWidth={0} />
                     ))}
-                  </Bar>
-                </BarChart>
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}
+                  />
+                </PieChart>
               </ResponsiveContainer>
             </div>
             
-            {/* Summary */}
-            <div className="w-full md:w-56 shrink-0 flex flex-col justify-center">
-              <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                <span className="font-bold text-blue-700 text-sm">Total Clients</span>
-                <span className="font-black text-blue-700 text-lg">0</span>
-              </div>
-              <div className="space-y-3 pt-3">
-                {clientOverviewData.length === 0 ? (
-                  <div className="text-xs text-muted-foreground text-center py-4 border-2 border-dashed rounded-lg">No client orders yet</div>
-                ) : (
-                  clientOverviewData.map((client, idx) => (
-                    <div key={idx} className="flex justify-between text-sm font-semibold text-slate-700">
-                      <span className="text-xs truncate" title={client.name}>{client.name}:</span>
-                      <span className="text-blue-500 text-xs text-right w-12">{client.orders}</span>
-                      <span className="text-emerald-600 text-xs text-right w-16">₹{client.amount?.toLocaleString('en-IN') || 0}</span>
-                    </div>
-                  ))
-                )}
-              </div>
+            <div className="space-y-4">
+              {stats.analysis.map((item) => (
+                <div key={item.name} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-blue-200 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="text-sm font-bold text-slate-700">{item.name}</span>
+                  </div>
+                  <span className="text-lg font-black text-slate-900">{item.value}</span>
+                </div>
+              ))}
             </div>
+          </div>
+        </div>
+
+        {/* Top Client Rankings */}
+        <div className="rounded-[2rem] border bg-white p-8 shadow-sm">
+          <h3 className="text-xl font-black text-slate-900 mb-1">Top Clients</h3>
+          <p className="text-sm font-semibold text-slate-500 mb-8">Highest contribution by volume.</p>
+          
+          <div className="space-y-6">
+            {stats.clientOverview.map((client, idx) => (
+              <div key={idx} className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-xs">
+                  {idx + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-900 truncate">{client.name}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(client.orders / (stats.monthlyTotal || 1)) * 100}%` }} />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500">{client.orders} orders</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {stats.clientOverview.length === 0 && (
+              <div className="py-12 text-center">
+                <p className="text-sm font-bold text-slate-400 uppercase">No client data yet</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── Recent Active Orders Summary ────────────────────────────────────── */}
-      <div className="rounded-2xl border bg-card shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b flex justify-between items-center bg-muted/20">
+      {/* ── Active Pipeline Table ────────────────────────────────────────── */}
+      <div className="rounded-[2rem] border bg-white shadow-sm overflow-hidden">
+        <div className="p-8 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-lg">Recent Order List</h3>
-            <p className="text-sm text-muted-foreground">Track order services, installments, and payment settlements.</p>
+            <h3 className="text-xl font-black text-slate-900">Recent Order Activity</h3>
+            <p className="text-sm font-semibold text-slate-500">Real-time status of your latest orders.</p>
           </div>
           <button 
-            onClick={() => navigate('/orders')} 
-            className="text-sm font-semibold text-blue-600 hover:text-blue-800"
+            onClick={() => navigate('/orders')}
+            className="rounded-xl px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-50 transition-colors"
           >
-            View All Orders →
+            Manage Pipeline →
           </button>
         </div>
-        <div className="p-0">
-          <OrderList orders={[]} onCreateOrder={() => setShowOrderSearch(true)} onUploadPayment={() => {}} compact={true} />
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+              <tr>
+                <th className="px-8 py-5">Order ID</th>
+                <th className="px-8 py-5">Client Name</th>
+                <th className="px-8 py-5">Value</th>
+                <th className="px-8 py-5">Execution Status</th>
+                <th className="px-8 py-5 text-right">Payment</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {stats.recentOrders.map((order) => (
+                <tr 
+                  key={order._id} 
+                  onClick={() => setSelectedOrder(order)}
+                  className="hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  <td className="px-8 py-6 font-mono font-bold text-blue-600">#{order.orderNumber}</td>
+                  <td className="px-8 py-6">
+                    <p className="font-bold text-slate-900">{order.clientSnapshot?.name}</p>
+                    <p className="text-xs font-semibold text-slate-500">{order.clientSnapshot?.company}</p>
+                  </td>
+                  <td className="px-8 py-6 font-black text-slate-900">₹{order.grandTotal.toLocaleString()}</td>
+                  <td className="px-8 py-6">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter ${
+                      order.status === 'Confirmed' ? 'bg-blue-50 text-blue-600' :
+                      order.status === 'In_Production' ? 'bg-orange-50 text-orange-600' :
+                      order.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
+                      <div className={`h-1.5 w-1.5 rounded-full ${
+                        order.status === 'Confirmed' ? 'bg-blue-600' :
+                        order.status === 'In_Production' ? 'bg-orange-600' :
+                        order.status === 'Completed' ? 'bg-emerald-600' :
+                        'bg-slate-400'
+                      }`} />
+                      {order.status.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="px-8 py-6">
+                    <div className="flex flex-col items-end">
+                      <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                        <div 
+                          className="h-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" 
+                          style={{ width: `${Math.min(100, Math.round((order.totalPaid / order.grandTotal) * 100))}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-500 mt-2">₹{order.totalPaid.toLocaleString()} secured</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -507,11 +814,57 @@ const SalesExecDashboard = () => {
   );
 };
 
+// ── Shared Metric Card Component ───────────────────────────────────────────
+const MetricCard = ({ title, value, total, subtext, icon: Icon, color, trend, onClick }) => {
+  const themes = {
+    blue:    "bg-blue-50 text-blue-600 border-blue-100",
+    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100",
+    amber:   "bg-amber-50 text-amber-600 border-amber-100",
+    rose:    "bg-rose-50 text-rose-600 border-rose-100",
+    indigo:  "bg-indigo-50 text-indigo-600 border-indigo-100",
+  };
+
+  return (
+    <div 
+      onClick={onClick}
+      className={`group relative rounded-[2rem] border bg-white p-6 shadow-sm transition-all hover:shadow-xl hover:-translate-y-1 ${onClick ? 'cursor-pointer' : ''}`}
+    >
+      <div className="flex items-start justify-between">
+        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${themes[color] || themes.blue} border shadow-inner`}>
+          <Icon className="h-6 w-6" />
+        </div>
+        {trend && (
+          <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${themes[color] || themes.blue}`}>
+            {trend}
+          </span>
+        )}
+      </div>
+      
+      <div className="mt-6">
+        <div className="flex items-baseline gap-2">
+          <h3 className="text-3xl font-black text-slate-900">{value}</h3>
+          {total !== undefined && <span className="text-lg font-bold text-slate-400">/ {total}</span>}
+        </div>
+        <p className="mt-1 text-sm font-bold text-slate-500 uppercase tracking-tighter">{title}</p>
+        <p className="mt-4 text-xs font-semibold text-slate-400">{subtext}</p>
+      </div>
+      
+      {/* Decorative Arrow on hover */}
+      {onClick && (
+        <div className="absolute bottom-6 right-6 h-8 w-8 rounded-full bg-slate-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:bg-blue-50">
+          <TrendingUp className="h-4 w-4 text-blue-500" />
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Wrappers for Pages ──────────────────────────────────────────────────────────
 export { SalesExecDashboard };
 
 export const SalesProspects = () => {
   const { user } = useAuth();
+  if (!user) return null;
   const [prospects, setProspects] = useState([]);
   
   const fetchProspects = async () => {
@@ -578,7 +931,7 @@ export const SalesProspects = () => {
     setShowUpdateStatus({ prospect, newStatus: prospect.status || 'In-progress' });
   };
 
-  const { renderOrderModals, setShowOrderSearch } = useOrderFlow(user, fetchProspects);
+  const { renderOrderModals, setShowOrderSearch, setShowCreateOrder } = useOrderFlow(user, fetchProspects);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -599,7 +952,7 @@ export const SalesProspects = () => {
         prospects={prospects} 
         onWhatsApp={() => alert('Opening WhatsApp...')} 
         onInteract={() => alert('Opening Interaction Guide...')} 
-        onCreateOrder={(p) => setShowOrderSearch(p.phone || true)} 
+        onCreateOrder={(p) => setShowCreateOrder({ phone: p.phone, company: p.company, contactPerson: p.name, location: p.requirement?.location })} 
         onEdit={(p) => setShowCreateProspect(p)}
         onDelete={handleDelete}
         onBrochure={handleBrochure}
@@ -616,6 +969,7 @@ export const SalesProspects = () => {
 
 export const SalesOrders = () => {
   const { user } = useAuth();
+  if (!user) return null;
   const [orders, setOrders] = useState([]);
   
   const fetchOrders = async () => {
@@ -629,7 +983,7 @@ export const SalesOrders = () => {
 
   React.useEffect(() => { fetchOrders(); }, []);
 
-  const { setShowOrderSearch, renderOrderModals } = useOrderFlow(user, fetchOrders);
+  const { setShowOrderSearch, setSelectedOrder, setPaymentOrder, renderOrderModals } = useOrderFlow(user, fetchOrders);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -646,23 +1000,108 @@ export const SalesOrders = () => {
           <Plus className="h-4 w-4" /> Create Order
         </button>
       </div>
-      <OrderList orders={orders} onCreateOrder={() => setShowOrderSearch(true)} onUploadPayment={() => alert('Opening Payment Upload...')} />
+      <OrderList 
+        orders={orders} 
+        onCreateOrder={() => setShowOrderSearch(true)} 
+        onUploadPayment={(o) => setPaymentOrder(o)} 
+        onViewDetails={(o) => setSelectedOrder(o)}
+      />
       {renderOrderModals()}
     </div>
   );
 };
 
 export const SalesPayments = () => {
+  const { user } = useAuth();
+  if (!user) return null;
+  const [payments, setPayments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPayments = async () => {
+    try {
+      setLoading(true);
+      const res = await paymentApi.list({}, user.token);
+      if (res.success) setPayments(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => { fetchPayments(); }, []);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight">Payment Collections</h1>
-        <p className="text-muted-foreground">Track advance payments, installments, and final settlements with proofs.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight">Payment Collections</h1>
+          <p className="text-muted-foreground">Track advance payments, installments, and final settlements with proofs.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3 flex flex-col items-end shadow-sm">
+            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Total Collected</span>
+            <span className="text-xl font-black text-blue-600">₹{payments.reduce((s,p) => s + (p.status === 'Verified' ? p.amount : 0), 0).toLocaleString()}</span>
+          </div>
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex flex-col items-end shadow-sm">
+            <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Awaiting Verification</span>
+            <span className="text-xl font-black text-amber-600">₹{payments.reduce((s,p) => s + (p.status === 'Pending' ? p.amount : 0), 0).toLocaleString()}</span>
+          </div>
+        </div>
       </div>
-      <div className="rounded-2xl border bg-white shadow-sm p-8 text-center text-muted-foreground">
-        <IndianRupee className="h-12 w-12 mx-auto mb-3 opacity-20" />
-        <p>Full Payment Ledger will be rendered here. You can upload Cash/UPI/Bank proofs.</p>
-      </div>
+
+      {loading ? (
+        <div className="p-20 text-center text-muted-foreground">Loading payment ledger...</div>
+      ) : payments.length === 0 ? (
+        <div className="rounded-2xl border bg-white shadow-sm p-12 text-center text-muted-foreground">
+          <IndianRupee className="h-12 w-12 mx-auto mb-3 opacity-20" />
+          <p className="font-bold">No payments recorded yet.</p>
+          <p className="text-sm">Payments uploaded via orders will appear here.</p>
+        </div>
+      ) : (
+        <div className="rounded-2xl border bg-white shadow-sm overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+                <th className="px-6 py-4 text-left">Payment ID</th>
+                <th className="px-6 py-4 text-left">Order</th>
+                <th className="px-6 py-4 text-left">Client</th>
+                <th className="px-6 py-4 text-left">Amount</th>
+                <th className="px-6 py-4 text-left">Method</th>
+                <th className="px-6 py-4 text-left">Status</th>
+                <th className="px-6 py-4 text-left">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {payments.map(p => (
+                <tr key={p._id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-5 font-mono font-bold text-slate-400">{p.paymentNumber}</td>
+                  <td className="px-6 py-5 font-bold text-blue-600">#{p.order?.orderNumber}</td>
+                  <td className="px-6 py-5">
+                    <p className="font-bold text-slate-900">{p.order?.clientSnapshot?.name}</p>
+                    <p className="text-[10px] text-slate-500">{p.order?.clientSnapshot?.company}</p>
+                  </td>
+                  <td className="px-6 py-5 font-black text-slate-900">₹{p.amount.toLocaleString()}</td>
+                  <td className="px-6 py-5">
+                    <span className="px-2 py-1 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-600 uppercase">{p.method}</span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`h-2 w-2 rounded-full ${p.status === 'Verified' ? 'bg-green-500' : p.status === 'Pending' ? 'bg-amber-400' : 'bg-red-500'}`} />
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${p.status === 'Verified' ? 'text-green-600' : p.status === 'Pending' ? 'text-amber-600' : 'text-red-600'}`}>
+                        {p.status}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 text-slate-500 font-medium">
+                    {new Date(p.collectedAt).toLocaleDateString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 };
@@ -670,6 +1109,7 @@ export const SalesPayments = () => {
 // ── Follow-ups View ────────────────────────────────────────────────────────
 export const SalesFollowups = () => {
   const { user } = useAuth();
+  if (!user) return null;
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
@@ -801,6 +1241,7 @@ export const SalesFollowups = () => {
 // ── Appointments View ────────────────────────────────────────────────────────
 export const SalesAppointments = () => {
   const { user } = useAuth();
+  if (!user) return null;
   const [appointments, setAppointments] = useState([]);
   
   React.useEffect(() => {
@@ -878,7 +1319,7 @@ export const SalesAppointments = () => {
                     <div className="h-6 w-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold">
                       {apt.assignedTo.name.charAt(0)}
                     </div>
-                    <span className="text-sm font-semibold text-indigo-900">{apt.assignedTo.name} ({apt.assignedTo.role.replace('_', ' ')})</span>
+                    <span className="text-sm font-semibold text-indigo-900">{apt.assignedTo.name} ({(apt.assignedTo.role || 'Exec').replace('_', ' ')})</span>
                   </div>
                 ) : (
                   <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-200">Pending Assignment</span>

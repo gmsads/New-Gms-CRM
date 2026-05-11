@@ -14,12 +14,13 @@ const lineItemSchema = new mongoose.Schema({
 // ─── Payment Record (embedded) ────────────────────────────────────────────────
 const paymentRecordSchema = new mongoose.Schema({
   amount:       { type: Number, required: true },
-  method:       { type: String, enum: ['Cash', 'UPI', 'Bank Transfer', 'Cheque'], required: true },
+  method:       { type: String, enum: ['Cash', 'UPI', 'PhonePe', 'GPay', 'Bank Transfer', 'Cheque', 'Other'], required: true },
   proofUrl:     { type: String },          // uploaded screenshot/receipt
   receivedAt:   { type: Date, default: Date.now },
   receivedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   verifiedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   verifiedAt:   { type: Date },
+  paymentId:    { type: mongoose.Schema.Types.ObjectId, ref: 'Payment' },
   status:       { type: String, enum: ['Pending', 'Verified', 'Rejected'], default: 'Pending' },
   rejectionNote:{ type: String },
 }, { _id: true, timestamps: true });
@@ -143,9 +144,9 @@ orderSchema.index({ 'clientSnapshot.phone': 1 });
 orderSchema.index({ createdAt: -1 });
 
 // ─── Auto-generate order number ───────────────────────────────────────────────
-orderSchema.pre('save', async function (next) {
+orderSchema.pre('save', async function () {
   if (this.isNew && !this.orderNumber) {
-    const count = await mongoose.model('Order').countDocuments();
+    const count = await this.constructor.countDocuments();
     const year  = new Date().getFullYear();
     this.orderNumber = `ORD-${year}-${String(count + 1).padStart(4, '0')}`;
   }
@@ -179,8 +180,6 @@ orderSchema.pre('save', async function (next) {
   if (this.totalPaid >= this.grandTotal)        this.paymentStatus = 'Paid';
   else if (this.totalPaid > 0)                  this.paymentStatus = 'Partial';
   else                                          this.paymentStatus = 'Unpaid';
-
-  next();
 });
 
 // ─── Instance method: push timeline event ────────────────────────────────────

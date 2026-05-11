@@ -4,7 +4,7 @@ const prospectSchema = new mongoose.Schema(
   {
     // Basic Info
     name: { type: String, required: true, trim: true },
-    phone: { type: String, required: true, unique: true },
+    phone: { type: String, required: true, unique: true, trim: true },
     email: { type: String, trim: true },
     company: { type: String, trim: true },
 

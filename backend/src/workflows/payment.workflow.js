@@ -63,6 +63,7 @@ const recordPayment = async (data, user) => {
     proofUrl,
     receivedAt:  new Date(),
     receivedBy:  user._id,
+    paymentId:   payment._id,
     status:      'Pending',
   });
 
@@ -110,12 +111,10 @@ const verifyPayment = async (paymentId, user) => {
   payment.verifiedAt = new Date();
   await payment.save();
 
-  // Update the embedded record in Order
   const order = await Order.findById(payment.order._id || payment.order);
   if (order) {
     const record = order.paymentRecords.find(
-      p => p.receivedAt.toISOString().slice(0, 16) === payment.collectedAt.toISOString().slice(0, 16)
-        && p.amount === payment.amount
+      p => p.paymentId?.toString() === payment._id.toString()
     );
     if (record) {
       record.status     = 'Verified';
@@ -181,7 +180,7 @@ const rejectPayment = async (paymentId, rejectionNote, user) => {
   const order = await Order.findById(payment.order._id || payment.order);
   if (order) {
     const record = order.paymentRecords.find(
-      p => p.amount === payment.amount && p.status === 'Pending'
+      p => p.paymentId?.toString() === payment._id.toString()
     );
     if (record) record.status = 'Rejected';
 

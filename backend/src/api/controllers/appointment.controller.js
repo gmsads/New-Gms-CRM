@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Appointment = require('../../domains/sales/appointments/appointment.model');
 const Prospect = require('../../domains/sales/prospects/prospect.model');
 
@@ -32,15 +33,16 @@ exports.create = async (req, res) => {
 // ── GET /api/appointments ────────────────────────────────────────────────────
 exports.list = async (req, res) => {
   try {
+    const userId = new mongoose.Types.ObjectId(req.user._id);
     const filter = {};
     
     // If Sales Exec, they see their created appointments
     if (req.user.role === 'SALES_EXEC') {
-      filter.$or = [{ createdBy: req.user._id }, { assignedTo: req.user._id }];
+      filter.$or = [{ createdBy: userId }, { assignedTo: userId }];
     } 
     // If Field Exec or other assigned roles, they see their assignments
     else if (req.user.role === 'FIELD_EXEC' || req.user.role === 'AGENT') {
-      filter.assignedTo = req.user._id;
+      filter.assignedTo = userId;
     }
     // Admin, MD_CEO, SALES_MANAGER see all
 
@@ -105,6 +107,20 @@ exports.updateRemark = async (req, res) => {
     }
 
     res.json({ success: true, data: appointment });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+// ── GET /api/appointments/stats ──────────────────────────────────────────────
+exports.getStats = async (req, res) => {
+  try {
+    const filter = { status: 'Pending Assignment' };
+    
+    // For specific roles, we might want to filter, but usually, 
+    // the sidebar badge is for managers to see the total backlog.
+    
+    const pendingCount = await Appointment.countDocuments(filter);
+    res.json({ success: true, pendingCount });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

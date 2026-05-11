@@ -227,7 +227,7 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
                 <td className="px-4 py-2 text-xs text-muted-foreground">
                   {p.interactions && p.interactions.length > 0 ? (
                     <div className="flex flex-col gap-1 max-h-16 overflow-y-auto pr-1">
-                      {p.interactions.slice().reverse().map((i, idx) => (
+                      {(p.interactions || []).slice().reverse().map((i, idx) => (
                         <div key={idx} className="flex gap-1.5 border-b border-slate-100 pb-1 mb-1 last:border-0 last:mb-0 last:pb-0">
                           <span className="font-semibold text-[10px] shrink-0 text-slate-500">{new Date(i.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}:</span>
                           <span className="text-[10px] truncate max-w-[140px]" title={i.notes}>{i.notes}</span>

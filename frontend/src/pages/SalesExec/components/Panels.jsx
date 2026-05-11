@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
   Calendar, CheckCircle, Clock, MapPin, ShieldCheck,
-  Plus, X, Upload, Printer, IndianRupee, AlertCircle, FileText, MessageCircle
+  Plus, X, Upload, Printer, IndianRupee, AlertCircle, FileText, MessageCircle, Image, Link
 } from 'lucide-react';
 import { requirementTypes } from '../data/mockData';
 
 
 import { useAuth } from '../../../context/AuthContext';
-import { appointmentApi } from '../../../services/api';
+import { appointmentApi, orderApi } from '../../../services/api';
 
 // ─── Appointment Hub ──────────────────────────────────────────────────────────
 export const AppointmentHub = ({ appointments = [], onSchedule }) => (
@@ -63,7 +63,7 @@ export const AppointmentHub = ({ appointments = [], onSchedule }) => (
 );
 
 // ─── Order List ───────────────────────────────────────────────────────────────
-export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, compact }) => {
+export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewDetails, compact }) => {
   const statusColors = { Confirmed: 'bg-blue-100 text-blue-700', 'In Production': 'bg-amber-100 text-amber-700', 'Design Review': 'bg-purple-100 text-purple-700', Completed: 'bg-green-100 text-green-700' };
   const paymentColors = { Partial: 'bg-orange-100 text-orange-700', Paid: 'bg-green-100 text-green-700', Pending: 'bg-red-100 text-red-700' };
 
@@ -73,8 +73,8 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, compact
   const [monthFilter, setMonthFilter] = useState('All Months');
   const months = ['All Months', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  const filteredOrders = orders.filter(o => {
-    const matchSearch = !search || [o.orderNumber, o.id, o.clientSnapshot?.name, o.client].some(v => v?.toLowerCase().includes(search.toLowerCase()));
+  const filteredOrders = (orders || []).filter(o => {
+    const matchSearch = !search || [o.orderNumber, o.id, o.clientSnapshot?.name, o.client].some(v => String(v || '').toLowerCase().includes(search.toLowerCase()));
     const matchStatus = statusFilter === 'All' || o.status === statusFilter;
     const matchPayment = paymentFilter === 'All' || o.paymentStatus === paymentFilter;
     let matchMonth = true;
@@ -170,7 +170,8 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, compact
                     <p className="font-semibold text-sm">{order.clientSnapshot?.name || order.client}</p>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                       <span className="text-xs text-muted-foreground">Total: <span className="font-bold text-foreground">₹{order.grandTotal?.toLocaleString('en-IN') || order.amount}</span></span>
-                      <span className="text-xs text-muted-foreground">Paid: <span className="font-semibold">₹{order.totalPaid?.toLocaleString('en-IN') || order.advance}</span></span>
+                      <span className="text-xs text-muted-foreground">Paid: <span className="font-semibold text-emerald-600">₹{order.totalPaid?.toLocaleString('en-IN') || order.advance}</span></span>
+                      <span className="text-xs text-muted-foreground">Balance: <span className="font-bold text-red-500">₹{( (order.grandTotal || 0) - (order.totalPaid || 0) ).toLocaleString('en-IN')}</span></span>
                     </div>
                   </div>
                   <div className="shrink-0">
@@ -186,7 +187,7 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, compact
                   <button onClick={() => onUploadPayment?.(order)} className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 transition-colors">
                     <Upload className="h-3 w-3" /> Upload Payment
                   </button>
-                  <button className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-muted text-muted-foreground text-xs font-medium hover:bg-muted/80 transition-colors">
+                  <button onClick={() => onViewDetails?.(order)} className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-muted text-muted-foreground text-xs font-medium hover:bg-muted/80 transition-colors">
                     <FileText className="h-3 w-3" /> View Details
                   </button>
                 </div>
@@ -326,7 +327,8 @@ export const ScheduleAppointmentModal = ({ prospect, onClose, onSaved }) => {
 
 // ─── Order Search Modal ───────────────────────────────────────────────────────
 export const OrderSearchModal = ({ onClose, onSearch }) => {
-  const [query, setQuery] = useState('');
+  const [phone, setPhone] = useState('');
+  const [company, setCompany] = useState('');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
@@ -337,16 +339,25 @@ export const OrderSearchModal = ({ onClose, onSearch }) => {
         <h2 className="text-2xl font-bold text-center mb-8 text-slate-900">Search Client</h2>
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-bold text-slate-800 mb-2 block">Enter Mobile Number or Business Name:</label>
+            <label className="text-sm font-bold text-slate-800 mb-2 block">10-Digit Mobile Number:</label>
             <input 
-              value={query} 
-              onChange={e => setQuery(e.target.value)} 
-              placeholder="Mobile number or Business name" 
+              value={phone} 
+              onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+              placeholder="Enter mobile number" 
+              className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
+            />
+          </div>
+          <div>
+            <label className="text-sm font-bold text-slate-800 mb-2 block">Business Name:</label>
+            <input 
+              value={company} 
+              onChange={e => setCompany(e.target.value)} 
+              placeholder="Enter business name" 
               className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
             />
           </div>
           <button
-            onClick={() => onSearch(query)}
+            onClick={() => onSearch({ phone, company: (company || '').toLowerCase() })}
             className="w-full h-10 rounded text-white font-semibold text-sm transition-colors hover:opacity-90"
             style={{ background: '#003366' }}
           >
@@ -408,7 +419,8 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     name: client?.name || client?.contactPerson || '',
     phone: client?.phone || '',
     location: client?.location || client?.requirement?.location || '',
-    source: client?.source || client?.leadFrom || '',
+    state: 'Telangana',
+    pincode: '',
     birthDate: '',
     anniversaryDate: '',
     designStatus: 'Design Provided',
@@ -417,26 +429,123 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
   const [items, setItems] = useState([{ desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, deliveryDate: '' }]);
   const [advance, setAdvance] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [paymentProof, setPaymentProof] = useState(null);
+  const [applyGst, setApplyGst] = useState(false);
+  const [discount, setDiscount] = useState(0);
+  const [errors, setErrors] = useState({});
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.orderType) newErrors.orderType = 'Required';
+    if (!formData.company) newErrors.company = 'Required';
+    if (!formData.name) newErrors.name = 'Required';
+    if (!formData.phone) newErrors.phone = 'Required';
+    else if (formData.phone.length !== 10) newErrors.phone = 'Enter 10 digits';
+    
+    if (!formData.location) newErrors.location = 'Required';
+    if (!formData.state) newErrors.state = 'Required';
+    if (!formData.pincode) newErrors.pincode = 'Required';
+    else if (formData.pincode.length !== 6) newErrors.pincode = 'Enter 6 digits';
+
+    if (!advance || Number(advance) <= 0) newErrors.advance = 'Required';
+    if (!paymentProof) newErrors.paymentProof = 'Required';
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const states = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Other"];
 
   const addItem = () => setItems(prev => [...prev, { desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, deliveryDate: '' }]);
   const removeItem = i => setItems(prev => prev.filter((_, idx) => idx !== i));
   const updateItem = (i, k, v) => setItems(prev => prev.map((item, idx) => idx === i ? { ...item, [k]: v } : item));
 
-  const subtotal = items.reduce((s, item) => s + (item.qty * Number(item.cost || 0)), 0);
-  const advancePct = subtotal > 0 ? (Number(advance) / subtotal) * 100 : 0;
-  const advanceLow = subtotal > 0 && advancePct < 50 && advance !== '';
+  // Calculations
+  const rawSubtotal = items.reduce((s, item) => s + (item.qty * Number(item.cost || 0)), 0);
+  const discountAmount = rawSubtotal * (Number(discount) / 100);
+  const taxableAmount = rawSubtotal - discountAmount;
+  
+  // GST Logic: If GST start with "36" (Telangana code) or if state is Telangana, show CGST/SGST. 
+  // Otherwise show IGST. This is a simplified demo logic.
+  const isInterState = formData.state !== 'Telangana'; 
+  const cgst = applyGst && !isInterState ? taxableAmount * 0.09 : 0;
+  const sgst = applyGst && !isInterState ? taxableAmount * 0.09 : 0;
+  const igst = applyGst && isInterState ? taxableAmount * 0.18 : 0;
+  const totalAmount = taxableAmount + cgst + sgst + igst;
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const advancePct = totalAmount > 0 ? (Number(advance) / totalAmount) * 100 : 0;
+  const advanceLow = totalAmount > 0 && advancePct < 50 && advance !== '';
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    let finalValue = value;
+
+    if (name === 'phone' || name === 'pincode') {
+      finalValue = value.replace(/\D/g, '').slice(0, name === 'phone' ? 10 : 6);
+    } else if (name === 'name') {
+      finalValue = value.replace(/[^a-zA-Z\s]/g, '');
+    }
+
+    setFormData(prev => ({ ...prev, [name]: finalValue }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
+  };
+  
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPaymentProof(reader.result);
+        if (errors.paymentProof) setErrors(prev => ({ ...prev, paymentProof: null }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAdvanceChange = (val) => {
+    setAdvance(val);
+    if (errors.advance && Number(val) > 0) setErrors(prev => ({ ...prev, advance: null }));
+  };
 
   const handleFormSubmit = () => {
+    if (!validate()) return;
+    
+    // Map frontend items to backend lineItems
+    const lineItems = items.map(it => ({
+      description: it.isCustom ? (it.customDesc || it.desc) : it.desc,
+      quantity: Number(it.qty),
+      unitPrice: Number(it.cost),
+      discount: 0, // Individual item discount not yet implemented in UI
+      gstRate: applyGst ? 18 : 0
+    }));
+
     onSubmit({
       ...formData,
-      items,
+      lineItems,
+      clientSnapshot: {
+        name: formData.name,
+        phone: formData.phone,
+        company: formData.company,
+      },
       payment: {
-        subtotal,
+        rawSubtotal,
+        discount,
+        discountAmount,
+        taxableAmount,
+        cgst,
+        sgst,
+        igst,
+        totalAmount,
         advance: Number(advance),
         paymentMethod,
+        paymentProof,
         requiresApproval: advanceLow
+      },
+      // Backend expects these for initial payment record if needed
+      initialPayment: {
+        amount: Number(advance),
+        method: paymentMethod,
+        proofUrl: paymentProof
       }
     });
   };
@@ -466,10 +575,11 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-800 mb-1 block">Order Type *</label>
-                <select name="orderType" value={formData.orderType} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-green-500">
+                <select name="orderType" value={formData.orderType} onChange={handleChange} className={`h-9 w-full rounded border ${errors.orderType ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`}>
                   <option value="">Select Type...</option>
                   {['renewal', 'renewal-agent', 'retail', 'retail-agent', 'agent', 'corporate', 'corporate-renewal', 'website', 'walk-in'].map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
+                {errors.orderType && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.orderType}</p>}
               </div>
             </div>
           </div>
@@ -479,23 +589,35 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div>
                 <label className="text-xs font-bold text-slate-800 mb-1 block">Business Name *</label>
-                <input name="company" value={formData.company} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-green-500" />
+                <input name="company" value={formData.company} onChange={handleChange} className={`h-9 w-full rounded border ${errors.company ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} />
+                {errors.company && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.company}</p>}
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-800 mb-1 block">Contact Person *</label>
-                <input name="name" value={formData.name} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-green-500" />
+                <input name="name" value={formData.name} onChange={handleChange} className={`h-9 w-full rounded border ${errors.name ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} />
+                {errors.name && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.name}</p>}
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-800 mb-1 block">Contact Number *</label>
-                <input name="phone" value={formData.phone} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-green-500" />
+                <input name="phone" value={formData.phone} onChange={handleChange} className={`h-9 w-full rounded border ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} />
+                {errors.phone && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.phone}</p>}
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-800 mb-1 block">Location *</label>
-                <input name="location" value={formData.location} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-green-500" />
+                <input name="location" value={formData.location} onChange={handleChange} className={`h-9 w-full rounded border ${errors.location ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} />
+                {errors.location && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.location}</p>}
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Lead Source</label>
-                <input name="source" value={formData.source} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-green-500" />
+                <label className="text-xs font-bold text-slate-800 mb-1 block">State *</label>
+                <select name="state" value={formData.state} onChange={handleChange} className={`h-9 w-full rounded border ${errors.state ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`}>
+                  {states.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {errors.state && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.state}</p>}
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-800 mb-1 block">Pincode *</label>
+                <input name="pincode" value={formData.pincode} onChange={handleChange} className={`h-9 w-full rounded border ${errors.pincode ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} maxLength={6} />
+                {errors.pincode && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.pincode}</p>}
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-800 mb-1 block">GST Number (Optional)</label>
@@ -567,33 +689,95 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                 </div>
               ))}
             </div>
-            <div className="mt-5 rounded-xl border bg-green-50 p-4 flex justify-between items-center shadow-sm">
-              <span className="text-sm font-bold text-slate-700">Subtotal Amount</span>
-              <span className="font-black text-xl text-green-700">₹{subtotal.toLocaleString('en-IN')}</span>
+
+            <div className="mt-6 border-t pt-4 space-y-3">
+              <div className="flex justify-between items-center text-sm font-semibold text-slate-600">
+                <span>Subtotal (Items):</span>
+                <span>₹{rawSubtotal.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex justify-between items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-bold text-slate-700">Discount Percentage (%):</label>
+                  <input type="number" value={discount} onChange={e => setDiscount(Math.min(100, Math.max(0, +e.target.value)))} className="h-8 w-20 rounded border border-slate-300 px-2 text-sm outline-none focus:border-green-500" />
+                </div>
+                <span className="text-sm font-medium text-red-600">- ₹{discountAmount.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="flex items-center gap-3 bg-slate-50 p-2 rounded border border-dashed border-slate-200">
+                <input type="checkbox" id="gst-check" checked={applyGst} onChange={e => setApplyGst(e.target.checked)} className="h-4 w-4 cursor-pointer" />
+                <label htmlFor="gst-check" className="text-sm font-bold text-slate-800 cursor-pointer">Apply GST (18%)</label>
+              </div>
+
+              {applyGst && (
+                <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 space-y-2">
+                  {!isInterState ? (
+                    <>
+                      <div className="flex justify-between text-xs font-medium text-blue-800">
+                        <span>CGST (9%):</span>
+                        <span>₹{cgst.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-medium text-blue-800">
+                        <span>SGST (9%):</span>
+                        <span>₹{sgst.toLocaleString('en-IN')}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between text-xs font-medium text-blue-800">
+                      <span>IGST (18%):</span>
+                      <span>₹{igst.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-4 rounded-xl border bg-green-50 p-4 flex justify-between items-center shadow-sm">
+                <span className="text-sm font-bold text-slate-700">Final Total Amount</span>
+                <span className="font-black text-2xl text-green-700">₹{totalAmount.toLocaleString('en-IN')}</span>
+              </div>
             </div>
           </div>
 
           <div className="bg-white p-5 rounded-xl border shadow-sm">
-            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">4. Payment & Instalments</h3>
+            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">4. Payment & Proof</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Advance Payment Received (₹) *</label>
-                <input type="number" value={advance} onChange={e => setAdvance(e.target.value)} placeholder={`Minimum 50% (₹${(subtotal * 0.5).toLocaleString('en-IN')})`} className={`h-10 w-full rounded-lg border bg-slate-50 px-3 text-sm outline-none transition-colors ${advanceLow ? 'border-red-400 focus:border-red-500' : 'border-slate-300 focus:border-green-500'}`} />
-                {advanceLow && (
-                  <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                    <span className="font-medium">Advance is below 50% ({advancePct.toFixed(0)}%). CRM Notification will be sent to Sales Manager for approval. Order will be marked 'Pending Approval'.</span>
-                  </div>
-                )}
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-800 mb-1 block">Advance Payment Received (₹) *</label>
+                  <input type="number" value={advance} onChange={e => handleAdvanceChange(e.target.value)} placeholder={`Min 50% (₹${(totalAmount * 0.5).toLocaleString('en-IN')})`} className={`h-10 w-full rounded-lg border bg-slate-50 px-3 text-sm outline-none transition-colors ${errors.advance ? 'border-red-500 bg-red-50' : advanceLow ? 'border-red-400 focus:border-red-500' : 'border-slate-300 focus:border-green-500'}`} />
+                  {errors.advance && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.advance}</p>}
+                  {advanceLow && !errors.advance && (
+                    <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                      <span className="font-medium">Advance is below 50% ({advancePct.toFixed(0)}%). Manager approval required.</span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-800 mb-1 block">Payment Method</label>
+                  <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-green-500 bg-slate-50">
+                    <option value="Cash">Cash</option>
+                    <option value="PhonePe">PhonePe / UPI</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                  </select>
+                </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Payment Method</label>
-                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-green-500 bg-slate-50">
-                  <option value="Cash">Cash</option>
-                  <option value="PhonePe">PhonePe / UPI</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
-                </select>
-                <p className="mt-2 text-[10px] text-muted-foreground">Instalment tracking will be created automatically for the remaining balance of ₹{(subtotal - Number(advance || 0)).toLocaleString('en-IN')}.</p>
+                <label className="text-xs font-bold text-slate-800 mb-2 block text-center">Payment Proof (Screenshot/Receipt) *</label>
+                <div className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-slate-50 relative min-h-[120px] transition-colors ${errors.paymentProof ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}>
+                  {paymentProof ? (
+                    <div className="w-full h-full relative">
+                      <img src={paymentProof} alt="Proof" className="w-full h-32 object-contain rounded-lg" />
+                      <button onClick={() => setPaymentProof(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="h-3 w-3" /></button>
+                    </div>
+                  ) : (
+                    <>
+                      <Image className={`h-8 w-8 mb-2 ${errors.paymentProof ? 'text-red-300' : 'text-slate-300'}`} />
+                      <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                      <span className={`text-[10px] font-bold ${errors.paymentProof ? 'text-red-500' : 'text-slate-500'}`}>Click to upload image</span>
+                    </>
+                  )}
+                </div>
+                {errors.paymentProof && <p className="text-[10px] text-red-500 mt-1 font-bold text-center">{errors.paymentProof}</p>}
+                <p className="mt-3 text-[10px] text-muted-foreground text-center italic">Remaining balance: ₹{(totalAmount - Number(advance || 0)).toLocaleString('en-IN')}.</p>
               </div>
             </div>
           </div>
@@ -614,81 +798,12 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
   );
 };
 
-// ─── Payment Upload Modal ─────────────────────────────────────────────────────
-export const PaymentUploadModal = ({ order, onClose }) => {
-  const [method, setMethod] = useState('UPI');
-  const [amount, setAmount] = useState('');
-  const [file, setFile] = useState(null);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-full max-w-md rounded-2xl border bg-card shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between p-5 border-b" style={{ background: 'linear-gradient(135deg, #1e3a8a, #1d4ed8)' }}>
-          <div>
-            <h2 className="text-white font-bold">💰 Upload Payment Proof</h2>
-            {order && <p className="text-blue-200 text-xs mt-0.5">{order.id} · {order.client}</p>}
-          </div>
-          <button onClick={onClose} className="text-blue-200 hover:text-white"><X className="h-5 w-5" /></button>
-        </div>
-        <div className="p-5 space-y-4">
-          {/* Method */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">Payment Method</label>
-            <div className="grid grid-cols-3 gap-2">
-              {['Cash', 'UPI', 'Bank Transfer'].map(m => (
-                <button key={m} onClick={() => setMethod(m)} className={`h-9 rounded-lg border text-sm font-medium transition-all ${method === m ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-border hover:border-blue-300'}`}>{m}</button>
-              ))}
-            </div>
-          </div>
-          {/* Amount */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Amount Received *</label>
-            <div className="relative">
-              <span className="absolute left-3 top-2.5 text-muted-foreground font-semibold text-sm">₹</span>
-              <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="0" className="h-9 w-full rounded-lg border border-input bg-background pl-7 pr-3 text-sm outline-none focus:border-blue-500" />
-            </div>
-          </div>
-          {/* Upload */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Payment Proof (Mandatory)</label>
-            <label className={`flex flex-col items-center justify-center h-28 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${file ? 'border-green-400 bg-green-50' : 'border-border hover:border-blue-400 hover:bg-blue-50/50'}`}>
-              <input type="file" accept="image/*" className="hidden" onChange={e => setFile(e.target.files[0])} />
-              {file ? (
-                <>
-                  <CheckCircle className="h-8 w-8 text-green-500 mb-2" />
-                  <p className="text-xs font-medium text-green-700">{file.name}</p>
-                </>
-              ) : (
-                <>
-                  <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-xs text-muted-foreground">Upload GPay screenshot / receipt</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">PNG, JPG up to 5MB</p>
-                </>
-              )}
-            </label>
-          </div>
-          {/* Info */}
-          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span>Payment proof is mandatory. Manager / Admin will verify before marking as received.</span>
-          </div>
-          {/* Submit */}
-            <button
-            disabled={!file || !amount}
-            className="w-full h-10 rounded-xl text-white font-semibold text-sm transition-all disabled:opacity-40"
-            style={{ background: 'linear-gradient(135deg, #1e3a8a, #1d4ed8)' }}
-          >
-            Submit Payment Proof
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // ─── Phone Search Modal ───────────────────────────────────────────────────────
 export const PhoneSearchModal = ({ onClose, onSearch }) => {
   const [phone, setPhone] = useState('');
+  const [company, setCompany] = useState('');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
@@ -696,20 +811,28 @@ export const PhoneSearchModal = ({ onClose, onSearch }) => {
         <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-slate-900">
           <X className="h-5 w-5" />
         </button>
-        <h2 className="text-2xl font-bold text-center mb-8 text-slate-900">Search</h2>
+        <h2 className="text-2xl font-bold text-center mb-8 text-slate-900">Search Prospect</h2>
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-bold text-slate-800 mb-2 block">Enter Phone Number:</label>
+            <label className="text-sm font-bold text-slate-800 mb-2 block">10-Digit Mobile Number:</label>
             <input 
               value={phone} 
-              onChange={e => setPhone(e.target.value)} 
-              placeholder="10 digit phone number" 
+              onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+              placeholder="Enter mobile number" 
               className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
-              maxLength={10}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-bold text-slate-800 mb-2 block">Business Name:</label>
+            <input 
+              value={company} 
+              onChange={e => setCompany(e.target.value)} 
+              placeholder="Enter business name" 
+              className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
             />
           </div>
           <button
-            onClick={() => onSearch(phone)}
+            onClick={() => onSearch({ phone, company: (company || '').toLowerCase() })}
             className="w-full h-10 rounded text-white font-semibold text-sm transition-colors hover:opacity-90"
             style={{ background: '#003366' }}
           >
@@ -802,7 +925,43 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
 
   const filteredProducts = predefinedProducts.filter(p => p.toLowerCase().includes(customProduct.toLowerCase()) && !products.includes(p));
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const [errors, setErrors] = useState({});
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.company) newErrors.company = 'Required';
+    if (!formData.name) newErrors.name = 'Required';
+    if (!formData.phone) newErrors.phone = 'Required';
+    else if (formData.phone.length !== 10) newErrors.phone = 'Enter 10 digits';
+    
+    if (!formData.location) newErrors.location = 'Required';
+    if (!formData.source) newErrors.source = 'Required';
+    if (!formData.priority) newErrors.priority = 'Required';
+    if (!formData.nextFollowUpDate) newErrors.nextFollowUpDate = 'Required';
+    if (products.length === 0) newErrors.products = 'Add at least one product';
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    let finalValue = value;
+
+    if (name === 'phone') {
+      finalValue = value.replace(/\D/g, '').slice(0, 10);
+    } else if (name === 'name') {
+      finalValue = value.replace(/[^a-zA-Z\s]/g, '');
+    }
+
+    setFormData(prev => ({ ...prev, [name]: finalValue }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
+  };
+
+  const handleFormSubmit = () => {
+    if (!validate()) return;
+    onSubmit({ ...formData, products });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
@@ -813,21 +972,39 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
         <h2 className="text-2xl font-bold text-center mb-6 text-slate-900">{initialData ? 'Edit Prospect' : 'Create New Prospect'}</h2>
         <div className="overflow-y-auto flex-1 space-y-4 pr-2">
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Executive Name</label><input name="executiveName" value={formData.executiveName} readOnly className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none bg-slate-50" /></div>
-          <div><label className="text-xs font-bold text-slate-800 mb-1 block">Business Name *</label><input name="company" value={formData.company} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]" /></div>
-          <div><label className="text-xs font-bold text-slate-800 mb-1 block">Contact Person *</label><input name="name" value={formData.name} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]" /></div>
-          <div><label className="text-xs font-bold text-slate-800 mb-1 block">Phone Number *</label><input name="phone" value={formData.phone} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]" /></div>
-          <div><label className="text-xs font-bold text-slate-800 mb-1 block">Location *</label><input name="location" value={formData.location} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]" /></div>
+          <div>
+            <label className="text-xs font-bold text-slate-800 mb-1 block">Business Name *</label>
+            <input name="company" value={formData.company} onChange={handleChange} className={`h-9 w-full rounded border ${errors.company ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} />
+            {errors.company && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.company}</p>}
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-800 mb-1 block">Contact Person *</label>
+            <input name="name" value={formData.name} onChange={handleChange} className={`h-9 w-full rounded border ${errors.name ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} />
+            {errors.name && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.name}</p>}
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-800 mb-1 block">Phone Number *</label>
+            <input name="phone" value={formData.phone} onChange={handleChange} className={`h-9 w-full rounded border ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} />
+            {errors.phone && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.phone}</p>}
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-800 mb-1 block">Location *</label>
+            <input name="location" value={formData.location} onChange={handleChange} className={`h-9 w-full rounded border ${errors.location ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} />
+            {errors.location && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.location}</p>}
+          </div>
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Lead From *</label>
-            <select name="source" value={formData.source} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
+            <select name="source" value={formData.source} onChange={handleChange} className={`h-9 w-full rounded border ${errors.source ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`}>
               <option value="">Select Lead Source</option>
               <option>India mart</option><option>Just dial</option><option>Google ads</option><option>Referral</option><option>Website</option><option>Meta (Facebook/Instagram)</option><option>Walk-in</option><option>Other</option>
             </select>
+            {errors.source && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.source}</p>}
           </div>
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Prospect Type (Temperature) *</label>
-            <select name="priority" value={formData.priority} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
+            <select name="priority" value={formData.priority} onChange={handleChange} className={`h-9 w-full rounded border ${errors.priority ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`}>
               <option value="">Select Type</option>
               <option>Hot</option><option>Cold</option><option>Expected in next month</option>
             </select>
+            {errors.priority && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.priority}</p>}
           </div>
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Client Type (For Pricing) *</label>
             <select name="clientType" value={formData.clientType} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
@@ -840,7 +1017,9 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
             </select>
           </div>
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Budget</label><input name="budget" value={formData.budget} onChange={handleChange} placeholder="e.g. 5000" className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]" /></div>
-          <div><label className="text-xs font-bold text-slate-800 mb-1 block">Follow-up Date *</label><input type="date" name="nextFollowUpDate" value={formData.nextFollowUpDate} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]" /></div>
+          <div><label className="text-xs font-bold text-slate-800 mb-1 block">Follow-up Date *</label><input type="date" name="nextFollowUpDate" value={formData.nextFollowUpDate} onChange={handleChange} className={`h-9 w-full rounded border ${errors.nextFollowUpDate ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} />
+            {errors.nextFollowUpDate && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.nextFollowUpDate}</p>}
+          </div>
           
           <div>
             <label className="text-xs font-bold text-slate-800 mb-2 block">Products / Services Needed *</label>
@@ -875,10 +1054,11 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   onKeyDown={(e) => e.key === 'Enter' && addCustomProduct(e)}
                   placeholder="Type product name to search or add..." 
-                  className="h-9 flex-1 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]" 
+                  className={`h-9 flex-1 rounded border ${errors.products ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} 
                 />
                 <button type="button" onClick={addCustomProduct} className="h-9 px-4 rounded bg-slate-800 text-white text-sm font-semibold hover:bg-slate-700 transition-colors">Add</button>
               </div>
+              {errors.products && <p className="text-[10px] text-red-500 mt-1 font-bold">{errors.products}</p>}
               
               {/* Suggestions Dropdown */}
               {showSuggestions && customProduct.trim() && (
@@ -912,7 +1092,7 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
           <button onClick={onBack} className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" style={{ background: '#003366' }}>
             Cancel
           </button>
-          <button onClick={() => onSubmit({ ...formData, products })} className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" style={{ background: '#003366' }}>
+          <button onClick={() => handleFormSubmit()} className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" style={{ background: '#003366' }}>
             {initialData ? 'Update Prospect' : 'Submit Prospect'}
           </button>
         </div>
@@ -1069,7 +1249,7 @@ export const UpdateStatusModal = ({ prospect, newStatus, onClose, onSubmit }) =>
             {formData.status === 'Sale Closed' && (
               <div>
                 <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Link to Order ID *</label>
-                <input type="text" value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value})} className="h-11 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-shadow" placeholder="e.g. ORD-12345" />
+                <input type="text" value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '')})} className="h-11 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-shadow" placeholder="e.g. ORD-12345" />
               </div>
             )}
           </div>
@@ -1081,6 +1261,443 @@ export const UpdateStatusModal = ({ prospect, newStatus, onClose, onSubmit }) =>
             Save Update
           </button>
         </div>
+      </div>
+    </div>
+  );
+};
+// ─── Order Details Modal ─────────────────────────────────────────────────────
+export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload }) => {
+  const { user } = useAuth();
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const res = await orderApi.get(orderId, user.token);
+        if (res.success) setOrder(res.data);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (orderId) fetchOrder();
+  }, [orderId, user.token]);
+
+  if (loading) return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white p-8 rounded-2xl shadow-xl flex flex-col items-center gap-4">
+        <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-bold text-slate-600">Loading Order Details...</p>
+      </div>
+    </div>
+  );
+
+  if (!order) return null;
+
+  const steps = [
+    { label: 'Sales Mgr', status: order.status === 'Pending_Approval' ? 'pending' : 'done' },
+    { label: 'Ops Mgr', status: ['Draft', 'Pending_Approval', 'Confirmed'].includes(order.status) ? 'waiting' : (['Delivered', 'Completed'].includes(order.status) ? 'done' : 'current') },
+    { label: 'Services', status: ['Completed'].includes(order.status) ? 'done' : (order.status === 'Ready_To_Deliver' ? 'current' : 'waiting') },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-4xl rounded-2xl border bg-white shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b bg-slate-900 text-white shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <FileText className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold tracking-tight">{order.orderNumber}</h2>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${order.status === 'Completed' ? 'bg-green-500' : 'bg-blue-500'}`}>
+                  {order.status.replace('_', ' ')}
+                </span>
+              </div>
+              <p className="text-slate-400 text-xs font-medium mt-0.5">Created on {new Date(order.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-10 w-10 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors text-slate-400 hover:text-white">
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto bg-slate-50 p-6 space-y-6">
+          {/* Top Grid: Client & Pipeline */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Client Info */}
+            <div className="lg:col-span-1 space-y-4">
+              <div className="bg-white p-5 rounded-2xl border shadow-sm h-full">
+                <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <span className="h-6 w-1 bg-blue-600 rounded-full" />
+                  Client Details
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Business Name</p>
+                    <p className="text-sm font-bold text-slate-800">{order.clientSnapshot?.company}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Contact Person</p>
+                    <p className="text-sm font-semibold text-slate-700">{order.clientSnapshot?.name}</p>
+                    <p className="text-xs text-slate-500">{order.clientSnapshot?.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-0.5">Order Type</p>
+                    <span className="inline-block px-2 py-1 rounded bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-tighter mt-1 border border-blue-100">{order.orderType}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Pipeline & Design */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="bg-white p-5 rounded-2xl border shadow-sm">
+                <h3 className="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <span className="h-6 w-1 bg-emerald-500 rounded-full" />
+                  Order Journey
+                </h3>
+                <div className="flex items-center justify-between relative px-2">
+                  <div className="absolute top-4 left-0 right-0 h-0.5 bg-slate-100 -z-0 mx-8" />
+                  {steps.map((s, i) => (
+                    <div key={i} className="flex flex-col items-center gap-2 z-10">
+                      <div className={`h-9 w-9 rounded-full flex items-center justify-center border-4 ${s.status === 'done' ? 'bg-emerald-500 border-emerald-100' : s.status === 'current' ? 'bg-blue-600 border-blue-100 animate-pulse' : 'bg-slate-100 border-white'}`}>
+                        {s.status === 'done' ? <CheckCircle className="h-5 w-5 text-white" /> : <div className={`h-2 w-2 rounded-full ${s.status === 'current' ? 'bg-white' : 'bg-slate-300'}`} />}
+                      </div>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${s.status === 'waiting' ? 'text-slate-400' : 'text-slate-800'}`}>{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white p-5 rounded-2xl border shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <span className="h-6 w-1 bg-purple-500 rounded-full" />
+                    Design Workflow
+                  </h3>
+                  <span className={`px-2 py-1 rounded-lg text-[10px] font-bold ${order.designStatus === 'Approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-purple-50 text-purple-700 border border-purple-100'}`}>
+                    {order.designStatus?.replace('_', ' ') || 'Pending'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 rounded-xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center">
+                    <Image className="h-6 w-6 text-slate-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-600 italic">"{order.designNotes || 'No design notes provided yet.'}"</p>
+                    {order.designAssignedTo && (
+                      <p className="text-[10px] text-slate-400 mt-2 font-medium">Assigned to Designer: <span className="text-slate-800">{order.designAssignedTo.name}</span></p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Service Items & Totals */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white rounded-2xl border shadow-sm overflow-hidden">
+              <div className="p-4 border-b bg-slate-50 flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Service Items</h3>
+                <span className="text-[10px] font-bold bg-slate-200 px-2 py-0.5 rounded-full">{order.lineItems?.length || 0} Products</span>
+              </div>
+              <div className="divide-y">
+                {order.lineItems?.map((item, i) => (
+                  <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{item.description}</p>
+                      <p className="text-[10px] font-medium text-slate-400">Qty: {item.quantity} {item.unit || 'pcs'} · Unit Price: ₹{item.unitPrice.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-black text-slate-900">₹{item.amount?.toLocaleString('en-IN')}</p>
+                      <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">Verified ✓</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center opacity-60">
+                  <span className="text-xs font-bold uppercase tracking-widest">Subtotal</span>
+                  <span className="text-sm font-bold">₹{order.subtotal?.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between items-center opacity-60">
+                  <span className="text-xs font-bold uppercase tracking-widest">Tax (GST)</span>
+                  <span className="text-sm font-bold">₹{order.totalGST?.toLocaleString('en-IN')}</span>
+                </div>
+                {order.totalDiscount > 0 && (
+                  <div className="flex justify-between items-center text-rose-400">
+                    <span className="text-xs font-bold uppercase tracking-widest">Discount</span>
+                    <span className="text-sm font-bold">-₹{order.totalDiscount?.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                <div className="h-px bg-white/10 my-4" />
+                <div className="flex justify-between items-end">
+                  <span className="text-xs font-black uppercase tracking-widest text-blue-400">Grand Total</span>
+                  <span className="text-2xl font-black">₹{order.grandTotal?.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+              <div className="mt-8 pt-6 border-t border-white/10">
+                <div className="flex justify-between text-xs font-bold mb-1">
+                  <span className="text-slate-400">Amount Verified</span>
+                  <span className="text-emerald-400">₹{order.totalPaid?.toLocaleString('en-IN')}</span>
+                </div>
+                {order.paymentRecords?.some(p => p.status === 'Pending') && (
+                  <div className="flex justify-between text-[10px] font-bold mb-3 italic">
+                    <span className="text-amber-400/60">Pending Verification</span>
+                    <span className="text-amber-400/60">₹{order.paymentRecords.filter(p => p.status === 'Pending').reduce((s, p) => s + p.amount, 0).toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+                <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${Math.min(100, (order.totalPaid / order.grandTotal) * 100)}%` }} />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2 text-right font-black uppercase tracking-widest">Balance: ₹{order.balanceDue?.toLocaleString('en-IN')}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment History & Timeline */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white rounded-2xl border shadow-sm">
+              <div className="p-4 border-b flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <span className="h-6 w-1 bg-amber-500 rounded-full" />
+                  Payment History
+                </h3>
+                <button onClick={() => onPaymentUpload(order)} className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
+                  <Plus className="h-3 w-3" /> Add Installment
+                </button>
+              </div>
+              <div className="p-4">
+                {order.paymentRecords?.length === 0 ? (
+                  <div className="text-center py-8">
+                    <IndianRupee className="h-8 w-8 mx-auto mb-2 opacity-10" />
+                    <p className="text-xs text-slate-400 italic">No payment records found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {order.paymentRecords.map((p, i) => (
+                      <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                        <div className="flex items-center gap-3">
+                          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${p.status === 'Verified' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {p.method === 'Cash' ? '💵' : '💳'}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-800">₹{p.amount?.toLocaleString('en-IN')}</p>
+                            <p className="text-[10px] text-slate-400 font-medium">{p.method} · {new Date(p.receivedAt || p.createdAt).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${p.status === 'Verified' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {p.status}
+                          </span>
+                          {p.proofUrl && (
+                            <a href={p.proofUrl} target="_blank" rel="noreferrer" className="block text-[9px] text-blue-600 mt-1 font-bold underline">View Proof</a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border shadow-sm p-4">
+              <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <span className="h-6 w-1 bg-blue-400 rounded-full" />
+                Recent Updates
+              </h3>
+              <div className="space-y-4 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
+                {order.timeline?.slice(-5).reverse().map((ev, i) => (
+                  <div key={i} className="flex gap-4 relative">
+                    <div className="h-4 w-4 rounded-full bg-white border-4 border-blue-500 z-10 shrink-0" />
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-800 leading-none">{ev.event}</p>
+                      <p className="text-[10px] text-slate-400 mt-1 line-clamp-2">{ev.detail}</p>
+                      <p className="text-[9px] text-slate-300 mt-1 font-medium">{new Date(ev.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t bg-slate-50 flex justify-between items-center shrink-0">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Powered by GMS Enterprise</p>
+          <div className="flex gap-3">
+             <button onClick={() => window.print()} className="h-9 px-4 rounded-xl border bg-white text-xs font-bold text-slate-700 flex items-center gap-2 hover:bg-slate-50 transition-colors">
+              <Printer className="h-3.5 w-3.5" /> Print Invoice
+            </button>
+            <button onClick={onClose} className="h-9 px-8 rounded-xl bg-slate-900 text-white text-xs font-bold hover:opacity-90 transition-opacity">
+              Close View
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+// ─── Payment Upload Modal ───────────────────────────────────────────────────
+export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
+  const [formData, setFormData] = useState({
+    amount: '',
+    method: 'UPI',
+    proofUrl: '',
+    reference: '',
+    paymentType: 'Partial',
+    notes: ''
+  });
+
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.amount || !formData.proofUrl) {
+      alert('Amount and Proof are required.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-black/60 backdrop-blur-md">
+      <div className="w-full max-w-md rounded-2xl border bg-white shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+        <div className="p-6 border-b bg-slate-50 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Record Payment</h2>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Order: {order?.orderNumber}</p>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition-colors">
+            <X className="h-5 w-5 text-slate-500" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2">
+            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">
+              <span>Remaining Balance</span>
+              <span>Total Value</span>
+            </div>
+            <div className="flex justify-between items-end">
+              <span className="text-2xl font-black text-blue-700">₹{order?.balanceDue?.toLocaleString()}</span>
+              <span className="text-sm font-bold text-blue-900 opacity-60">₹{order?.grandTotal?.toLocaleString()}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Amount Collected (₹) *</label>
+              <input 
+                type="number" 
+                required
+                value={formData.amount}
+                onChange={e => setFormData({...formData, amount: e.target.value})}
+                placeholder="e.g. 5000"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-50 transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Method *</label>
+              <select 
+                value={formData.method}
+                onChange={e => setFormData({...formData, method: e.target.value})}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold outline-none focus:border-blue-600 transition-all"
+              >
+                <option value="UPI">UPI / PhonePe</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Payment Type</label>
+              <select 
+                value={formData.paymentType}
+                onChange={e => setFormData({...formData, paymentType: e.target.value})}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold outline-none focus:border-blue-600 transition-all"
+              >
+                <option value="Advance">Advance (50%+)</option>
+                <option value="Partial">Partial / EMI</option>
+                <option value="Final">Final Settlement</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Transaction Reference / Ref No.</label>
+            <input 
+              type="text"
+              value={formData.reference}
+              onChange={e => setFormData({...formData, reference: e.target.value})}
+              placeholder="UPI Transaction ID or Ref #"
+              className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-medium outline-none focus:border-blue-600 transition-all"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Proof URL (Screenshot/Photo) *</label>
+            <div className="relative">
+              <input 
+                type="url"
+                required
+                value={formData.proofUrl}
+                onChange={e => setFormData({...formData, proofUrl: e.target.value})}
+                placeholder="https://..."
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm font-medium outline-none focus:border-blue-600 transition-all"
+              />
+              <Link className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+            </div>
+            <p className="text-[9px] text-slate-400 mt-1 italic">Paste the link to the payment screenshot here.</p>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">Collection Notes</label>
+            <textarea 
+              value={formData.notes}
+              onChange={e => setFormData({...formData, notes: e.target.value})}
+              placeholder="Any additional details..."
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium outline-none focus:border-blue-600 transition-all min-h-[80px]"
+            />
+          </div>
+
+          <div className="pt-4 flex gap-3">
+            <button 
+              type="button" 
+              onClick={onClose}
+              className="flex-1 h-12 rounded-xl border-2 border-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              type="submit"
+              disabled={loading}
+              className="flex-[2] h-12 rounded-xl bg-slate-900 text-white font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <IndianRupee className="h-4 w-4" />
+              )}
+              {loading ? 'Submitting...' : 'Submit Collection'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

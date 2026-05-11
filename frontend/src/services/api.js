@@ -57,13 +57,16 @@ export const employeeApi = {
     api.put(`/employees/${id}/status`, { status, reason }, token),
   resetPassword:  (id, token)       =>
     api.post(`/employees/${id}/reset-password`, {}, token),
+  updateTarget:   (id, data, token) =>
+    api.patch(`/employees/${id}/target`, data, token),
   delete:         (id, token)       => api.delete(`/employees/${id}`, token),
 };
 
 // Prospects (Sales)
 export const prospectApi = {
   list:        (params, token)   => api.get(`/prospects?${new URLSearchParams(params)}`, token),
-  searchPhone: (phone, token)    => api.get(`/prospects/search?phone=${phone}`, token),
+  stats:       (token)           => api.get('/prospects/stats', token),
+  searchPhone: (params, token)   => api.get(`/prospects/search?${new URLSearchParams(params)}`, token),
   create:      (data, token)     => api.post('/prospects', data, token),
   update:      (id, data, token) => api.patch(`/prospects/${id}`, data, token),
   moveStage:   (id, data, token) => api.patch(`/prospects/${id}/stage`, data, token),
@@ -88,13 +91,14 @@ export const quotationApi = {
 // Orders
 export const orderApi = {
   list:           (params, token)   => api.get(`/orders?${new URLSearchParams(params)}`, token),
-  searchClient:   (query, token)    => api.get(`/orders/search?q=${encodeURIComponent(query)}`, token),
+  searchClient:   (params, token)    => api.get(`/orders/search?${new URLSearchParams(params)}`, token),
   get:            (id, token)       => api.get(`/orders/${id}`, token),
   stats:          (token)           => api.get('/orders/stats', token),
   create:         (data, token)     => api.post('/orders', data, token),
   confirm:        (id, token)       => api.post(`/orders/${id}/confirm`, {}, token),
   updateStatus:   (id, data, token) => api.patch(`/orders/${id}/status`, data, token),
   approveAdvance: (id, token)       => api.post(`/orders/${id}/approve-advance`, {}, token),
+  addPayment:     (id, data, token) => api.post(`/orders/${id}/payments`, data, token),
 };
 
 // Payments
@@ -110,9 +114,23 @@ export const paymentApi = {
 // Appointments
 export const appointmentApi = {
   list:         (token)           => api.get('/appointments', token),
+  stats:        (token)           => api.get('/appointments/stats', token),
   create:       (data, token)     => api.post('/appointments', data, token),
   assign:       (id, data, token) => api.patch(`/appointments/${id}/assign`, data, token),
   updateRemark: (id, data, token) => api.patch(`/appointments/${id}/remark`, data, token),
+};
+
+
+// Approvals (Low Advance)
+export const approvalApi = {
+  list:    (params, token)   => api.get(`/approvals?${new URLSearchParams(params)}`, token),
+  stats:   (token)           => api.get('/approvals/stats', token),
+  approve: (id, data, token) => api.post(`/approvals/${id}/approve`, data, token),
+  reject:  (id, data, token) => api.post(`/approvals/${id}/reject`, data, token),
+};
+
+export const analyticsApi = {
+  getStats: (params, token) => api.get(`/analytics/stats?${new URLSearchParams(params)}`, token),
 };
 
 export default api;

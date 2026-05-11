@@ -85,6 +85,9 @@ catch (e) { console.error('[ROUTES] ❌ /api/orders:', e.message); }
 try { app.use('/api/payments', require('./api/routes/payment.routes')); console.log('[ROUTES] ✅ /api/payments'); }
 catch (e) { console.error('[ROUTES] ❌ /api/payments:', e.message); }
 
+try { app.use('/api/analytics', require('./api/routes/analytics.routes')); console.log('[ROUTES] ✅ /api/analytics'); }
+catch (e) { console.error('[ROUTES] ❌ /api/analytics:', e.message); }
+
 // ── 404 catch ────────────────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ message: `Route ${req.method} ${req.path} not found` }));
 
