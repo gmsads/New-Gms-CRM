@@ -39,4 +39,7 @@ const followupSchema = new mongoose.Schema(
 
 followupSchema.index({ prospect: 1, scheduledAt: -1 });
 
+const softDeletePlugin = require('../../../utils/softDelete.plugin');
+followupSchema.plugin(softDeletePlugin);
+
 module.exports = mongoose.model('Followup', followupSchema);

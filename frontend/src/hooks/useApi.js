@@ -42,13 +42,20 @@ export const useApi = (path = null, options = {}) => {
         ...options,
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem('gms_user');
+          window.location.href = '/login';
+          return;
+        }
+        setError(json.message || `HTTP ${res.status}`);
+        return;
+      }
       setData(json);
       return json;
     } catch (err) {
       if (err.name === 'AbortError') return;
       setError(err.message);
-      throw err;
     } finally {
       setLoading(false);
     }

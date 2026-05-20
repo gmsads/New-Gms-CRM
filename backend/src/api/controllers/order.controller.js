@@ -1,9 +1,16 @@
 const mongoose       = require('mongoose');
 const Order          = require('../../domains/orders/order.model');
+const Prospect       = require('../../domains/sales/prospects/prospect.model');
 const User           = require('../../domains/users/user.model');
 const OrderApproval = require('../../domains/approvals/approval.model');
-const { confirmOrder, updateOrderStatus } = require('../../workflows/order.workflow');
 const { createAuditLog } = require('../../guards/audit.helper');
+const orderWorkflow = require('../../services/workflows/orderWorkflow.service');
+
+const getReqContext = (req) => ({
+  ipAddress: req.ip,
+  userAgent: req.headers['user-agent'],
+  device: req.headers['user-agent']
+});
 
 // ── GET /api/orders ───────────────────────────────────────────────────────────
 exports.list = async (req, res) => {
@@ -15,9 +22,16 @@ exports.list = async (req, res) => {
     if (paymentStatus) filter.paymentStatus = paymentStatus;
     if (designStatus)  filter.designStatus  = designStatus;
 
-    // Sales exec only sees their own orders
+    // Role-based visibility
     if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       filter.salesExec = new mongoose.Types.ObjectId(req.user._id);
+    } else if (req.user.role === 'DESIGNER') {
+      filter.$or = [
+        { designAssignedTo: new mongoose.Types.ObjectId(req.user._id) },
+        // Also allow viewing if they want to pick up unassigned work, but usually assigned via Round Robin
+      ];
+      // Designers shouldn't need to see orders that aren't design-related at all.
+      filter.designRequired = true;
     } else if (salesExec) {
       filter.salesExec = new mongoose.Types.ObjectId(salesExec);
     }
@@ -30,11 +44,27 @@ exports.list = async (req, res) => {
       ];
     }
 
-    const orders = await Order.find(filter)
+    let orders = await Order.find(filter)
       .populate('salesExec', 'name email role')
       .populate('salesManager', 'name email')
+      .populate('designAssignedTo', 'name email')
       .sort({ createdAt: -1 })
       .lean();
+
+    // Sanitize financial data for Designers
+    if (req.user.role === 'DESIGNER') {
+      orders = orders.map(o => {
+        delete o.grandTotal;
+        delete o.subtotal;
+        delete o.totalDiscount;
+        delete o.totalPaid;
+        delete o.balanceDue;
+        delete o.paymentRecords;
+        delete o.advanceRequired;
+        delete o.advancePaid;
+        return o;
+      });
+    }
 
     res.json({ success: true, count: orders.length, data: orders });
   } catch (err) {
@@ -81,7 +111,24 @@ exports.getOne = async (req, res) => {
       .populate('quotation', 'quotationNumber grandTotal status');
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
-    res.json({ success: true, data: order });
+    
+    // Convert to plain object to allow deletion
+    const orderObj = order.toObject ? order.toObject() : order;
+
+    // Sanitize financial data for Designers
+    if (req.user.role === 'DESIGNER') {
+      delete orderObj.grandTotal;
+      delete orderObj.subtotal;
+      delete orderObj.totalDiscount;
+      delete orderObj.totalPaid;
+      delete orderObj.balanceDue;
+      delete orderObj.paymentRecords;
+      delete orderObj.advanceRequired;
+      delete orderObj.advancePaid;
+      if (orderObj.quotation) delete orderObj.quotation.grandTotal;
+    }
+
+    res.json({ success: true, data: orderObj });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -133,32 +180,10 @@ exports.create = async (req, res) => {
     // Initial save to compute totals (via pre-save hook) and generate orderNumber
     await order.save();
 
-    // Now that totals are computed, check advance payment threshold (50%)
-    const totalPayments = order.paymentRecords.reduce((sum, p) => sum + p.amount, 0);
-    const advancePct    = order.grandTotal > 0 ? (totalPayments / order.grandTotal) * 100 : 0;
+    // Delegate to workflow to determine if it goes to Pending_Approval or Confirmed (and triggers RoundRobin)
+    const confirmedOrder = await orderWorkflow.confirmOrder(order._id, req.user, getReqContext(req));
 
-    if (order.grandTotal > 0 && totalPayments < (order.grandTotal * 0.5)) {
-      // Switch to Pending_Approval
-      order.status = 'Pending_Approval';
-      order.addTimelineEvent('Approval Requested', 'Order flagged for manager approval due to low advance payment.', req.user);
-      
-      // Save the updated status and timeline
-      await order.save();
-
-      // Create the approval tracking record
-      await OrderApproval.create({
-        order: order._id,
-        orderNumber: order.orderNumber,
-        requestedBy: req.user._id,
-        clientName: order.clientSnapshot?.name || 'Unknown',
-        grandTotal: order.grandTotal,
-        advancePaid: totalPayments,
-        advancePct: parseFloat(advancePct.toFixed(2)),
-        status: 'Pending'
-      });
-    }
-
-    res.status(201).json({ success: true, data: order });
+    res.status(201).json({ success: true, data: confirmedOrder });
   } catch (err) {
     console.error('[ORDER_CREATE_ERROR]', err);
     
@@ -184,7 +209,7 @@ exports.create = async (req, res) => {
 // ── POST /api/orders/:id/confirm ──────────────────────────────────────────────
 exports.confirm = async (req, res) => {
   try {
-    const order = await confirmOrder(req.params.id, req.user);
+    const order = await orderWorkflow.confirmOrder(req.params.id, req.user, getReqContext(req));
     res.json({ success: true, data: order });
   } catch (err) {
     res.status(err.statusCode || 500).json({ success: false, message: err.message });
@@ -194,7 +219,7 @@ exports.confirm = async (req, res) => {
 // ── PATCH /api/orders/:id/status ──────────────────────────────────────────────
 exports.updateStatus = async (req, res) => {
   try {
-    const order = await updateOrderStatus(req.params.id, req.body.status, req.user, req.body);
+    const order = await orderWorkflow.updateOrderStatus(req.params.id, req.body.status, req.user, req.body, getReqContext(req));
     res.json({ success: true, data: order });
   } catch (err) {
     res.status(err.statusCode || 500).json({
@@ -208,23 +233,56 @@ exports.updateStatus = async (req, res) => {
 // ── PATCH /api/orders/:id ─────────────────────────────────────────────────────
 exports.update = async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
-
-    if (!['Draft', 'Pending_Approval'].includes(order.status)) {
-      return res.status(422).json({
-        success: false,
-        message: 'Only Draft or Pending orders can be edited.',
-      });
-    }
-
-    Object.assign(order, req.body);
-    order.addTimelineEvent('Order Updated', `Updated by ${req.user.name}`, req.user);
-    await order.save();
-
+    const order = await orderWorkflow.updateOrder(req.params.id, req.body, req.user, getReqContext(req));
     res.json({ success: true, data: order });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// ── PATCH /api/orders/:id/line-items/:itemIndex ─────────────────────────────────
+exports.updateLineItem = async (req, res) => {
+  try {
+    const { id, itemIndex } = req.params;
+    const { designerStatus, designFileUrl, operationStatus, operationFileUrl, serviceStatus, serviceFileUrl } = req.body;
+    
+    const order = await Order.findById(id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+    if (!order.lineItems || !order.lineItems[itemIndex]) {
+      return res.status(404).json({ success: false, message: 'Line item not found.' });
+    }
+    
+    const item = order.lineItems[itemIndex];
+    if (designerStatus) item.designerStatus = designerStatus;
+    if (designFileUrl) item.designFileUrl = designFileUrl;
+    if (operationStatus) item.operationStatus = operationStatus;
+    if (operationFileUrl) item.operationFileUrl = operationFileUrl;
+    if (serviceStatus) item.serviceStatus = serviceStatus;
+    if (serviceFileUrl) item.serviceFileUrl = serviceFileUrl;
+    
+    order.addTimelineEvent('Line Item Updated', `Updated product/service ${item.description}`, req.user);
+    
+    await order.save();
+
+    // Check if all line items are completed by the service team
+    const allCompleted = order.lineItems.every(li => li.serviceStatus === 'completed');
+    if (allCompleted && order.status !== 'Completed') {
+      const orderWorkflow = require('../../workflows/order.workflow');
+      const getReqContext = (req) => ({
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        device: req.headers['user-agent']
+      });
+      // Force transition by mocking admin role, bypassing strict step-by-step validations
+      const forceAdminUser = { _id: req.user._id, role: 'ADMIN', name: req.user.name };
+      await orderWorkflow.updateOrderStatus(order._id, 'Completed', forceAdminUser, {}, getReqContext(req));
+      const updatedOrder = await Order.findById(id);
+      return res.json({ success: true, data: updatedOrder });
+    }
+
+    res.json({ success: true, data: order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -237,15 +295,6 @@ exports.approveAdvance = async (req, res) => {
     order.advanceApproved   = true;
     order.advanceApprovedBy = req.user._id;
 
-    if (order.status === 'Pending_Approval') {
-      order.status = 'Confirmed';
-      if (order.designRequired) {
-        order.status       = 'Design_Pending';
-        order.designStatus = 'Pending';
-        order.designRequestedAt = new Date();
-      }
-    }
-
     order.addTimelineEvent(
       'Low Advance Approved',
       `Advance exception approved by ${req.user.name} (${req.user.role})`,
@@ -253,6 +302,9 @@ exports.approveAdvance = async (req, res) => {
     );
 
     await order.save();
+    
+    // Call the workflow to officially transition the status and trigger RoundRobin
+    const confirmedOrder = await orderWorkflow.confirmOrder(order._id, req.user, getReqContext(req));
 
     await createAuditLog({
       action: 'ADVANCE_EXCEPTION_APPROVED',
@@ -261,7 +313,7 @@ exports.approveAdvance = async (req, res) => {
       req,
     });
 
-    res.json({ success: true, data: order });
+    res.json({ success: true, data: confirmedOrder });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

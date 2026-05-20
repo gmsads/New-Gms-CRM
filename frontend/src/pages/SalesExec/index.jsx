@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { Target, CheckCircle, Clock, IndianRupee, Package, TrendingUp, AlertTriangle, PhoneCall, Calendar as CalendarIcon, Plus, UserPlus, RefreshCw, ShieldCheck } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ProspectTable } from './components/ProspectTable';
-import { OrderList, PaymentUploadModal, OrderDetailsModal, PhoneSearchModal, ProspectDetailsModal, CreateProspectModal, QuotationModal, UpdateStatusModal, ScheduleAppointmentModal, OrderSearchModal, OrderClientDetailsModal, CreateOrderModal } from './components/Panels';
+import { OrderList, PaymentUploadModal, OrderDetailsModal, PhoneSearchModal, ProspectDetailsModal, CreateProspectModal, UpdateStatusModal, ScheduleAppointmentModal, OrderSearchModal, OrderClientDetailsModal, CreateOrderModal, AssignAppointmentModal, UpdateAppointmentRemarkModal } from './components/Panels';
+import QuotationBuilder from './components/QuotationBuilder';
 import { prospectApi, orderApi, appointmentApi, paymentApi, approvalApi } from '../../services/api';
 
 const useProspectFlow = (user, onSaved) => {
@@ -99,17 +100,16 @@ const useProspectFlow = (user, onSaved) => {
         />
       )}
       {showQuotation && (
-        <QuotationModal 
+        <QuotationBuilder 
           prospect={showQuotation} 
           onClose={() => setShowQuotation(null)} 
-          onSubmit={async (data) => {
+          onSave={async (savedQuotation) => {
             try {
-              await prospectApi.update(data.prospect._id || data.prospect.id, { 
-                whatsappActions: [...(data.prospect.whatsappActions || []), { action: 'Quotation', sentAt: new Date() }] 
+              await prospectApi.update(showQuotation._id || showQuotation.id, { 
+                whatsappActions: [...(showQuotation.whatsappActions || []), { action: 'Quotation', sentAt: new Date() }] 
               }, user?.token);
-              setToastMsg('Quotation sent via WhatsApp!');
+              setToastMsg(savedQuotation?.status === 'Sent' ? 'Quotation sent via WhatsApp!' : 'Quotation saved successfully!');
               setTimeout(() => setToastMsg(null), 3000);
-              setShowQuotation(null);
               if (onSaved) onSaved();
             } catch(err) {
               console.error(err);
@@ -137,9 +137,10 @@ const useProspectFlow = (user, onSaved) => {
                 payload.cancelReason = data.reason;
                 payload.lastInteractionNote = `Canceled: ${data.reason}`;
                 note = `Canceled: ${data.reason}`;
-              } else if (data.status === 'Sale Closed') {
-                payload.lastInteractionNote = `Sale Closed - Order ID: ${data.orderId}`;
-                note = `Sale Closed - Order ID: ${data.orderId}`;
+              } else if (data.status === 'Sale Closed' || data.status === 'Order Confirmed') {
+                const orderText = data.orderId ? ` - Order ID: ${data.orderId}` : '';
+                payload.lastInteractionNote = `${data.status}${orderText}`;
+                note = `${data.status}${orderText}`;
               }
 
               // Append to interactions history
@@ -321,14 +322,19 @@ const SalesExecDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      const safeFetch = async (promise, fallback = { data: [] }) => {
+        try { return await promise; }
+        catch (e) { console.error('Dashboard partial fetch error:', e); return fallback; }
+      };
+
       const [orderStats, prospectStats, appointments, orders, approvals, approvalList, paymentList] = await Promise.all([
-        orderApi.stats(user.token),
-        prospectApi.stats(user.token),
-        appointmentApi.list(user.token),
-        orderApi.list({}, user.token),
-        approvalApi.stats(user.token),
-        approvalApi.list({ status: 'Pending,Rejected' }, user.token),
-        paymentApi.list({ status: 'Pending,Rejected' }, user.token)
+        safeFetch(orderApi.stats(user.token), { data: {} }),
+        safeFetch(prospectApi.stats(user.token), { data: {} }),
+        safeFetch(appointmentApi.list(user.token)),
+        safeFetch(orderApi.list({}, user.token)),
+        safeFetch(approvalApi.stats(user.token), { details: {}, pendingCount: 0 }),
+        safeFetch(approvalApi.list({ status: 'Pending,Rejected' }, user.token)),
+        safeFetch(paymentApi.list({ status: 'Pending,Rejected' }, user.token))
       ]);
 
       if (approvals.success) {
@@ -1005,6 +1011,7 @@ export const SalesOrders = () => {
         onCreateOrder={() => setShowOrderSearch(true)} 
         onUploadPayment={(o) => setPaymentOrder(o)} 
         onViewDetails={(o) => setSelectedOrder(o)}
+        onLineItemUpdated={fetchOrders}
       />
       {renderOrderModals()}
     </div>
@@ -1229,8 +1236,10 @@ export const SalesFollowups = () => {
       ) : (
         <OrderList 
           orders={orders} 
+          hideCompleted={true}
           onCreateOrder={() => setShowPhoneSearch('order')} 
           onUploadPayment={() => alert('Opening Payment Upload...')} 
+          onLineItemUpdated={fetchOrders}
         />
       )}
       {renderModals()}
@@ -1243,18 +1252,22 @@ export const SalesAppointments = () => {
   const { user } = useAuth();
   if (!user) return null;
   const [appointments, setAppointments] = useState([]);
+  const [showAssignModal, setShowAssignModal] = useState(null);
+  const [showRemarkModal, setShowRemarkModal] = useState(null);
+  const [toast, setToast] = useState(null);
   
-  React.useEffect(() => {
-    const fetchAppointments = async () => {
-      try {
-        const res = await appointmentApi.list(user?.token);
-        if (res.success) {
-          setAppointments(res.data);
-        }
-      } catch (err) {
-        console.error(err);
+  const fetchAppointments = async () => {
+    try {
+      const res = await appointmentApi.list(user?.token);
+      if (res.success) {
+        setAppointments(res.data);
       }
-    };
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  React.useEffect(() => {
     fetchAppointments();
   }, [user]);
 
@@ -1334,13 +1347,63 @@ export const SalesAppointments = () => {
                       "{apt.remark}"
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-foreground italic">Waiting for update...</p>
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs text-muted-foreground italic">Waiting for update...</p>
+                      {user._id === apt.assignedTo._id && (
+                        <button 
+                          onClick={() => setShowRemarkModal(apt)}
+                          className="w-full h-8 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-all shadow-sm"
+                        >
+                          Update Visit Remark
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
+              )}
+
+              {!apt.assignedTo && (['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user.role)) && (
+                <button 
+                  onClick={() => setShowAssignModal(apt)}
+                  className="w-full h-9 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-blue-600 transition-all shadow-md mt-2"
+                >
+                  Assign Field Executive
+                </button>
               )}
             </div>
           </div>
         ))}
+        
+        {showAssignModal && (
+          <AssignAppointmentModal 
+            appointment={showAssignModal} 
+            onClose={() => setShowAssignModal(null)} 
+            onAssigned={() => {
+              setToast('Personnel assigned successfully!');
+              fetchAppointments();
+              setTimeout(() => setToast(null), 3000);
+            }} 
+          />
+        )}
+
+        {showRemarkModal && (
+          <UpdateAppointmentRemarkModal 
+            appointment={showRemarkModal} 
+            onClose={() => setShowRemarkModal(null)} 
+            onSaved={() => {
+              setToast('Visit remark updated successfully!');
+              fetchAppointments();
+              setTimeout(() => setToast(null), 3000);
+            }} 
+          />
+        )}
+
+        {toast && (
+          <div className="fixed top-4 right-4 z-[100] bg-slate-900 text-white px-6 py-3 rounded-xl shadow-2xl animate-in slide-in-from-top-4 flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-400" />
+            <span className="text-sm font-bold">{toast}</span>
+          </div>
+        )}
         {appointments.length === 0 && (
           <div className="col-span-full py-12 text-center text-muted-foreground bg-white border border-dashed rounded-2xl">
             <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-20" />

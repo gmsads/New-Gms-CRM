@@ -9,7 +9,26 @@ const lineItemSchema = new mongoose.Schema({
   discount:    { type: Number, default: 0, min: 0, max: 100 }, // %
   gstRate:     { type: Number, default: 18, min: 0 },           // %
   amount:      { type: Number },                                 // computed
-}, { _id: false });
+  designerStatus: {
+    type: String,
+    enum: ['designer update pending', 'reached to designer', 'work-in progress', 'completed'],
+    default: 'designer update pending'
+  },
+  designFileUrl: { type: String },
+  operationStatus: {
+    type: String,
+    enum: ['operation update pending', 'reached to operation', 'work-in progress', 'completed'],
+    default: 'operation update pending'
+  },
+  operationFileUrl: { type: String },
+  serviceStatus: {
+    type: String,
+    enum: ['service update pending', 'reached to service', 'work-in progress', 'completed', 'payment pending'],
+    default: 'service update pending'
+  },
+  serviceFileUrl: { type: String }
+}, { _id: true });
+
 
 // ─── Payment Record (embedded) ────────────────────────────────────────────────
 const paymentRecordSchema = new mongoose.Schema({
@@ -109,6 +128,7 @@ const orderSchema = new mongoose.Schema({
   // ── Staff assignment
   salesExec:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   salesManager:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  operationsManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   operationsExec:{ type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
   // ── WhatsApp notifications sent
@@ -136,7 +156,10 @@ const orderSchema = new mongoose.Schema({
   cancelledAt:{ type: Date },
   cancelReason:{ type: String },
 
-}, { timestamps: true });
+}, { timestamps: true, optimisticConcurrency: true });
+
+const softDeletePlugin = require('../../utils/softDelete.plugin');
+orderSchema.plugin(softDeletePlugin);
 
 // ─── Indexes ──────────────────────────────────────────────────────────────────
 orderSchema.index({ salesExec: 1, status: 1 });

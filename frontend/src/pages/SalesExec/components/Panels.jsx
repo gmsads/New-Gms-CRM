@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar, CheckCircle, Clock, MapPin, ShieldCheck,
-  Plus, X, Upload, Printer, IndianRupee, AlertCircle, FileText, MessageCircle, Image, Link
+  Plus, X, Upload, Printer, IndianRupee, AlertCircle, FileText, MessageCircle, Image, Link, Quote, User, Phone, Eye, ShoppingBag
 } from 'lucide-react';
 import { requirementTypes } from '../data/mockData';
 
 
 import { useAuth } from '../../../context/AuthContext';
-import { appointmentApi, orderApi } from '../../../services/api';
+import { appointmentApi, orderApi, productApi } from '../../../services/api';
+import { ProductCatalogueModal } from './ProductCatalogueModal';
 
 // ─── Appointment Hub ──────────────────────────────────────────────────────────
 export const AppointmentHub = ({ appointments = [], onSchedule }) => (
@@ -63,7 +65,7 @@ export const AppointmentHub = ({ appointments = [], onSchedule }) => (
 );
 
 // ─── Order List ───────────────────────────────────────────────────────────────
-export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewDetails, compact }) => {
+export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewDetails, compact, hideCompleted }) => {
   const statusColors = { Confirmed: 'bg-blue-100 text-blue-700', 'In Production': 'bg-amber-100 text-amber-700', 'Design Review': 'bg-purple-100 text-purple-700', Completed: 'bg-green-100 text-green-700' };
   const paymentColors = { Partial: 'bg-orange-100 text-orange-700', Paid: 'bg-green-100 text-green-700', Pending: 'bg-red-100 text-red-700' };
 
@@ -82,7 +84,8 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
       const oMonth = new Date(o.createdAt || o.date || new Date()).toLocaleString('default', { month: 'long' });
       matchMonth = oMonth === monthFilter;
     }
-    return matchSearch && matchStatus && matchPayment && matchMonth;
+    const matchHide = hideCompleted ? !['Completed', 'Cancelled'].includes(o.status) : true;
+    return matchSearch && matchStatus && matchPayment && matchMonth && matchHide;
   });
 
   return (
@@ -301,8 +304,8 @@ export const ScheduleAppointmentModal = ({ prospect, onClose, onSaved }) => {
               <input required type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-indigo-500" />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Time (e.g. 10:30 AM)</label>
-              <input required type="text" placeholder="10:30 AM" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-indigo-500" />
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Time</label>
+              <input required type="time" value={formData.time} onChange={e => setFormData({ ...formData, time: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-indigo-500" />
             </div>
           </div>
           <div>
@@ -426,13 +429,63 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     designStatus: 'Design Provided',
   });
 
-  const [items, setItems] = useState([{ desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, deliveryDate: '' }]);
+  const { user } = useAuth();
+  const [availableProducts, setAvailableProducts] = useState([]);
+  
+  React.useEffect(() => {
+    productApi.list(user?.token)
+      .then(res => {
+        if (res.success) setAvailableProducts(res.data.filter(p => p.status === 'Active'));
+      })
+      .catch(console.error);
+  }, [user]);
+
+  const [items, setItems] = useState([{ productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, deliveryDate: '' }]);
+  const [isCatalogueOpen, setIsCatalogueOpen] = useState(false);
+  const [activeItemIndex, setActiveItemIndex] = useState(null);
   const [advance, setAdvance] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [paymentProof, setPaymentProof] = useState(null);
   const [applyGst, setApplyGst] = useState(false);
   const [discount, setDiscount] = useState(0);
   const [errors, setErrors] = useState({});
+
+  const handleSelectFromCatalogue = (product) => {
+    const price = product.pricingRules?.totalBasePrice || product.basePrice || 0;
+    const desc = product.productName || product.name;
+    const moq = product.minimumOrderQuantity || 1;
+    
+    if (activeItemIndex !== null) {
+      setItems(prev => prev.map((item, idx) => {
+        if (idx === activeItemIndex) {
+          return {
+            ...item,
+            productId: product._id,
+            desc: desc,
+            cost: price,
+            qty: Math.max(item.qty, moq),
+            isCustom: false
+          };
+        }
+        return item;
+      }));
+    } else {
+      const newItem = {
+        productId: product._id,
+        desc: desc,
+        isCustom: false,
+        customDesc: '',
+        qty: moq,
+        cost: price,
+        deliveryDate: ''
+      };
+      if (items.length === 1 && !items[0].productId && !items[0].desc && items[0].cost === 0) {
+        setItems([newItem]);
+      } else {
+        setItems(prev => [...prev, newItem]);
+      }
+    }
+  };
 
   const validate = () => {
     const newErrors = {};
@@ -456,9 +509,26 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 
   const states = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Other"];
 
-  const addItem = () => setItems(prev => [...prev, { desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, deliveryDate: '' }]);
+  const addItem = () => setItems(prev => [...prev, { productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, deliveryDate: '' }]);
   const removeItem = i => setItems(prev => prev.filter((_, idx) => idx !== i));
   const updateItem = (i, k, v) => setItems(prev => prev.map((item, idx) => idx === i ? { ...item, [k]: v } : item));
+
+  const handleProductSelect = (i, productId) => {
+    const product = availableProducts.find(p => p._id === productId);
+    if (!product) return;
+    setItems(prev => prev.map((item, idx) => {
+      if (idx === i) {
+        return {
+          ...item,
+          productId,
+          desc: product.productName || product.name,
+          cost: product.pricingRules?.totalBasePrice || 0,
+          isCustom: false
+        };
+      }
+      return item;
+    }));
+  };
 
   // Calculations
   const rawSubtotal = items.reduce((s, item) => s + (item.qty * Number(item.cost || 0)), 0);
@@ -644,7 +714,19 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
           <div className="bg-white p-5 rounded-xl border shadow-sm">
             <div className="flex items-center justify-between mb-4 border-b pb-2">
               <h3 className="font-bold text-slate-800">3. Order Requirements</h3>
-              <button onClick={addItem} className="text-xs font-bold text-white bg-green-600 px-3 py-1.5 rounded-lg hover:bg-green-700 transition flex items-center gap-1"><Plus className="h-3.5 w-3.5" />Add Item</button>
+              <div className="flex gap-2">
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setActiveItemIndex(null);
+                    setIsCatalogueOpen(true);
+                  }} 
+                  className="text-xs font-bold text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition flex items-center gap-1"
+                >
+                  <ShoppingBag className="h-3.5 w-3.5" /> Catalogue
+                </button>
+                <button onClick={addItem} className="text-xs font-bold text-white bg-green-600 px-3 py-1.5 rounded-lg hover:bg-green-700 transition flex items-center gap-1"><Plus className="h-3.5 w-3.5" />Add Item</button>
+              </div>
             </div>
             
             <div className="space-y-4">
@@ -656,10 +738,23 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div className="col-span-1 sm:col-span-2">
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Requirement</label>
-                      <select value={item.desc} onChange={e => updateItem(i, 'desc', e.target.value)} className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none">
-                        <option value="">Select product...</option>
-                        {requirementTypes.map(r => <option key={r}>{r}</option>)}
-                      </select>
+                      <div className="flex gap-2">
+                        <select value={item.productId} onChange={e => handleProductSelect(i, e.target.value)} className="h-9 flex-1 rounded border border-slate-300 bg-white px-3 text-sm outline-none">
+                          <option value="">Select product...</option>
+                          {availableProducts.map(p => <option key={p._id} value={p._id}>{p.productName || p.name} - ₹{(p.pricingRules?.totalBasePrice || 0).toLocaleString()}</option>)}
+                        </select>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setActiveItemIndex(i);
+                            setIsCatalogueOpen(true);
+                          }} 
+                          className="h-9 px-2.5 rounded bg-indigo-600 text-white transition-colors hover:bg-indigo-700 flex items-center justify-center shrink-0" 
+                          title="Browse Catalogue"
+                        >
+                          <ShoppingBag className="h-4 w-4" />
+                        </button>
+                      </div>
                       <div className="mt-2 flex items-center gap-2">
                         <input type="checkbox" id={`custom-${i}`} checked={item.isCustom} onChange={e => updateItem(i, 'isCustom', e.target.checked)} className="rounded cursor-pointer" />
                         <label htmlFor={`custom-${i}`} className="text-xs font-bold text-slate-700 cursor-pointer">Customization Required</label>
@@ -794,6 +889,13 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
           </button>
         </div>
       </div>
+      
+      <ProductCatalogueModal
+        isOpen={isCatalogueOpen}
+        onClose={() => setIsCatalogueOpen(false)}
+        mode="single"
+        onSelectProduct={handleSelectFromCatalogue}
+      />
     </div>
   );
 };
@@ -856,16 +958,18 @@ export const ProspectDetailsModal = ({ prospect, onBack, onCreateNew, onClose })
         <div className="overflow-y-auto flex-1 space-y-4 pr-2">
           {/* Read only fields with light grey background */}
           {[
-            { label: 'Executive Name', value: prospect.executiveName },
-            { label: 'Business Name', value: prospect.businessName },
-            { label: 'Contact Person', value: prospect.contactPerson },
-            { label: 'Phone Number', value: prospect.phoneNumber },
-            { label: 'Location', value: prospect.location },
-            { label: 'Prospect Type', value: prospect.prospectType },
-            { label: 'WhatsApp Status', value: prospect.whatsappStatus },
-            { label: 'Lead From', value: prospect.leadFrom },
-            { label: 'Follow-up Date', value: prospect.followUpDate },
-            { label: 'Requirement Description', value: prospect.requirementDescription }
+            { label: 'Prospect ID', value: prospect._id || prospect.id || 'N/A' },
+            { label: 'Executive Name', value: (typeof prospect.assignedTo === 'object' ? prospect.assignedTo?.name : null) || prospect.executiveName || 'Not Assigned' },
+            { label: 'Business Name', value: prospect.company },
+            { label: 'Contact Person', value: prospect.name },
+            { label: 'Phone Number', value: prospect.phone },
+            { label: 'Location', value: prospect.requirement?.location || prospect.location },
+            { label: 'Prospect Type', value: prospect.priority },
+            { label: 'Client Type', value: prospect.clientType },
+            { label: 'Lead From', value: prospect.source },
+            { label: 'Follow-up Date', value: prospect.nextFollowUpDate ? new Date(prospect.nextFollowUpDate).toLocaleDateString() : 'N/A' },
+            { label: 'Services Needed', value: prospect.requirement?.service },
+            { label: 'Additional Notes', value: prospect.requirement?.notes }
           ].map((field, i) => (
             <div key={i}>
               <label className="text-xs font-bold text-slate-800 mb-1 block">{field.label}</label>
@@ -890,8 +994,9 @@ export const ProspectDetailsModal = ({ prospect, onBack, onCreateNew, onClose })
 
 // ─── Create/Edit Prospect Modal ────────────────────────────────────────────────
 export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, onClose, initialData = null }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    executiveName: initialData?.assignedTo?.name || executiveName || '',
+    executiveName: (typeof initialData?.assignedTo === 'object' ? initialData?.assignedTo?.name : null) || initialData?.executiveName || executiveName || '',
     name: initialData?.name || '',
     company: initialData?.company || '',
     phone: initialData?.phone || phone || '',
@@ -904,10 +1009,21 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
     budget: initialData?.requirement?.budget || '',
   });
 
-  const predefinedProducts = ['Boards', 'Banners', 'Digital Marketing', 'Hoarding', 'Standees', 'Brochures', 'Social Media', 'Flex Printing', 'Glow Sign Board', 'Video Ads', 'Acp Board', 'Acrylic Board', 'LED Signage'];
+  const { user } = useAuth();
+  const [availableProducts, setAvailableProducts] = useState([]);
+  
+  React.useEffect(() => {
+    productApi.list(user?.token)
+      .then(res => {
+        if (res.success) setAvailableProducts(res.data.filter(p => p.status === 'Active'));
+      })
+      .catch(console.error);
+  }, [user]);
+
   const [products, setProducts] = useState(initialData?.requirement?.service ? initialData.requirement.service.split(', ').filter(Boolean) : []);
   const [customProduct, setCustomProduct] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isCatalogueOpen, setIsCatalogueOpen] = useState(false);
 
   const removeProduct = (prod) => {
     setProducts(products.filter(p => p !== prod));
@@ -923,7 +1039,9 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
     setShowSuggestions(false);
   };
 
-  const filteredProducts = predefinedProducts.filter(p => p.toLowerCase().includes(customProduct.toLowerCase()) && !products.includes(p));
+  const filteredProducts = availableProducts
+    .map(p => p.productName || p.name)
+    .filter(name => name && name.toLowerCase().includes((customProduct || '').toLowerCase()) && !products.includes(name));
 
   const [errors, setErrors] = useState({});
 
@@ -999,7 +1117,7 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
             </select>
             {errors.source && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.source}</p>}
           </div>
-          <div><label className="text-xs font-bold text-slate-800 mb-1 block">Prospect Type (Temperature) *</label>
+          <div><label className="text-xs font-bold text-slate-800 mb-1 block">Prospect Type *</label>
             <select name="priority" value={formData.priority} onChange={handleChange} className={`h-9 w-full rounded border ${errors.priority ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`}>
               <option value="">Select Type</option>
               <option>Hot</option><option>Cold</option><option>Expected in next month</option>
@@ -1009,11 +1127,11 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Client Type (For Pricing) *</label>
             <select name="clientType" value={formData.clientType} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
               <option value="Retail">Retail</option>
-              <option value="Retail Agent">Retail Agent</option>
               <option value="Renewal">Renewal</option>
-              <option value="Renewal Agent">Renewal Agent</option>
               <option value="Corporate">Corporate</option>
+              <option value="Corporate-Renewal">Corporate-Renewal</option>
               <option value="Agent">Agent</option>
+              <option value="Agent-Renewal">Agent-Renewal</option>
             </select>
           </div>
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Budget</label><input name="budget" value={formData.budget} onChange={handleChange} placeholder="e.g. 5000" className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]" /></div>
@@ -1057,6 +1175,9 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
                   className={`h-9 flex-1 rounded border ${errors.products ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} 
                 />
                 <button type="button" onClick={addCustomProduct} className="h-9 px-4 rounded bg-slate-800 text-white text-sm font-semibold hover:bg-slate-700 transition-colors">Add</button>
+                <button type="button" onClick={() => setIsCatalogueOpen(true)} className="h-9 px-3 rounded bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors flex items-center gap-1.5 shadow" title="Browse Product Catalogue">
+                  <ShoppingBag className="h-4 w-4" /> Catalogue
+                </button>
               </div>
               {errors.products && <p className="text-[10px] text-red-500 mt-1 font-bold">{errors.products}</p>}
               
@@ -1089,13 +1210,37 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Additional Requirement Notes</label><textarea name="notes" value={formData.notes} onChange={handleChange} className="w-full rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#003366] min-h-[60px]" placeholder="Specific details or dimensions..." /></div>
         </div>
         <div className="pt-6 flex justify-between shrink-0">
-          <button onClick={onBack} className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" style={{ background: '#003366' }}>
-            Cancel
+          <button 
+            onClick={() => {
+              if (onBack) onBack();
+              navigate('/');
+            }} 
+            className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" 
+            style={{ background: '#003366' }}
+          >
+            Back to Dashboard
           </button>
-          <button onClick={() => handleFormSubmit()} className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" style={{ background: '#003366' }}>
+          <button 
+            onClick={() => handleFormSubmit()} 
+            className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" 
+            style={{ background: '#003366' }}
+          >
             {initialData ? 'Update Prospect' : 'Submit Prospect'}
           </button>
         </div>
+        
+        <ProductCatalogueModal
+          isOpen={isCatalogueOpen}
+          onClose={() => setIsCatalogueOpen(false)}
+          mode="multiple"
+          title="Browse & Select Products"
+          selectedIds={availableProducts.filter(ap => products.includes(ap.productName || ap.name)).map(ap => ap._id)}
+          onSelectMultiple={(selectedProducts) => {
+            const names = selectedProducts.map(p => p.productName || p.name);
+            const merged = Array.from(new Set([...products, ...names]));
+            setProducts(merged);
+          }}
+        />
       </div>
     </div>
   );
@@ -1104,11 +1249,20 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
 // ─── Quotation Modal ────────────────────────────────────────────────────────
 export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
   const [items, setItems] = useState([{ product: '', qty: 1, unitPrice: 0 }]);
+  const [isCatalogueOpen, setIsCatalogueOpen] = useState(false);
+  const [activeItemIndex, setActiveItemIndex] = useState(null);
   
   // Dummy pricing matrix based on client type
   const getPrice = (product, clientType) => {
     const basePrice = { 'Boards': 500, 'Banners': 200, 'Digital Marketing': 5000, 'Hoarding': 10000, 'Standees': 1500, 'Brochures': 100, 'Social Media': 3000 }[product] || 0;
-    const multipliers = { 'Retail': 1, 'Retail Agent': 0.9, 'Renewal': 0.85, 'Renewal Agent': 0.8, 'Corporate': 0.75, 'Agent': 0.7 };
+    const multipliers = { 
+      'Retail': 1, 
+      'Renewal': 0.85, 
+      'Corporate': 0.75, 
+      'Corporate-Renewal': 0.7, 
+      'Agent': 0.7, 
+      'Agent-Renewal': 0.65 
+    };
     return basePrice * (multipliers[clientType] || 1);
   };
 
@@ -1125,6 +1279,25 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
   const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
 
   const total = items.reduce((sum, item) => sum + (item.qty * item.unitPrice), 0);
+
+  const handleSelectFromCatalogue = (prodObj) => {
+    const name = prodObj.productName || prodObj.name;
+    const price = prodObj.pricingRules?.totalBasePrice || prodObj.basePrice || 0;
+    
+    if (activeItemIndex !== null) {
+      const newItems = [...items];
+      newItems[activeItemIndex].product = name;
+      newItems[activeItemIndex].unitPrice = price;
+      setItems(newItems);
+    } else {
+      const newItem = { product: name, qty: prodObj.minimumOrderQuantity || 1, unitPrice: price };
+      if (items.length === 1 && !items[0].product && items[0].unitPrice === 0) {
+        setItems([newItem]);
+      } else {
+        setItems([...items, newItem]);
+      }
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
@@ -1144,17 +1317,42 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="text-sm font-bold text-slate-800">Products/Services</label>
-              <button onClick={addItem} className="text-xs text-blue-600 font-semibold flex items-center gap-1"><Plus className="h-3 w-3"/> Add Item</button>
+              <div className="flex gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setActiveItemIndex(null);
+                    setIsCatalogueOpen(true);
+                  }} 
+                  className="text-xs text-indigo-600 font-semibold flex items-center gap-1.5 hover:text-indigo-700 transition"
+                >
+                  <ShoppingBag className="h-3.5 w-3.5"/> Catalogue
+                </button>
+                <button onClick={addItem} className="text-xs text-blue-650 font-semibold flex items-center gap-1"><Plus className="h-3 w-3"/> Add Item</button>
+              </div>
             </div>
             
             {items.map((item, i) => (
               <div key={i} className="flex gap-2 mb-2 items-end">
                 <div className="flex-1">
                   <label className="text-[10px] text-muted-foreground block mb-0.5">Select Product</label>
-                  <select value={item.product} onChange={(e) => updateItem(i, 'product', e.target.value)} className="h-9 w-full rounded border border-slate-300 px-2 text-sm outline-none">
-                    <option value="">Choose...</option>
-                    {['Boards', 'Banners', 'Digital Marketing', 'Hoarding', 'Standees', 'Brochures', 'Social Media'].map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                  <div className="flex gap-2">
+                    <select value={item.product} onChange={(e) => updateItem(i, 'product', e.target.value)} className="h-9 flex-1 rounded border border-slate-300 px-2 text-sm outline-none">
+                      <option value="">Choose...</option>
+                      {['Boards', 'Banners', 'Digital Marketing', 'Hoarding', 'Standees', 'Brochures', 'Social Media'].map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setActiveItemIndex(i);
+                        setIsCatalogueOpen(true);
+                      }} 
+                      className="h-9 px-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white transition-colors flex items-center justify-center shrink-0" 
+                      title="Select from Catalogue"
+                    >
+                      <ShoppingBag className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="w-20">
                   <label className="text-[10px] text-muted-foreground block mb-0.5">Qty</label>
@@ -1191,6 +1389,13 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
           </button>
         </div>
       </div>
+      
+      <ProductCatalogueModal
+        isOpen={isCatalogueOpen}
+        onClose={() => setIsCatalogueOpen(false)}
+        mode="single"
+        onSelectProduct={handleSelectFromCatalogue}
+      />
     </div>
   );
 };
@@ -1246,7 +1451,7 @@ export const UpdateStatusModal = ({ prospect, newStatus, onClose, onSubmit }) =>
               </div>
             )}
             
-            {formData.status === 'Sale Closed' && (
+            {['Sale Closed', 'Order Confirmed'].includes(formData.status) && (
               <div>
                 <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Link to Order ID *</label>
                 <input type="text" value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '')})} className="h-11 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-shadow" placeholder="e.g. ORD-12345" />
@@ -1695,6 +1900,185 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
                 <IndianRupee className="h-4 w-4" />
               )}
               {loading ? 'Submitting...' : 'Submit Collection'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ─── Assign Appointment Modal ────────────────────────────────────────────────
+import { employeeApi } from '../../../services/api';
+
+export const AssignAppointmentModal = ({ appointment, onClose, onAssigned }) => {
+  const { user } = useAuth();
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [selectedId, setSelectedId] = useState('');
+
+  React.useEffect(() => {
+    const fetchEmployees = async () => {
+      setLoading(true);
+      try {
+        const res = await employeeApi.list({ status: 'ACTIVE' }, user.token);
+        // Filter for Field Execs, Managers, CEO, or Admin
+        const filtered = (res.employees || res.data || []).filter(e => 
+          ['FIELD_EXEC', 'SALES_MANAGER', 'MD_CEO', 'ADMIN'].includes(e.role)
+        );
+        setEmployees(filtered);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEmployees();
+  }, [user.token]);
+
+  const handleAssign = async () => {
+    if (!selectedId) return alert('Please select a person');
+    setAssigning(true);
+    try {
+      const res = await appointmentApi.assign(appointment._id, { assignedTo: selectedId }, user.token);
+      if (res.success) {
+        onAssigned?.();
+        onClose();
+      }
+    } catch (err) {
+      alert(err.message || 'Assignment failed');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-md rounded-2xl border bg-white shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-5 border-b" style={{ background: 'linear-gradient(135deg, #1e293b, #0f172a)' }}>
+          <div>
+            <h2 className="text-white font-bold text-lg">Assign Personnel</h2>
+            <p className="text-slate-400 text-xs mt-0.5">Appt: {appointment.businessName}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 space-y-2">
+             <div className="flex justify-between text-xs font-bold uppercase text-slate-400">
+               <span>Meeting Info</span>
+               <span className="text-blue-600">{new Date(appointment.date).toLocaleDateString()} · {appointment.time}</span>
+             </div>
+             <p className="text-sm font-semibold text-slate-700">{appointment.venue}</p>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Select Executive / Manager</label>
+            {loading ? (
+              <div className="h-10 w-full animate-pulse bg-slate-100 rounded-xl" />
+            ) : (
+              <select 
+                value={selectedId} 
+                onChange={e => setSelectedId(e.target.value)}
+                className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium outline-none focus:border-blue-600 transition-all shadow-sm"
+              >
+                <option value="">Select person...</option>
+                {employees.map(e => {
+                  const roleName = e.role === 'MD_CEO' ? 'CEO' : e.role === 'FIELD_EXEC' ? 'Field Executive' : e.role === 'SALES_MANAGER' ? 'Sales Manager' : e.role === 'ADMIN' ? 'Admin' : e.role.replace('_', ' ');
+                  return <option key={e._id} value={e._id}>{e.name} ({roleName})</option>;
+                })}
+              </select>
+            )}
+          </div>
+
+          <div className="pt-2 flex gap-3">
+            <button onClick={onClose} className="h-12 flex-1 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
+            <button 
+              onClick={handleAssign}
+              disabled={assigning || !selectedId}
+              className="h-12 flex-1 rounded-xl bg-slate-900 text-white text-sm font-bold flex justify-center items-center gap-2 hover:bg-blue-600 transition-all disabled:opacity-50 shadow-lg shadow-slate-200"
+            >
+              {assigning ? 'Assigning...' : 'Confirm Assignment'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Update Appointment Remark Modal ──────────────────────────────────────────
+export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) => {
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({
+    remark: appointment.remark || '',
+    prospectStatus: appointment.prospect?.status || 'In-progress'
+  });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.remark.trim()) return alert('Please enter a remark');
+    setLoading(true);
+    try {
+      const res = await appointmentApi.updateRemark(appointment._id, formData, user.token);
+      if (res.success) {
+        onSaved?.();
+        onClose();
+      }
+    } catch (err) {
+      alert(err.message || 'Update failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
+      <div className="w-full max-w-md rounded-2xl border bg-white shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-5 border-b" style={{ background: 'linear-gradient(135deg, #059669, #047857)' }}>
+          <div>
+            <h2 className="text-white font-bold text-lg">Update Visit Outcome</h2>
+            <p className="text-emerald-200 text-xs mt-0.5">Appt with {appointment.businessName}</p>
+          </div>
+          <button onClick={onClose} className="text-emerald-200 hover:text-white"><X className="h-5 w-5" /></button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Meeting Remark / Notes</label>
+            <textarea 
+              required
+              rows={4}
+              placeholder="What was the outcome of this visit? Mention any client concerns or next steps..."
+              value={formData.remark}
+              onChange={e => setFormData({ ...formData, remark: e.target.value })}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium outline-none focus:border-emerald-500 focus:bg-white transition-all resize-none shadow-inner"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Update Prospect Status</label>
+            <select 
+              value={formData.prospectStatus}
+              onChange={e => setFormData({ ...formData, prospectStatus: e.target.value })}
+              className="w-full h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold outline-none focus:border-emerald-500 transition-all shadow-sm"
+            >
+              <option value="In-progress">Still In-progress (Needs Follow-up)</option>
+              <option value="Sale Closed">Sale Closed (Won)</option>
+              <option value="Canceled">Canceled (Lost)</option>
+            </select>
+          </div>
+
+          <div className="pt-2 flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">Cancel</button>
+            <button 
+              type="submit"
+              disabled={loading}
+              className="h-12 flex-1 rounded-xl bg-emerald-600 text-white text-sm font-bold flex justify-center items-center gap-2 hover:bg-emerald-700 transition-all disabled:opacity-50 shadow-lg shadow-emerald-100"
+            >
+              {loading ? 'Updating...' : 'Save & Close Visit'}
             </button>
           </div>
         </form>

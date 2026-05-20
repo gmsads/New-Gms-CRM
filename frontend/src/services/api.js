@@ -22,6 +22,7 @@ const request = async (method, path, body, token) => {
     const err = new Error(data.message || `HTTP ${res.status}`);
     err.status = res.status;
     err.code   = data.code;
+    err.data   = data;
     throw err;
   }
   return data;
@@ -70,6 +71,7 @@ export const prospectApi = {
   create:      (data, token)     => api.post('/prospects', data, token),
   update:      (id, data, token) => api.patch(`/prospects/${id}`, data, token),
   moveStage:   (id, data, token) => api.patch(`/prospects/${id}/stage`, data, token),
+  addInteraction: (id, data, token) => api.post(`/prospects/${id}/interactions`, data, token),
   delete:      (id, token)       => api.delete(`/prospects/${id}`, token),
 };
 
@@ -80,13 +82,6 @@ export const followupApi = {
   complete: (id, data, token) => api.patch(`/followups/${id}/complete`, data, token),
 };
 
-// Quotations
-export const quotationApi = {
-  list:         (params, token)   => api.get(`/quotations?${new URLSearchParams(params)}`, token),
-  create:       (data, token)     => api.post('/quotations', data, token),
-  update:       (id, data, token) => api.patch(`/quotations/${id}`, data, token),
-  updateStatus: (id, data, token) => api.patch(`/quotations/${id}/status`, data, token),
-};
 
 // Orders
 export const orderApi = {
@@ -99,6 +94,7 @@ export const orderApi = {
   updateStatus:   (id, data, token) => api.patch(`/orders/${id}/status`, data, token),
   approveAdvance: (id, token)       => api.post(`/orders/${id}/approve-advance`, {}, token),
   addPayment:     (id, data, token) => api.post(`/orders/${id}/payments`, data, token),
+  updateLineItem: (id, itemIndex, data, token) => api.patch(`/orders/${id}/line-items/${itemIndex}`, data, token),
 };
 
 // Payments
@@ -117,7 +113,7 @@ export const appointmentApi = {
   stats:        (token)           => api.get('/appointments/stats', token),
   create:       (data, token)     => api.post('/appointments', data, token),
   assign:       (id, data, token) => api.patch(`/appointments/${id}/assign`, data, token),
-  updateRemark: (id, data, token) => api.patch(`/appointments/${id}/remark`, data, token),
+  updateRemark: (id, data, token) => api.post(`/appointments/${id}/remarks`, data, token),
 };
 
 
@@ -131,6 +127,32 @@ export const approvalApi = {
 
 export const analyticsApi = {
   getStats: (params, token) => api.get(`/analytics/stats?${new URLSearchParams(params)}`, token),
+};
+
+export const brochureApi = {
+  list:       (params, token) => api.get(`/brochures?${new URLSearchParams(params)}`, token),
+  categories: (token)         => api.get('/brochures/categories', token),
+  history:    (token)         => api.get('/brochures/history', token),
+  create:     (data, token)   => api.post('/brochures', data, token),
+  update:     (id, data, token) => api.patch(`/brochures/${id}`, data, token),
+  delete:     (id, token)     => api.delete(`/brochures/${id}`, token),
+  send:       (data, token)   => api.post('/brochures/send', data, token),
+};
+
+export const productApi = {
+  list:   (token)       => api.get('/products', token),
+  getCategories: (token) => api.get('/products/categories', token),
+  create: (data, token) => api.post('/products', data, token),
+};
+
+export const quotationApi = {
+  list:           (params, token) => api.get(`/quotations?${new URLSearchParams(params)}`, token),
+  create:         (data, token)   => api.post('/quotations', data, token),
+  getTemplate:    (token)         => api.get('/quotations/template', token),
+  updateTemplate: (data, token)   => api.post('/quotations/template', data, token),
+  getById:        (id, token)     => api.get(`/quotations/${id}`, token),
+  update:         (id, data, token) => api.patch(`/quotations/${id}`, data, token),
+  updateStatus:   (id, data, token) => api.patch(`/quotations/${id}/status`, data, token),
 };
 
 export default api;

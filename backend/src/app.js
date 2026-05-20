@@ -1,5 +1,5 @@
 const express = require('express');
-const cors    = require('cors');
+const cors    = require('cors'); // refreshed
 
 const app = express();
 
@@ -26,11 +26,31 @@ app.use(cors({
 // Handle preflight for all routes
 app.options('/{*splat}', cors());
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+
+const { globalLimiter } = require('./api/middlewares/rateLimiter');
+const healthController = require('./api/controllers/health.controller');
+const logger = require('./utils/logger');
+
+// Global Rate Limiting
+app.use(globalLimiter);
+
+const path = require('path');
+
+// Request logging middleware
+app.use((req, res, next) => {
+  logger.info(`${req.method} ${req.originalUrl}`);
+  next();
+});
+
+// Serve static files (like uploaded brochures)
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 // ── Health check ────────────────────────────────────────────────────────────
 app.get('/', (req, res) => res.json({ status: 'GMS CRM API running', time: new Date() }));
+app.get('/health', healthController.checkHealth);
 
 // ── Auth (no extra deps) ─────────────────────────────────────────────────────
 try {
@@ -56,6 +76,7 @@ const hrRoutes = [
   ['/api/attendance', './api/routes/attendance.routes'],
   ['/api/leaves',     './api/routes/leave.routes'],
   ['/api/audit-logs', './api/routes/audit.routes'],
+  ['/api/activities', './api/routes/activity.routes'],
 ];
 for (const [path, mod] of hrRoutes) {
   try { app.use(path, require(mod)); console.log(`[ROUTES] ✅ ${path}`); }
@@ -68,6 +89,8 @@ const salesRoutes = [
   ['/api/quotations', './api/routes/quotation.routes'],
   ['/api/followups',  './api/routes/followup.routes'],
   ['/api/appointments', './api/routes/appointment.routes'],
+  ['/api/brochures',  './api/routes/brochure.routes'],
+  ['/api/products',   './api/routes/product.routes'],
 ];
 for (const [path, mod] of salesRoutes) {
   try { app.use(path, require(mod)); console.log(`[ROUTES] ✅ ${path}`); }
@@ -92,9 +115,7 @@ catch (e) { console.error('[ROUTES] ❌ /api/analytics:', e.message); }
 app.use((req, res) => res.status(404).json({ message: `Route ${req.method} ${req.path} not found` }));
 
 // ── Global error handler ─────────────────────────────────────────────────────
-app.use((err, req, res, next) => {
-  console.error('[SERVER ERROR]', err.message);
-  res.status(500).json({ message: err.message || 'Internal server error' });
-});
+const errorHandler = require('./api/middlewares/error.middleware');
+app.use(errorHandler);
 
 module.exports = app;

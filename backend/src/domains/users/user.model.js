@@ -4,13 +4,15 @@ const bcrypt = require('bcryptjs');
 const ROLES = [
   'MD_CEO',
   'ADMIN',
-  'SALES_EXEC',
-  'SALES_MANAGER',
-  'FIELD_EXEC',
   'HR',
-  'DESIGNER',
-  'OPERATION_EXEC',
+  'SR_SALES_MANAGER',
+  'SALES_MANAGER',
+  'SR_SALES_EXEC',
+  'SALES_EXEC',
+  'FIELD_EXEC',
   'OPERATION_MANAGER',
+  'OPERATION_EXEC',
+  'DESIGNER',
   'AGENT',
   'VENDOR',
   'IT',
@@ -41,6 +43,11 @@ const userSchema = new mongoose.Schema(
     // ── Role & Department ──────────────────────────────────
     role: { type: String, enum: ROLES, default: 'SALES_EXEC' },
     department: { type: String, enum: DEPARTMENTS },
+
+    // ── Organization Hierarchy ─────────────────────────────
+    reportingManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    hierarchyLevel: { type: Number, default: 5 }, // 0: Admin, 1: HR/CEO, 2: Sr Manager, 3: Manager, 4: Sr Exec, 5: Exec
+    teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' }, // Reference to TEAM_MAPPING if needed
 
     // ── Account Status ─────────────────────────────────────
     // ONLY 'ACTIVE' accounts can log in

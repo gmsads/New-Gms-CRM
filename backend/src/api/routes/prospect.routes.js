@@ -11,6 +11,7 @@ router.get('/search', ctrl.searchByPhone);
 router.post('/', ctrl.create);
 router.patch('/:id', ctrl.update);
 router.patch('/:id/stage', ctrl.updateStage);
+router.post('/:id/interactions', ctrl.addInteraction);
 router.delete('/:id', ctrl.remove);
 
 module.exports = router;

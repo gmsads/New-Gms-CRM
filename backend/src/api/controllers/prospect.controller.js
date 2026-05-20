@@ -1,11 +1,18 @@
 const mongoose = require('mongoose');
 const Prospect = require('../../domains/sales/prospects/prospect.model');
+const prospectWorkflow = require('../../services/workflows/prospectWorkflow.service');
+
+const getReqContext = (req) => ({
+  ipAddress: req.ip,
+  userAgent: req.headers['user-agent'],
+  device: req.headers['user-agent']
+});
 
 // GET /api/prospects — list with filters
 exports.list = async (req, res) => {
   try {
     const { stage, priority, assignedTo, search } = req.query;
-    const filter = {};
+    const filter = { 'softDelete.isDeleted': { $ne: true } }; // Hide soft deleted
     if (stage) filter.stage = stage;
     if (priority) filter.priority = priority;
     
@@ -39,7 +46,7 @@ exports.searchByPhone = async (req, res) => {
     if (phone) conditions.push({ phone });
     if (company) conditions.push({ company: { $regex: new RegExp(`^${company}$`, 'i') } });
 
-    const prospect = await Prospect.findOne({ $or: conditions })
+    const prospect = await Prospect.findOne({ $or: conditions, 'softDelete.isDeleted': { $ne: true } })
       .populate('assignedTo', 'name email')
       .lean();
       
@@ -57,8 +64,7 @@ exports.create = async (req, res) => {
     if (!data.assignedTo && (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC')) {
       data.assignedTo = req.user._id;
     }
-    const prospect = new Prospect(data);
-    await prospect.save();
+    const prospect = await prospectWorkflow.createProspect(data, req.user._id, getReqContext(req));
     res.status(201).json({ success: true, data: prospect });
   } catch (err) {
     let message = err.message;
@@ -70,8 +76,7 @@ exports.create = async (req, res) => {
 // PATCH /api/prospects/:id
 exports.update = async (req, res) => {
   try {
-    const prospect = await Prospect.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    if (!prospect) return res.status(404).json({ success: false, message: 'Not found' });
+    const prospect = await prospectWorkflow.updateProspect(req.params.id, req.body, req.user._id, getReqContext(req));
     res.json({ success: true, data: prospect });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -82,12 +87,17 @@ exports.update = async (req, res) => {
 exports.updateStage = async (req, res) => {
   try {
     const { stage } = req.body;
-    const prospect = await Prospect.findByIdAndUpdate(
-      req.params.id,
-      { stage, lastInteraction: new Date() },
-      { new: true }
-    );
-    if (!prospect) return res.status(404).json({ success: false, message: 'Not found' });
+    const prospect = await prospectWorkflow.updateStage(req.params.id, stage, req.user._id, getReqContext(req));
+    res.json({ success: true, data: prospect });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+// POST /api/prospects/:id/interactions
+exports.addInteraction = async (req, res) => {
+  try {
+    const prospect = await prospectWorkflow.addInteraction(req.params.id, req.body, req.user._id, getReqContext(req));
     res.json({ success: true, data: prospect });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -97,16 +107,17 @@ exports.updateStage = async (req, res) => {
 // DELETE /api/prospects/:id
 exports.remove = async (req, res) => {
   try {
-    await Prospect.findByIdAndDelete(req.params.id);
+    await prospectWorkflow.softDeleteProspect(req.params.id, req.user._id, getReqContext(req));
     res.json({ success: true, message: 'Deleted' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
 // GET /api/prospects/stats
 exports.stats = async (req, res) => {
   try {
-    const filter = {};
+    const filter = { 'softDelete.isDeleted': { $ne: true } };
     if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       filter.assignedTo = new mongoose.Types.ObjectId(req.user._id);
     }
@@ -129,7 +140,7 @@ exports.stats = async (req, res) => {
         won, 
         lost, 
         hot, 
-        pendingFollowups: followUps, // Match Follow-up stage count
+        pendingFollowups: followUps,
         appointmentStage 
       }
     });

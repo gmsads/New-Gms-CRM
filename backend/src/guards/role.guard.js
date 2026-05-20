@@ -19,8 +19,8 @@ const PERMISSIONS = {
 
   // ── Orders ──────────────────────────────────────────────────────────────────
   'orders:create':    ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
-  'orders:read':      ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'OPERATION_EXEC', 'OPERATION_MANAGER', 'ADMIN', 'MD_CEO'],
-  'orders:update':    ['SALES_EXEC', 'SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'orders:read':      ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'OPERATION_EXEC', 'OPERATION_MANAGER', 'DESIGNER', 'ADMIN', 'MD_CEO'],
+  'orders:update':    ['SALES_EXEC', 'SALES_MANAGER', 'DESIGNER', 'OPERATION_EXEC', 'OPERATION_MANAGER', 'ADMIN', 'MD_CEO'],
   'orders:cancel':    ['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
   'orders:confirm':   ['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
   'orders:approve_low_advance': ['ADMIN', 'MD_CEO'],

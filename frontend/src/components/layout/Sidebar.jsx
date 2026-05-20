@@ -4,14 +4,14 @@ import {
   LayoutDashboard, Users, Megaphone, CheckSquare, Settings,
   PieChart, Briefcase, FileText, Palette, Truck, Server, X, ShieldCheck,
   Clock, ShoppingCart, Calendar, IndianRupee, BarChart2, Search,
-  ChevronDown, ChevronRight, UserPlus
+  ChevronDown, ChevronRight, UserPlus, Quote, Package
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { prospectApi, orderApi, appointmentApi, approvalApi } from '../../services/api';
 
 const menuConfig = [
   { title: 'Dashboard',        icon: LayoutDashboard, path: '/',          roles: ['ALL'] },
-  { title: 'Clients & Leads',  icon: Users,           path: '/clients',   roles: ['ADMIN','SALES_MANAGER','AGENT'] },
+  { title: 'Clients & Leads',  icon: Users,           path: '/clients',   roles: ['ADMIN','SALES_MANAGER','SR_SALES_MANAGER','AGENT'] },
   { title: 'Campaigns',        icon: Megaphone,       path: '/campaigns', roles: ['ADMIN','SALES_MANAGER','OPERATION_MANAGER','AGENT'] },
   { title: 'Field Operations', icon: Truck,           path: '/field',     roles: ['ADMIN','FIELD_EXEC','OPERATION_MANAGER'] },
   { title: 'Design Assets',    icon: Palette,         path: '/design',    roles: ['ADMIN','DESIGNER','OPERATION_EXEC'] },
@@ -30,12 +30,24 @@ const menuConfig = [
       { title: 'Performance', path: '/hr/performance', icon: BarChart2 }
     ]
   },
-  { title: 'Orders',           icon: ShoppingCart,    path: '/orders',    roles: ['ADMIN','MD_CEO','SALES_MANAGER'] },
-  { title: 'Approvals',        icon: ShieldCheck,     path: '/approvals', roles: ['ADMIN','MD_CEO','SALES_MANAGER'] },
-  { title: 'Appointments',     icon: Calendar,        path: '/appointments', roles: ['ADMIN','MD_CEO','SALES_MANAGER','FIELD_EXEC'] },
+  { title: 'Orders',           icon: ShoppingCart,    path: '/orders',    roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER'] },
+  { title: 'Approvals',        icon: ShieldCheck,     path: '/approvals', roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER'] },
+  { title: 'Appointments',     icon: Calendar,        path: '/appointments', roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','FIELD_EXEC'] },
+  { 
+    title: 'Product Management',   
+    icon: Package,         
+    path: '/product-management', 
+    roles: ['ADMIN','SALES_MANAGER','SR_SALES_MANAGER','MD_CEO'],
+    subItems: [
+      { title: 'Product Catalog', path: '/product-management', icon: Package },
+      { title: 'Cost Master',    path: '/cost-management',    icon: IndianRupee },
+    ]
+  },
+  { title: 'Catalog',          icon: FileText,        path: '/brochures',   roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','SALES_EXEC','SR_SALES_EXEC'] },
+  { title: 'Quotations',       icon: Quote,           path: '/quotations',  roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','FIELD_EXEC','AGENT'] },
   { title: 'HR Control Panel', icon: ShieldCheck,     path: '/admin-hr',  roles: ['ADMIN','MD_CEO'] },
   { title: 'Vendor Portal',    icon: FileText,        path: '/vendors',   roles: ['ADMIN','VENDOR','OPERATION_MANAGER'] },
-  { title: 'Analytics',        icon: PieChart,        path: '/analytics', roles: ['ADMIN','SALES_MANAGER','OPERATION_MANAGER'] },
+  { title: 'Analytics',        icon: PieChart,        path: '/analytics', roles: ['ADMIN','SALES_MANAGER','SR_SALES_MANAGER','OPERATION_MANAGER'] },
   { title: 'IT & Systems',     icon: Server,          path: '/it',        roles: ['ADMIN','IT'] },
   { title: 'Settings',         icon: Settings,        path: '/settings',  roles: ['ALL'] },
 ];
@@ -117,15 +129,15 @@ const Sidebar = ({ isOpen, setOpen }) => {
 
     const fetchStats = () => {
       // ── Approvals (Combined Orders + Payments)
-      if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SALES_EXEC'].includes(user.role)) {
+      if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'SALES_EXEC', 'SR_SALES_EXEC'].includes(user.role)) {
         approvalApi.stats(token).then(res => {
           if (res.success) setApprovalCount(res.pendingCount);
         }).catch(console.error);
       }
 
       // ── Appointments
-      if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'FIELD_EXEC', 'SALES_EXEC', 'AGENT'].includes(user.role)) {
-        if (['ADMIN', 'MD_CEO', 'SALES_MANAGER'].includes(user.role)) {
+      if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'SALES_EXEC', 'SR_SALES_EXEC', 'AGENT'].includes(user.role)) {
+        if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user.role)) {
           appointmentApi.stats(token).then(res => {
             if (res.success) setAppointmentCount(res.pendingCount);
           }).catch(console.error);
@@ -137,7 +149,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
       }
 
       // ── Follow-ups (Sales Exec only)
-      if (user.role === 'SALES_EXEC') {
+      if (['SALES_EXEC', 'SR_SALES_EXEC'].includes(user.role)) {
         prospectApi.list({}, token).then(res => {
           if (res.success) setProspectCount(res.data.filter(p => p.status === 'In-progress' && p.nextFollowUpDate).length);
         }).catch(console.error);
@@ -155,7 +167,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
 
   if (!user) return null;
 
-  const isSalesExec = user.role === 'SALES_EXEC';
+  const isSalesExec = ['SALES_EXEC', 'SR_SALES_EXEC'].includes(user.role);
 
   const dynamicSalesExecMenu = [
     { title: 'Dashboard',     icon: LayoutDashboard, path: '/',            badge: null },
@@ -173,6 +185,8 @@ const Sidebar = ({ isOpen, setOpen }) => {
     { title: 'Appointments',  icon: Calendar,        path: '/appointments',badge: appointmentCount > 0 ? appointmentCount.toString() : null },
     { title: 'Orders',        icon: ShoppingCart,    path: '/orders',      badge: null },
     { title: 'Approvals',     icon: ShieldCheck,     path: '/approvals',   badge: approvalCount > 0 ? approvalCount.toString() : null },
+    { title: 'Catalog',       icon: FileText,        path: '/brochures',   badge: null },
+    { title: 'Quotations',    icon: Quote,           path: '/quotations',  badge: null },
     { title: 'Payments',      icon: IndianRupee,      path: '/payments',    badge: null },
     { title: 'Performance',   icon: BarChart2,       path: '/performance', badge: null },
     { title: 'Settings',      icon: Settings,        path: '/settings',    badge: null },

@@ -1,3 +1,4 @@
+// Routes for Appointments
 const express = require('express');
 const router = express.Router();
 const appointmentController = require('../controllers/appointment.controller');
@@ -5,14 +6,18 @@ const { protect } = require('../../guards/auth.guard');
 
 router.use(protect);
 
+router.get('/stats', appointmentController.getStats);
+
+const idempotency = require('../middlewares/idempotency');
+
 router.route('/')
   .get(appointmentController.list)
-  .post(appointmentController.create);
-
-router.get('/stats', appointmentController.getStats);
+  .post(idempotency, appointmentController.create);
 
 
 router.patch('/:id/assign', appointmentController.assign);
-router.patch('/:id/remark', appointmentController.updateRemark);
+router.patch('/:id/status', appointmentController.updateStatus);
+router.post('/:id/remarks', appointmentController.addRemark);
+router.get('/:id/timeline', appointmentController.getTimeline);
 
 module.exports = router;

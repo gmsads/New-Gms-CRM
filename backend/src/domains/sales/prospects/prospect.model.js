@@ -28,7 +28,7 @@ const prospectSchema = new mongoose.Schema(
     // Status / Lifecycle
     status: {
       type: String,
-      enum: ['In-progress', 'Canceled', 'Sale Closed'],
+      enum: ['In-progress', 'Canceled', 'Sale Closed', 'Order Confirmed'],
       default: 'In-progress'
     },
     cancelReason: { type: String },
@@ -36,7 +36,7 @@ const prospectSchema = new mongoose.Schema(
     // Client/Prospect Type (drives quotation pricing)
     clientType: { 
       type: String, 
-      enum: ['Retail', 'Retail Agent', 'Renewal', 'Renewal Agent', 'Corporate', 'Agent'], 
+      enum: ['Retail', 'Renewal', 'Corporate', 'Corporate-Renewal', 'Agent', 'Agent-Renewal'], 
       default: 'Retail' 
     },
 
@@ -78,13 +78,40 @@ const prospectSchema = new mongoose.Schema(
 
     // Linked objects
     relatedClient: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
+    linkedOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
     tags: [{ type: String }],
     probability: { type: Number, min: 0, max: 100, default: 30 }, // % chance of conversion
+
+    // Enterprise Workflow Additions
+    alternateMobile: { type: String, trim: true },
+    address: { type: String },
+    geoLocation: {
+      lat: { type: Number },
+      lng: { type: Number }
+    },
+    createdDate: { type: Date, default: Date.now },
+    estimatedBudget: { type: Number },
+    currentStatus: { type: String },
+    remarks: { type: String },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    
+    // Status tracking flags
+    brochureSent: { type: Boolean, default: false },
+    quotationSent: { type: Boolean, default: false },
+    appointmentCreated: { type: Boolean, default: false },
+
   },
-  { timestamps: true }
+  { timestamps: true, optimisticConcurrency: true }
 );
 
+const softDeletePlugin = require('../../../utils/softDelete.plugin');
+prospectSchema.plugin(softDeletePlugin);
+
 prospectSchema.index({ assignedTo: 1, stage: 1 });
+prospectSchema.index({ assignedTo: 1, createdDate: -1 });
+prospectSchema.index({ client: 1 });
+prospectSchema.index({ isDeleted: 1 });
 
 
 module.exports = mongoose.model('Prospect', prospectSchema);

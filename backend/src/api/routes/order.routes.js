@@ -20,9 +20,12 @@ router.get('/search',  can('orders:read'),   ctrl.searchClient);
 router.get('/stats',   can('orders:read'),   ctrl.stats);
 router.get('/:id',     can('orders:read'),   ctrl.getOne);
 
-router.post('/',       can('orders:create'), ctrl.create);
+const idempotency = require('../middlewares/idempotency');
+
+router.post('/', idempotency, can('orders:create'), ctrl.create);
 
 router.post('/:id/confirm',
+  idempotency,
   can('orders:create'),
   ctrl.confirm
 );
@@ -42,6 +45,7 @@ router.patch('/:id/status',
   ctrl.updateStatus
 );
 
+router.patch('/:id/line-items/:itemIndex', can('orders:update'), ctrl.updateLineItem);
 router.patch('/:id', can('orders:update'), ctrl.update);
 router.post('/:id/payments', can('orders:update'), ctrl.addPayment);
 

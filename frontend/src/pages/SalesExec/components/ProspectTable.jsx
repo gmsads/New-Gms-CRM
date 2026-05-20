@@ -50,7 +50,9 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
         matchMonth = pMonth === monthFilter;
       }
       
-      return matchSearch && matchStage && matchMonth;
+      const hideInactive = sortByFollowUp ? !['Sale Closed', 'Canceled'].includes(p.status) : true;
+      
+      return matchSearch && matchStage && matchMonth && hideInactive;
     })
     .sort((a, b) => {
       const order = { 'In-progress': 1, 'Sale Closed': 2, 'Canceled': 3 };
@@ -248,7 +250,7 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
                 <td className="px-4 py-3 whitespace-nowrap relative">
                   <button 
                     onClick={() => setOpenStatusMenu(openStatusMenu === (p._id || p.id) ? null : (p._id || p.id))}
-                    className={`rounded-full px-3 py-1 flex items-center justify-between min-w-[110px] text-xs font-bold outline-none cursor-pointer border shadow-sm transition-colors ${p.status === 'Canceled' ? 'bg-red-50 text-red-700 border-red-200' : p.status === 'Sale Closed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
+                    className={`rounded-full px-3 py-1 flex items-center justify-between min-w-[110px] text-xs font-bold outline-none cursor-pointer border shadow-sm transition-colors ${p.status === 'Canceled' ? 'bg-red-50 text-red-700 border-red-200' : p.status === 'Sale Closed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : p.status === 'Order Confirmed' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
                   >
                     <span>{p.status || 'In-progress'}</span>
                     <span className="text-[9px] opacity-60 ml-2">▼</span>
@@ -256,11 +258,12 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
                   
                   {openStatusMenu === (p._id || p.id) && (
                     <div className="absolute top-10 right-0 mt-1 w-36 bg-white rounded-lg shadow-xl border border-slate-200 z-[99] overflow-hidden py-1" onMouseLeave={() => setOpenStatusMenu(null)}>
-                      {['In-progress', 'Canceled', 'Sale Closed'].map(s => {
+                      {['In-progress', 'Canceled', 'Order Confirmed', 'Sale Closed'].map(s => {
                         let colorClass = 'text-slate-600 hover:bg-slate-50';
                         let dotColor = 'bg-slate-300';
                         if (s === 'In-progress') { colorClass = 'text-blue-700 hover:bg-blue-50'; dotColor = 'bg-blue-500'; }
                         else if (s === 'Canceled') { colorClass = 'text-red-700 hover:bg-red-50'; dotColor = 'bg-red-500'; }
+                        else if (s === 'Order Confirmed') { colorClass = 'text-purple-700 hover:bg-purple-50'; dotColor = 'bg-purple-500'; }
                         else if (s === 'Sale Closed') { colorClass = 'text-emerald-700 hover:bg-emerald-50'; dotColor = 'bg-emerald-500'; }
                         
                         return (

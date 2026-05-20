@@ -14,6 +14,7 @@ s * order.workflow.js
 const Order = require('../domains/orders/order.model');
 const Prospect = require('../domains/sales/prospects/prospect.model');
 const OrderApproval = require('../domains/approvals/approval.model');
+const { assignRoundRobin } = require('../domains/hr/assignment.service');
 
 // ─── Valid order status transitions ──────────────────────────────────────────
 const ORDER_TRANSITIONS = {
@@ -71,7 +72,7 @@ const confirmOrder = async (orderId, user) => {
   const order = await Order.findById(orderId).populate('prospect');
   if (!order) throw Object.assign(new Error('Order not found.'), { statusCode: 404 });
 
-  if (order.status !== 'Draft') {
+  if (order.status !== 'Draft' && order.status !== 'Pending_Approval') {
     throw Object.assign(new Error(`Order is already ${order.status}. Cannot re-confirm.`), { statusCode: 422 });
   }
 
@@ -115,15 +116,52 @@ const confirmOrder = async (orderId, user) => {
       order.designStatus= 'Pending';
       order.designRequestedAt = new Date();
       order.addTimelineEvent('Design Request Created', 'Design required. Pending assignment to designer.', user);
+
+      try {
+        const assignment = await assignRoundRobin('DESIGNER', order._id, null, user._id);
+        order.designAssignedTo = assignment.assignedTo;
+        order.addTimelineEvent('Designer Assigned', 'Automatically assigned designer via Round Robin', user);
+      } catch (err) {
+        console.error('Failed to assign designer automatically:', err);
+      }
     }
 
     // Move prospect to Won
     if (order.prospect) {
       await Prospect.findByIdAndUpdate(order.prospect._id || order.prospect, {
         stage: 'Won',
+        status: 'Order Confirmed',
+        linkedOrderId: order._id,
         probability: 100,
         lastInteraction: new Date(),
+        lastInteractionNote: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`,
+        $push: {
+          interactions: {
+            type: 'Order',
+            date: new Date(),
+            notes: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`
+          }
+        }
       });
+    } else if (order.clientSnapshot?.phone) {
+      await Prospect.findOneAndUpdate(
+        { phone: order.clientSnapshot.phone },
+        {
+          stage: 'Won',
+          status: 'Order Confirmed',
+          linkedOrderId: order._id,
+          probability: 100,
+          lastInteraction: new Date(),
+          lastInteractionNote: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`,
+          $push: {
+            interactions: {
+              type: 'Order',
+              date: new Date(),
+              notes: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`
+            }
+          }
+        }
+      );
     }
   }
 
@@ -162,9 +200,26 @@ const updateOrderStatus = async (orderId, targetStatus, user, extraData = {}) =>
       order.designStatus = 'Approved';
       order.designApprovedAt = new Date();
       order.addTimelineEvent('Design Approved', 'Client approved the design. Ready for production.', user);
+
+      try {
+        const assignment = await assignRoundRobin('OPERATION_MANAGER', order._id, null, user._id);
+        order.operationsManager = assignment.assignedTo;
+        order.addTimelineEvent('Operations Manager Assigned', 'Automatically assigned operations manager via Round Robin', user);
+      } catch (err) {
+        console.error('Failed to assign ops manager automatically:', err);
+      }
       break;
 
     case 'In_Production':
+      if (!order.operationsManager && !order.designRequired) {
+        try {
+          const assignment = await assignRoundRobin('OPERATION_MANAGER', order._id, null, user._id);
+          order.operationsManager = assignment.assignedTo;
+          order.addTimelineEvent('Operations Manager Assigned', 'Automatically assigned operations manager via Round Robin', user);
+        } catch (err) {
+          console.error('Failed to assign ops manager automatically:', err);
+        }
+      }
       order.addTimelineEvent('Production Started', 'Order entered production/execution phase.', user);
       break;
 
@@ -194,6 +249,83 @@ const updateOrderStatus = async (orderId, targetStatus, user, extraData = {}) =>
 
   if (forced) {
     order.addTimelineEvent('Status Force-Updated', `${previousStatus} → ${targetStatus} (forced by ${user.role})`, user);
+  }
+
+  // Automatic prospect pipeline update
+  if (targetStatus === 'Completed') {
+    if (order.prospect) {
+      await Prospect.findByIdAndUpdate(order.prospect._id || order.prospect, {
+        stage: 'Won',
+        status: 'Sale Closed',
+        linkedOrderId: order._id,
+        probability: 100,
+        lastInteraction: new Date(),
+        lastInteractionNote: `Sale Closed - Order ID: ${order.orderNumber || order._id}`,
+        $push: {
+          interactions: {
+            type: 'Order',
+            date: new Date(),
+            notes: `Sale Closed - Order ID: ${order.orderNumber || order._id}`
+          }
+        }
+      });
+    } else if (order.clientSnapshot?.phone) {
+      await Prospect.findOneAndUpdate(
+        { phone: order.clientSnapshot.phone },
+        {
+          stage: 'Won',
+          status: 'Sale Closed',
+          linkedOrderId: order._id,
+          probability: 100,
+          lastInteraction: new Date(),
+          lastInteractionNote: `Sale Closed - Order ID: ${order.orderNumber || order._id}`,
+          $push: {
+            interactions: {
+              type: 'Order',
+              date: new Date(),
+              notes: `Sale Closed - Order ID: ${order.orderNumber || order._id}`
+            }
+          }
+        }
+      );
+    }
+  } else if (targetStatus === 'Confirmed') {
+    if (order.prospect) {
+      await Prospect.findByIdAndUpdate(order.prospect._id || order.prospect, {
+        stage: 'Won',
+        status: 'Order Confirmed',
+        linkedOrderId: order._id,
+        probability: 100,
+        lastInteraction: new Date(),
+        lastInteractionNote: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`,
+        $push: {
+          interactions: {
+            type: 'Order',
+            date: new Date(),
+            notes: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`
+          }
+        }
+      });
+    } else if (order.clientSnapshot?.phone) {
+      await Prospect.findOneAndUpdate(
+        { phone: order.clientSnapshot.phone },
+        {
+          stage: 'Won',
+          status: 'Order Confirmed',
+          linkedOrderId: order._id,
+          probability: 100,
+          lastInteraction: new Date(),
+          lastInteractionNote: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`,
+          $push: {
+            interactions: {
+              type: 'Order',
+              date: new Date(),
+              notes: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`
+            }
+          }
+        }
+      );
+    }
   }
 
   await order.save();

@@ -14,6 +14,14 @@ const startServer = async () => {
     console.log(`   API: http://localhost:${PORT}/api`);
   });
 
+  // 3. Initialize Socket.IO
+  const socketManager = require('./socket/socketManager');
+  const io = socketManager.initSocket(server);
+  
+  // Inject socket instance into NotificationWorkflowService
+  const notificationWorkflow = require('./services/workflows/notificationWorkflow.service');
+  notificationWorkflow.setSocketIo(io);
+
   // Handle port already in use
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {

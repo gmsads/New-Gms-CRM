@@ -1,4 +1,11 @@
 const Followup = require('../../domains/sales/followups/followup.model');
+const followupWorkflow = require('../../services/workflows/followupWorkflow.service');
+
+const getReqContext = (req) => ({
+  ipAddress: req.ip,
+  userAgent: req.headers['user-agent'],
+  device: req.headers['user-agent']
+});
 
 exports.list = async (req, res) => {
   try {
@@ -24,8 +31,7 @@ exports.list = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const followup = new Followup(req.body);
-    await followup.save();
+    const followup = await followupWorkflow.createFollowup(req.body, req.user._id, getReqContext(req));
     res.status(201).json({ success: true, data: followup });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -34,13 +40,7 @@ exports.create = async (req, res) => {
 
 exports.complete = async (req, res) => {
   try {
-    const { outcome, notes, nextFollowUpDate, nextAction } = req.body;
-    const followup = await Followup.findByIdAndUpdate(
-      req.params.id,
-      { status: 'Completed', completedAt: new Date(), outcome, notes, nextFollowUpDate, nextAction },
-      { new: true }
-    );
-    if (!followup) return res.status(404).json({ success: false, message: 'Not found' });
+    const followup = await followupWorkflow.completeFollowup(req.params.id, req.body, req.user._id, getReqContext(req));
     res.json({ success: true, data: followup });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });

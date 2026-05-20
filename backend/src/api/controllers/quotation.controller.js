@@ -1,15 +1,27 @@
 const Quotation = require('../../domains/sales/quotations/quotation.model');
+const quotationWorkflow = require('../../services/workflows/quotationWorkflow.service');
+
+const getReqContext = (req) => ({
+  ipAddress: req.ip,
+  userAgent: req.headers['user-agent'],
+  device: req.headers['user-agent']
+});
 
 exports.list = async (req, res) => {
   try {
     const { status, assignedTo } = req.query;
     const filter = {};
     if (status) filter.status = status;
-    if (assignedTo) filter.assignedTo = assignedTo;
+    if (assignedTo) filter.executive = assignedTo;
+    
+    // Role based filtering
+    if (req.user.role === 'SALES_EXEC') {
+      filter.executive = req.user._id;
+    }
+    
     const quotations = await Quotation.find(filter)
       .populate('prospect', 'name phone company')
-      .populate('client', 'name')
-      .populate('createdBy', 'name')
+      .populate('executive', 'name')
       .sort({ createdAt: -1 })
       .lean();
     res.json({ success: true, data: quotations });
@@ -20,8 +32,7 @@ exports.list = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const quotation = new Quotation(req.body);
-    await quotation.save();
+    const quotation = await quotationWorkflow.createQuotation(req.body, req.user._id, getReqContext(req));
     res.status(201).json({ success: true, data: quotation });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -30,8 +41,7 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const quotation = await Quotation.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!quotation) return res.status(404).json({ success: false, message: 'Not found' });
+    const quotation = await quotationWorkflow.updateQuotation(req.params.id, req.body, req.user._id, getReqContext(req));
     res.json({ success: true, data: quotation });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -40,11 +50,7 @@ exports.update = async (req, res) => {
 
 exports.updateStatus = async (req, res) => {
   try {
-    const { status, sentVia } = req.body;
-    const update = { status };
-    if (status === 'Sent') { update.sentAt = new Date(); if (sentVia) update.sentVia = sentVia; }
-    const quotation = await Quotation.findByIdAndUpdate(req.params.id, update, { new: true });
-    if (!quotation) return res.status(404).json({ success: false, message: 'Not found' });
+    const quotation = await quotationWorkflow.updateStatus(req.params.id, req.body, req.user._id, getReqContext(req));
     res.json({ success: true, data: quotation });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
