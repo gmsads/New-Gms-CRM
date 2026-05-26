@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, X, Building2, MapPin, Wrench, IndianRupee, Clock, Star } from 'lucide-react';
-import api from '../../../../../services/api';
-import { useAuth } from '../../../../../context/AuthContext';
+import api from '../../../../services/api';
+import { useAuth } from '../../../../context/AuthContext';
 
 const AddVendor = () => {
   const navigate = useNavigate();

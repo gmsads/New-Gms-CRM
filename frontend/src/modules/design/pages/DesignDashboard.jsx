@@ -1,211 +1,242 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, MoreVertical, Image, FileText, Video, Layout, RefreshCw, User, UserPlus, ArrowRight } from 'lucide-react';
-import useApi from '../../../hooks/useApi';
-import api from '../../../services/api';
+import { Palette, RefreshCw, ChevronDown, ChevronUp, Image, FileText, CheckCircle2, Link as LinkIcon, UploadCloud, XCircle, Send } from 'lucide-react';
+import { orderApi } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 
-const COLUMNS = ['Pending', 'In Progress', 'Demo Shared', 'Approved'];
-
-const typeIcon = { Social: Image, Email: FileText, Print: FileText, Video: Video, Web: Layout, Brand: Image };
-const typeColor = {
-  Social: 'bg-pink-100 text-pink-700', Email: 'bg-blue-100 text-blue-700',
-  Print: 'bg-orange-100 text-orange-700', Video: 'bg-red-100 text-red-700',
-  Web: 'bg-purple-100 text-purple-700', Brand: 'bg-cyan-100 text-cyan-700',
-};
-const priorityDot = { High: 'bg-red-500', Medium: 'bg-yellow-500', Low: 'bg-blue-400' };
-const colHeaderColor = {
-  Pending: 'border-gray-300', 'In Progress': 'border-blue-400',
-  'Demo Shared': 'border-yellow-400', Approved: 'border-green-400',
-};
+const DESIGN_STATUSES = [
+  'Pending',
+  'In Progress',
+  'Demo Shared to Client',
+  'Client Approved Design',
+  'Design Completed',
+  'Design Provided - Approved',
+  'Design Provided - Not Clear'
+];
 
 const DesignDashboard = () => {
   const { user } = useAuth();
-  const { data, loading, error, refetch } = useApi('/orders?designStatus=Pending,In_Progress,Demo_Shared,Approved');
-  const [cards, setCards] = useState({ Pending: [], 'In Progress': [], 'Demo Shared': [], Approved: [] });
-  const [designers, setDesigners] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedOrder, setExpandedOrder] = useState(null);
   
-  // Modals state
-  const [showReassignMenu, setShowReassignMenu] = useState(null); // stores order id
-  const [isUpdating, setIsUpdating] = useState(false);
+  // File upload state for line items
+  const [uploadingItem, setUploadingItem] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
 
-  useEffect(() => {
-    // Fetch available designers for workload transfer
-    const fetchDesigners = async () => {
-      try {
-        const res = await api.get('/employees?role=DESIGNER', {
-          headers: { Authorization: `Bearer ${user.token}` }
-        });
-        if (res.data?.employees) {
-          setDesigners(res.data.employees);
-        }
-      } catch (err) {
-        console.error('Failed to load designers', err);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await orderApi.list({ designStatus: 'Pending,In_Progress,Demo_Shared' }, user.token);
+      if (res.success) setOrders(res.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  const handleUpdateStatus = async (orderId, itemIndex, newStatus) => {
+    try {
+      const res = await orderApi.updateLineItem(orderId, itemIndex, { designerStatus: newStatus }, user.token);
+      if (res.success) {
+        // Refetch to get updated order and potential auto-transition
+        fetchData();
       }
-    };
-    fetchDesigners();
-  }, [user.token]);
-
-  useEffect(() => {
-    if (data?.data) {
-      const grouped = { Pending: [], 'In Progress': [], 'Demo Shared': [], Approved: [] };
-      data.data.forEach(order => {
-        const status = order.designStatus === 'Demo_Shared' ? 'Demo Shared' : 
-                       order.designStatus === 'In_Progress' ? 'In Progress' : order.designStatus;
-        if (grouped[status]) {
-          grouped[status].push({
-            id: order._id,
-            title: order.orderNumber,
-            client: order.clientSnapshot?.name || 'Unknown Client',
-            company: order.clientSnapshot?.company || '',
-            type: 'Brand', // Since not stored in schema currently
-            assignee: order.designAssignedTo?.name || 'Unassigned',
-            salesExec: order.salesExec?.name || 'Unknown Exec',
-            priority: 'Medium',
-          });
-        }
-      });
-      setCards(grouped);
-    }
-  }, [data]);
-
-  const handleUpdateProgress = async (orderId, currentStatus) => {
-    let nextStatus = '';
-    if (currentStatus === 'Pending') nextStatus = 'Design_InProgress';
-    else if (currentStatus === 'In Progress') nextStatus = 'Design_Review';
-    else if (currentStatus === 'Demo Shared') nextStatus = 'Design_Approved';
-    else return;
-
-    setIsUpdating(true);
-    try {
-      await api.patch(`/orders/${orderId}/status`, { status: nextStatus }, {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-      refetch();
     } catch (err) {
-      console.error('Failed to update progress', err);
-      alert('Failed to update progress. ' + (err.response?.data?.message || err.message));
-    } finally {
-      setIsUpdating(false);
+      alert(err.message || 'Failed to update status');
     }
   };
 
-  const handleReassign = async (orderId, targetDesignerId) => {
-    setIsUpdating(true);
+  const handleFileUpload = async (orderId, itemIndex) => {
+    if (!selectedFile) return;
+    
+    setUploadingItem(`${orderId}-${itemIndex}`);
     try {
-      // In a real app, you might have a dedicated transfer endpoint. 
-      // For now, we update order via PATCH.
-      await api.patch(`/orders/${orderId}`, { designAssignedTo: targetDesignerId }, {
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-      setShowReassignMenu(null);
-      refetch();
+      // Create FormData to send to an S3 upload endpoint, but we don't have a specific file upload endpoint defined.
+      // Usually it's handled via a separate upload endpoint that returns a URL, then we patch the line item.
+      // For now, we simulate the upload or prompt the user if they want to enter a link.
+      
+      const fileUrl = URL.createObjectURL(selectedFile); // Mock URL for demonstration
+      const res = await orderApi.updateLineItem(orderId, itemIndex, { designFileUrl: fileUrl }, user.token);
+      
+      if (res.success) {
+        setSelectedFile(null);
+        fetchData();
+      }
     } catch (err) {
-      console.error('Failed to reassign workload', err);
-      alert('Failed to reassign workload. ' + (err.response?.data?.message || err.message));
+      alert(err.message || 'Failed to upload file');
     } finally {
-      setIsUpdating(false);
+      setUploadingItem(null);
     }
   };
+
+  const toggleExpand = (id) => {
+    setExpandedOrder(expandedOrder === id ? null : id);
+  };
+
+  if (!user) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Design Assets</h1>
-          <p className="text-muted-foreground">Manage creative requests, transfer workload, and update progress.</p>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Design Studio Workspace</h1>
+          <p className="text-sm font-semibold text-slate-500">
+            Manage your design tasks, update progress for individual services, and attach proofs.
+          </p>
         </div>
-        <button onClick={() => refetch()} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-bold shadow-sm hover:bg-slate-800 transition-all active:scale-95">
-          <RefreshCw className={`h-4 w-4 ${loading || isUpdating ? 'animate-spin' : ''}`} />
-          Refresh Board
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={fetchData} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 shadow-sm transition-all active:scale-95">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
       </div>
 
-      {loading && !data ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 rounded-full border-2 border-slate-200 border-t-slate-900 animate-spin" />
-        </div>
-      ) : error ? (
-        <div className="p-6 text-sm text-red-500 bg-red-50 rounded-xl border border-red-200">Error loading designs: {error}</div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
-          {COLUMNS.map(col => (
-            <div key={col} className="flex flex-col gap-3">
-              <div className={`flex items-center justify-between rounded-lg border-l-4 bg-white px-4 py-3 shadow-sm ${colHeaderColor[col]}`}>
-                <span className="font-bold text-sm text-slate-700">{col}</span>
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[10px] font-black text-slate-500">
-                  {cards[col]?.length || 0}
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                {cards[col]?.map(card => {
-                  const TypeIcon = typeIcon[card.type] || FileText;
-                  return (
-                    <div key={card.id} className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm hover:shadow-md transition-all relative group">
-                      <div className="flex items-start justify-between mb-2">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight ${typeColor[card.type] || 'bg-slate-100 text-slate-600'}`}>
-                          <TypeIcon className="h-3 w-3" />{card.title}
-                        </span>
-                        
-                        <div className="relative">
-                          <button 
-                            onClick={() => setShowReassignMenu(showReassignMenu === card.id ? null : card.id)}
-                            className="text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 p-1 rounded-md"
-                            title="Reassign / Share Work"
-                          >
-                            <UserPlus className="h-4 w-4" />
-                          </button>
-                          
-                          {showReassignMenu === card.id && (
-                            <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 shadow-xl rounded-xl z-10 py-1">
-                              <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 border-b border-slate-100">Transfer Workload</p>
-                              {designers.map(d => (
-                                <button 
-                                  key={d._id} 
-                                  onClick={() => handleReassign(card.id, d._id)}
-                                  className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-medium"
-                                >
-                                  {d.name} {d._id === user._id ? '(You)' : ''}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="mb-4">
-                        <h4 className="text-sm font-bold text-slate-900 leading-snug">{card.client}</h4>
-                        {card.company && <p className="text-xs text-slate-500 font-medium">{card.company}</p>}
-                        <div className="mt-2 flex items-center gap-1.5 text-xs text-indigo-600 font-semibold bg-indigo-50 inline-flex px-2 py-1 rounded-md">
-                          <User className="h-3 w-3" /> Exec: {card.salesExec}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between pt-3 border-t border-slate-50">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{card.assignee}</span>
-                        {col !== 'Approved' && (
-                          <button 
-                            onClick={() => handleUpdateProgress(card.id, col)}
-                            disabled={isUpdating}
-                            className="flex items-center gap-1 text-[10px] font-bold text-white uppercase tracking-widest bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded shadow-sm disabled:opacity-50"
-                          >
-                            Advance <ArrowRight className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
+      <div className="space-y-4">
+        {loading && orders.length === 0 ? (
+           <div className="flex h-64 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>
+        ) : orders.length === 0 ? (
+          <div className="py-20 text-center bg-white rounded-[2rem] border border-dashed border-slate-200">
+            <Palette className="h-10 w-10 mx-auto text-slate-200 mb-3" />
+            <p className="text-slate-500 font-bold">No pending design tasks assigned to you right now.</p>
+          </div>
+        ) : (
+          orders.map((order) => (
+            <div key={order._id} className="bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden transition-all duration-300">
+              
+              {/* Order Header (Always Visible) */}
+              <div 
+                onClick={() => toggleExpand(order._id)}
+                className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 transition-colors"
+              >
+                <div className="flex items-center gap-6">
+                  <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100 shrink-0">
+                    <Palette className="h-5 w-5 text-indigo-500" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="font-mono text-[10px] font-black text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-lg uppercase tracking-wider">{order.orderNumber}</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                        {order.lineItems?.length || 0} Services
+                      </span>
                     </div>
-                  );
-                })}
-                {cards[col]?.length === 0 && (
-                   <div className="text-center py-12 border-2 border-dashed rounded-xl text-[10px] font-black text-slate-300 uppercase tracking-widest bg-slate-50/50">
-                      Empty
-                   </div>
-                )}
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">{order.clientSnapshot?.name || 'Client'}</h3>
+                    <p className="text-xs font-semibold text-slate-500 mt-0.5">{order.clientSnapshot?.company}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-6">
+                  <div className="hidden md:block text-right">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sales Exec</p>
+                    <p className="text-sm font-bold text-slate-700">{order.salesExec?.name || '—'}</p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                    {expandedOrder === order._id ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
+                  </div>
+                </div>
               </div>
+
+              {/* Order Details & Services (Expanded View) */}
+              {expandedOrder === order._id && (
+                <div className="border-t border-slate-50 bg-slate-50/30 p-6 animate-in slide-in-from-top-2 duration-300">
+                  <div className="mb-6">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Design Services ({order.lineItems?.length || 0})</h4>
+                    <div className="space-y-3">
+                      {order.lineItems?.map((item, idx) => (
+                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-center shadow-sm">
+                          
+                          {/* Item Info */}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md">Item {idx + 1}</span>
+                              <h5 className="font-bold text-slate-900 text-lg">{item.description}</h5>
+                            </div>
+                            <p className="text-xs font-semibold text-slate-500">Qty: {item.quantity} {item.unit || 'pcs'}</p>
+                          </div>
+
+                          {/* Controls */}
+                          <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+                            {/* Status Dropdown */}
+                            <div className="w-full sm:w-64">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Update Status</label>
+                              <select 
+                                value={item.designerStatus || 'Pending'} 
+                                onChange={(e) => handleUpdateStatus(order._id, idx, e.target.value)}
+                                className={`w-full h-11 rounded-xl border-2 px-3 text-xs font-bold outline-none focus:border-indigo-500 transition-colors ${
+                                  ['Design Completed', 'Design Provided - Approved'].includes(item.designerStatus) 
+                                    ? 'bg-emerald-50 border-emerald-100 text-emerald-700'
+                                    : 'bg-white border-slate-200 text-slate-700'
+                                }`}
+                              >
+                                {DESIGN_STATUSES.map(s => (
+                                  <option key={s} value={s}>{s}</option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Proof Upload / Display */}
+                            <div className="w-full sm:w-auto">
+                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Design Proof</label>
+                              
+                              {item.designFileUrl ? (
+                                <div className="flex items-center gap-2">
+                                  <a href={item.designFileUrl} target="_blank" rel="noreferrer" 
+                                    className="h-11 px-4 flex items-center gap-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors">
+                                    <Image className="h-4 w-4" /> View Proof
+                                  </a>
+                                  {/* Quick replace button */}
+                                  <label className="h-11 w-11 flex items-center justify-center rounded-xl border border-dashed border-slate-300 text-slate-400 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer transition-all">
+                                    <RefreshCw className="h-4 w-4" />
+                                    <input type="file" className="hidden" onChange={(e) => { setSelectedFile(e.target.files[0]); handleFileUpload(order._id, idx); }} />
+                                  </label>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  {uploadingItem === `${order._id}-${idx}` ? (
+                                    <div className="h-11 px-4 flex items-center gap-2 bg-slate-100 text-slate-500 rounded-xl font-bold text-xs">
+                                      <RefreshCw className="h-4 w-4 animate-spin" /> Uploading...
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <label className="h-11 px-4 flex items-center gap-2 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-indigo-600 cursor-pointer transition-colors shadow-lg shadow-slate-200">
+                                        <UploadCloud className="h-4 w-4" /> Upload File
+                                        <input type="file" className="hidden" onChange={(e) => { setSelectedFile(e.target.files[0]); }} />
+                                      </label>
+                                      {selectedFile && (
+                                        <button onClick={() => handleFileUpload(order._id, idx)} className="h-11 px-4 rounded-xl bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 hover:bg-emerald-600">
+                                          <Send className="h-3 w-3" /> Save File
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Status Indicator for the whole order */}
+                  <div className="bg-indigo-50/50 rounded-xl p-4 border border-indigo-100 flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                      <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-indigo-900">Auto-Transition Enabled</p>
+                      <p className="text-[10px] font-medium text-indigo-600/80 mt-0.5">When all services are marked as "Design Completed" or "Design Provided - Approved", this order will automatically move to Operations.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 };

@@ -136,14 +136,8 @@ const verifyPayment = async (paymentId, user) => {
 
       if (verifiedTotal >= order.grandTotal * 0.5) {
         order.status = 'Confirmed';
-        order.addTimelineEvent('Order Confirmed', 'Advance threshold met after payment verification.', user);
-
-        if (order.designRequired) {
-          order.status       = 'Design_Pending';
-          order.designStatus = 'Pending';
-          order.designRequestedAt = new Date();
-          order.addTimelineEvent('Design Request Created', 'Design workflow triggered automatically.', user);
-        }
+        order.verificationStatus = 'Pending';
+        order.addTimelineEvent('Order Confirmed', 'Advance threshold met after payment verification. Awaiting Order Verification.', user);
       }
     }
 

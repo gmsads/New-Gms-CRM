@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Edit2, Truck, MapPin, Phone, Mail, Clock, Star, ShieldCheck, Briefcase, IndianRupee } from 'lucide-react';
-import api from '../../../../../services/api';
-import { useAuth } from '../../../../../context/AuthContext';
+import api from '../../../../services/api';
+import { useAuth } from '../../../../context/AuthContext';
 
 const VendorDetails = () => {
   const { id } = useParams();

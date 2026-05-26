@@ -2874,26 +2874,27 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
 
   if (!order) return null;
 
+  const hasPendingPayment = (order.paymentRecords || []).some(p => p.status === 'Pending');
   const steps = [
-    {
-      label: "Sales Mgr",
-      status: order.status === "Pending_Approval" ? "pending" : "done",
+    { 
+      label: 'Pay Verify', 
+      status: hasPendingPayment ? 'current' : (['Confirmed', 'Design_Pending', 'Design_InProgress', 'Design_Review', 'Design_Approved', 'In_Production', 'Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : 'waiting') 
     },
-    {
-      label: "Ops Mgr",
-      status: ["Draft", "Pending_Approval", "Confirmed"].includes(order.status)
-        ? "waiting"
-        : ["Delivered", "Completed"].includes(order.status)
-          ? "done"
-          : "current",
+    { 
+      label: 'Ord Verify', 
+      status: order.verificationStatus === 'Verified' ? 'done' : (order.verificationStatus === 'Pending' && !hasPendingPayment ? 'current' : 'waiting') 
     },
-    {
-      label: "Services",
-      status: ["Completed"].includes(order.status)
-        ? "done"
-        : order.status === "Ready_To_Deliver"
-          ? "current"
-          : "waiting",
+    { 
+      label: 'Designer', 
+      status: ['Approved', 'Completed', 'Not_Required'].includes(order.designStatus) ? 'done' : (order.status.startsWith('Design_') ? 'current' : 'waiting') 
+    },
+    { 
+      label: 'Ops Mgr', 
+      status: ['Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : (order.status === 'In_Production' ? 'current' : 'waiting') 
+    },
+    { 
+      label: 'Services', 
+      status: order.status === 'Completed' ? 'done' : (order.status === 'Ready_To_Deliver' || order.status === 'Delivered' ? 'current' : 'waiting') 
     },
   ];
 

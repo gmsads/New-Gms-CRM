@@ -259,8 +259,8 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
                         </span>
                       ) : (
                         <>
-                          <span className="text-xs text-muted-foreground">Paid: <span className="font-semibold text-emerald-600">₹{order.totalPaid?.toLocaleString('en-IN') || '0'}</span></span>
-                          <span className="text-xs text-muted-foreground">Balance: <span className="font-bold text-red-500">₹{( (order.grandTotal || 0) - (order.totalPaid || 0) ).toLocaleString('en-IN')}</span></span>
+                          <span className="text-xs text-muted-foreground">Received: <span className="font-semibold text-emerald-600">₹{order.totalPaid?.toLocaleString('en-IN') || '0'}</span></span>
+                          <span className="text-xs text-muted-foreground">Pending: <span className="font-bold text-red-500">₹{( (order.grandTotal || 0) - (order.totalPaid || 0) ).toLocaleString('en-IN')}</span></span>
                         </>
                       )}
                     </div>
@@ -2305,10 +2305,28 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
 
   const isVerifier = !hideVerification && ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS'].includes(user?.role);
 
+  const hasPendingPayment = (order.paymentRecords || []).some(p => p.status === 'Pending');
   const steps = [
-    { label: 'Sales Mgr', status: order.status === 'Pending_Approval' ? 'pending' : 'done' },
-    { label: 'Ops Mgr', status: ['Draft', 'Pending_Approval', 'Confirmed'].includes(order.status) ? 'waiting' : (['Delivered', 'Completed'].includes(order.status) ? 'done' : 'current') },
-    { label: 'Services', status: ['Completed'].includes(order.status) ? 'done' : (order.status === 'Ready_To_Deliver' ? 'current' : 'waiting') },
+    { 
+      label: 'Pay Verify', 
+      status: hasPendingPayment ? 'current' : (['Confirmed', 'Design_Pending', 'Design_InProgress', 'Design_Review', 'Design_Approved', 'In_Production', 'Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : 'waiting') 
+    },
+    { 
+      label: 'Ord Verify', 
+      status: order.verificationStatus === 'Verified' ? 'done' : (order.verificationStatus === 'Pending' && !hasPendingPayment ? 'current' : 'waiting') 
+    },
+    { 
+      label: 'Designer', 
+      status: ['Approved', 'Completed', 'Not_Required'].includes(order.designStatus) ? 'done' : (order.status.startsWith('Design_') ? 'current' : 'waiting') 
+    },
+    { 
+      label: 'Ops Mgr', 
+      status: ['Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : (order.status === 'In_Production' ? 'current' : 'waiting') 
+    },
+    { 
+      label: 'Services', 
+      status: order.status === 'Completed' ? 'done' : (order.status === 'Ready_To_Deliver' || order.status === 'Delivered' ? 'current' : 'waiting') 
+    },
   ];
 
   return (
@@ -2393,9 +2411,9 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
                 </div>
               ) : (
                 <div className="mt-8 pt-6 border-t border-white/10">
-                  <div className="flex justify-between text-xs font-bold mb-1"><span className="text-slate-400">Amount Paid (Verified)</span><span className="text-emerald-400">₹{order.totalPaid?.toLocaleString('en-IN')}</span></div>
+                  <div className="flex justify-between text-xs font-bold mb-1"><span className="text-slate-400">Received Payment</span><span className="text-emerald-400">₹{order.totalPaid?.toLocaleString('en-IN')}</span></div>
                   <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, ((order.totalPaid || 0) / (order.grandTotal || 1)) * 100)}%` }} /></div>
-                  <p className="text-[10px] text-slate-500 mt-2 text-right uppercase">Balance: ₹{order.balanceDue?.toLocaleString('en-IN')}</p>
+                  <p className="text-[10px] text-slate-500 mt-2 text-right uppercase">Pending: ₹{order.balanceDue?.toLocaleString('en-IN')}</p>
                 </div>
               )}
             </div>
@@ -2512,7 +2530,7 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
       <div className="w-full max-w-md rounded-2xl border bg-white shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 duration-300">
         <div className="p-6 border-b bg-slate-50 flex items-center justify-between"><div><h2 className="text-xl font-black text-slate-900 tracking-tight">Record Payment</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Order: {order?.orderNumber}</p></div><button onClick={onClose} className="h-8 w-8 rounded-full hover:bg-slate-200 flex items-center justify-center"><X className="h-5 w-5 text-slate-500" /></button></div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2"><div className="flex justify-between items-center text-[10px] font-black uppercase text-blue-400 mb-1"><span>Remaining Balance</span><span>Total Value</span></div><div className="flex justify-between items-end"><span className="text-2xl font-black text-blue-700">₹{order?.balanceDue}</span><span className="text-sm font-bold text-blue-900 opacity-60">₹{order?.grandTotal}</span></div></div>
+          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2"><div className="flex justify-between items-center text-[10px] font-black uppercase text-blue-400 mb-1"><span>Pending Payment</span><span>Received Payment</span></div><div className="flex justify-between items-end"><span className="text-2xl font-black text-blue-700">₹{order?.balanceDue}</span><span className="text-sm font-bold text-blue-900 opacity-60">₹{order?.totalPaid}</span></div></div>
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block">Amount Collected (₹) *</label><input type="number" required value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold outline-none" /></div>
             <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block">Method *</label><select value={formData.method} onChange={e => setFormData({...formData, method: e.target.value})} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold outline-none"><option value="UPI">UPI / PhonePe</option><option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option></select></div>

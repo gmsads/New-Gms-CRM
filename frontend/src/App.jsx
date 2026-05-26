@@ -20,7 +20,9 @@ import IT from './modules/it/pages/ITDashboard';
 import AdminHR from './modules/admin/pages/AdminHRControl';
 import ProductManagement from './modules/admin/pages/ProductManagement';
 import CostManagement from './modules/admin/pages/CostManagement';
-import AdminApprovals from './modules/admin/pages/ApprovalsTerminal';
+import AdvancePaymentApprovals from './modules/admin/pages/AdvancePaymentApprovals';
+import OrderVerification from './modules/admin/pages/OrderVerification';
+import PaymentVerification from './modules/admin/pages/PaymentVerification';
 import SalesApprovals from './modules/sales/pages/ApprovalsTerminal';
 import QuotationManagementList from './modules/admin/pages/QuotationManagementList';
 import QuotationBrandingChanges from './modules/admin/pages/QuotationBrandingChanges';
@@ -90,7 +92,10 @@ const AppRoutes = () => {
           
           <Route path="prospects"   element={<AdminTeamViewSwitch viewType="prospects" salesElement={<SalesProspects />} />} />
           <Route path="orders"      element={<AdminTeamViewSwitch viewType="orders" salesElement={<SalesOrders />} />} />
-          <Route path="approvals"   element={<AuthRoleSwitch admin={<AdminApprovals />} sales={<SalesApprovals />} />} />
+          <Route path="approvals/order-verification" element={<OrderVerification />} />
+          <Route path="approvals/advance-payments" element={<AdvancePaymentApprovals />} />
+          <Route path="approvals/payment-verification" element={<PaymentVerification />} />
+          <Route path="approvals"   element={<SalesApprovals />} />
           <Route path="payments"    element={<SalesPayments />} />
           <Route path="followups"   element={<SalesFollowups />} />
           <Route path="appointments" element={<AdminTeamViewSwitch viewType="appointments" salesElement={<SalesAppointments />} />} />

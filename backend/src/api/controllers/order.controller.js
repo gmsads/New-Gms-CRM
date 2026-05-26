@@ -177,17 +177,6 @@ exports.create = async (req, res) => {
       status:    'Draft',
     });
 
-    // Handle initial payment if provided
-    if (body.initialPayment && body.initialPayment.amount > 0) {
-      order.paymentRecords.push({
-        amount: body.initialPayment.amount,
-        method: body.initialPayment.method || 'Cash',
-        proofUrl: body.initialPayment.proofUrl,
-        receivedBy: req.user._id,
-        status: 'Pending'
-      });
-      order.addTimelineEvent('Payment Proof Uploaded', `Advance payment proof of ₹${body.initialPayment.amount} uploaded.`, req.user);
-    }
     // Map design status from frontend
     if (body.designStatus === 'Need Design') {
       order.designRequired = true;
@@ -211,6 +200,21 @@ exports.create = async (req, res) => {
 
     // Initial save to compute totals (via pre-save hook) and generate orderNumber
     await order.save();
+
+    // Handle initial payment if provided
+    if (body.initialPayment && body.initialPayment.amount > 0) {
+      const { recordPayment } = require('../../workflows/payment.workflow');
+      await recordPayment({
+        orderId: order._id,
+        amount: body.initialPayment.amount,
+        method: body.initialPayment.method || 'Cash',
+        proofUrl: body.initialPayment.proofUrl,
+        paymentType: 'Advance'
+      }, req.user);
+      
+      // Reload order to get updated paymentRecords before confirming
+      await order.populate('paymentRecords');
+    }
 
     // Delegate to workflow to determine if it goes to Pending_Approval or Confirmed (and triggers RoundRobin)
     const confirmedOrder = await orderWorkflow.confirmOrder(order._id, req.user, getReqContext(req));
@@ -249,6 +253,10 @@ exports.verifyOrder = async (req, res) => {
       return res.status(403).json({ success: false, message: 'You are not authorized to verify orders.' });
     }
 
+    if (order.status !== 'Confirmed') {
+      return res.status(400).json({ success: false, message: 'Order must be confirmed before it can be verified.' });
+    }
+
     order.verificationStatus = 'Verified';
     order.verifiedBy = req.user._id;
     order.verifiedByName = req.user.name;
@@ -260,6 +268,37 @@ exports.verifyOrder = async (req, res) => {
       `Verified by ${req.user.name} (${req.user.role.replace('_', ' ')}).`,
       req.user
     );
+
+    // After Order Verification, trigger the next phase
+    if (order.designRequired) {
+      const { assignRoundRobin } = require('../../domains/hr/assignment.service');
+      order.status = 'Design_Pending';
+      order.designStatus = 'Pending';
+      order.designRequestedAt = new Date();
+      order.addTimelineEvent('Design Request Created', 'Order Verified. Design required. Pending assignment to designer.', req.user);
+
+      try {
+        const assignment = await assignRoundRobin('DESIGNER', order._id, null, req.user._id);
+        order.designAssignedTo = assignment.assignedTo;
+        order.addTimelineEvent('Designer Assigned', 'Automatically assigned designer via Round Robin', req.user);
+      } catch (err) {
+        console.error('Failed to assign designer automatically:', err);
+      }
+    } else {
+      const { assignRoundRobin } = require('../../domains/hr/assignment.service');
+      order.status = 'In_Production';
+      order.addTimelineEvent('Production Started', 'Order Verified. No design required. Moving to production.', req.user);
+      
+      if (!order.operationsManager) {
+        try {
+          const assignment = await assignRoundRobin('OPERATION_MANAGER', order._id, null, req.user._id);
+          order.operationsManager = assignment.assignedTo;
+          order.addTimelineEvent('Operations Manager Assigned', 'Automatically assigned operations manager via Round Robin', req.user);
+        } catch (err) {
+          console.error('Failed to assign ops manager automatically:', err);
+        }
+      }
+    }
 
     await order.save();
 
@@ -327,23 +366,34 @@ exports.updateLineItem = async (req, res) => {
     
     await order.save();
 
+    const orderWorkflow = require('../../workflows/order.workflow');
+    const getReqContext = (req) => ({
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent'],
+      device: req.headers['user-agent']
+    });
+    const forceAdminUser = { _id: req.user._id, role: 'ADMIN', name: req.user.name };
+
+    // Check if all line items are completed by design
+    const allDesignCompleted = order.lineItems.every(li => 
+      ['Design Completed', 'Design Provided - Approved'].includes(li.designerStatus) || 
+      (!li.designerStatus) // Fallback for very old records
+    );
+    
+    if (allDesignCompleted && ['Design_Pending', 'Design_InProgress', 'Design_Review'].includes(order.status)) {
+      order.designStatus = 'Completed';
+      await order.save();
+      await orderWorkflow.updateOrderStatus(order._id, 'In_Production', forceAdminUser, {}, getReqContext(req));
+    }
+
     // Check if all line items are completed by the service team
     const allCompleted = order.lineItems.every(li => li.serviceStatus === 'completed');
     if (allCompleted && order.status !== 'Completed') {
-      const orderWorkflow = require('../../workflows/order.workflow');
-      const getReqContext = (req) => ({
-        ipAddress: req.ip,
-        userAgent: req.headers['user-agent'],
-        device: req.headers['user-agent']
-      });
-      // Force transition by mocking admin role, bypassing strict step-by-step validations
-      const forceAdminUser = { _id: req.user._id, role: 'ADMIN', name: req.user.name };
       await orderWorkflow.updateOrderStatus(order._id, 'Completed', forceAdminUser, {}, getReqContext(req));
-      const updatedOrder = await Order.findById(id);
-      return res.json({ success: true, data: updatedOrder });
     }
 
-    res.json({ success: true, data: order });
+    const updatedOrder = await Order.findById(id);
+    res.json({ success: true, data: updatedOrder });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

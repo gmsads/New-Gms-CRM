@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { Package, Truck, LayoutDashboard, CalendarClock, Briefcase, CreditCard, Users, Settings } from 'lucide-react';
-import { useAuth } from '../../../../../context/AuthContext';
+import { useAuth } from '../../../../context/AuthContext';
 
 import VendorDashboard from '../pages/VendorDashboard';
 import VendorList from '../pages/VendorList';
@@ -19,9 +19,9 @@ const VendorLayout = () => {
 
   const tabs = [
     { name: 'Overview', path: '/vendors', end: true, icon: LayoutDashboard },
+    { name: 'Categories', path: '/vendors/categories', icon: Package, restrict: true },
     { name: 'Vendor Directory', path: '/vendors/list', icon: Users },
     { name: 'Active Assignments', path: '/vendors/assignments', icon: Briefcase },
-    { name: 'Categories', path: '/vendors/categories', icon: Package, restrict: true },
     { name: 'Financials', path: '/vendors/payments', icon: CreditCard, restrict: true },
   ];
 

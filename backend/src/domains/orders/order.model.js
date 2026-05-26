@@ -11,8 +11,8 @@ const lineItemSchema = new mongoose.Schema({
   amount:      { type: Number },                                 // computed
   designerStatus: {
     type: String,
-    enum: ['designer update pending', 'reached to designer', 'work-in progress', 'completed'],
-    default: 'designer update pending'
+    enum: ['Pending', 'In Progress', 'Demo Shared to Client', 'Client Approved Design', 'Design Completed', 'Design Provided - Approved', 'Design Provided - Not Clear'],
+    default: 'Pending'
   },
   designFileUrl: { type: String },
   operationStatus: {
@@ -205,13 +205,12 @@ orderSchema.pre('save', async function () {
 
   this.advanceRequired = parseFloat((this.grandTotal * 0.5).toFixed(2));
 
-  // Recompute totals from payment records
+  // Recompute totals from payment records (only verified payments)
   const verified    = this.paymentRecords.filter(p => p.status === 'Verified');
   this.totalPaid    = verified.reduce((s, p) => s + p.amount, 0);
   
-  // Advance paid should include pending payments so approvals and dashboards show the correct entered amount
-  const activePayments = this.paymentRecords.filter(p => p.status === 'Verified' || p.status === 'Pending');
-  this.advancePaid  = activePayments.reduce((s, p) => s + p.amount, 0);
+  // Advance paid should strictly be verified payments now, per user request
+  this.advancePaid  = this.totalPaid; // Because all verified payments contribute to totalPaid
   
   this.balanceDue   = parseFloat(Math.max(0, this.grandTotal - this.totalPaid).toFixed(2));
 

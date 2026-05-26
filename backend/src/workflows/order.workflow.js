@@ -129,21 +129,7 @@ const confirmOrder = async (orderId, user) => {
     order.verificationStatus = 'Pending';
     order.addTimelineEvent('Order Confirmed', `Confirmed by ${user.role}: ${user.name}`, user);
 
-    // Trigger design workflow
-    if (order.designRequired) {
-      order.status      = 'Design_Pending';
-      order.designStatus= 'Pending';
-      order.designRequestedAt = new Date();
-      order.addTimelineEvent('Design Request Created', 'Design required. Pending assignment to designer.', user);
-
-      try {
-        const assignment = await assignRoundRobin('DESIGNER', order._id, null, user._id);
-        order.designAssignedTo = assignment.assignedTo;
-        order.addTimelineEvent('Designer Assigned', 'Automatically assigned designer via Round Robin', user);
-      } catch (err) {
-        console.error('Failed to assign designer automatically:', err);
-      }
-    }
+    // Design workflow will be triggered AFTER Order Verification.
   }
 
   // Move prospect to Won

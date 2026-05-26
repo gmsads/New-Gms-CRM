@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Filter, MoreVertical, Eye, Truck, Star, MapPin } from 'lucide-react';
-import api from '../../../../../services/api';
-import { useAuth } from '../../../../../context/AuthContext';
+import api from '../../../../services/api';
+import { useAuth } from '../../../../context/AuthContext';
 
 const VendorList = () => {
   const navigate = useNavigate();

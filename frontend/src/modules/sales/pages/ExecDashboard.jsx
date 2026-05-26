@@ -199,6 +199,8 @@ const ModalsRenderer = ({ prospectFlow, orderFlow, user, hideVerification }) => 
     {orderFlow.selectedOrder && (
       <OrderDetailsModal 
         orderId={orderFlow.selectedOrder._id || orderFlow.selectedOrder.id} 
+        onClose={() => orderFlow.setSelectedOrder(null)}
+        onPaymentUpload={(o) => { orderFlow.setSelectedOrder(null); orderFlow.setPaymentOrder(o); }}
         onVerificationSuccess={() => {
           orderFlow.setSelectedOrder(null);
           if (orderFlow.fetch) orderFlow.fetch();

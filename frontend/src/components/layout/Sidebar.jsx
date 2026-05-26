@@ -82,7 +82,7 @@ const adminMenuConfig = [
     subItems: [
       { title: 'Authority Access', path: '/operations/authority', icon: ShieldCheck },
       { title: 'Target Assignment', path: '/operations/targets', icon: Target },
-      { title: 'Order Verification', path: '/approvals?tab=OrderVerification', icon: ShieldCheck },
+      { title: 'Order Verification', path: '/approvals/order-verification', icon: ShieldCheck },
       { title: 'Task Assignments', path: '/tasks', icon: CheckSquare },
       { title: 'Vendor Management', path: '/vendors', icon: Truck },
       { title: 'Quotation Management', path: '/quotation-management/list', icon: FileText }
@@ -103,8 +103,8 @@ const adminMenuConfig = [
     icon: IndianRupee,
     path: '/finance',
     subItems: [
-      { title: 'Payment Verification', path: '/approvals?tab=Payments', icon: ShieldCheck },
-      { title: 'Advance Payment Approvals', path: '/approvals?tab=OrderApprovals', icon: ShieldCheck },
+      { title: 'Payment Verification', path: '/approvals/payment-verification', icon: ShieldCheck },
+      { title: 'Advance Payment Approvals', path: '/approvals/advance-payments', icon: ShieldCheck },
       { title: 'Transactions', path: '/finance/transactions', icon: IndianRupee },
       { title: 'Refunds', path: '/finance/refunds', icon: IndianRupee }
     ]
