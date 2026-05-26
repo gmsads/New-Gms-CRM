@@ -10,7 +10,7 @@ exports.list = async (req, res) => {
     const filter = {};
     
     // Only Managers can see INACTIVE brochures. Executives only see ACTIVE.
-    if (!['ADMIN', 'SALES_MANAGER'].includes(req.user.role)) {
+    if (!['ADMIN', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(req.user.role)) {
       filter.status = 'ACTIVE';
     }
     
@@ -57,7 +57,7 @@ const saveBase64ToFile = (req, base64String, folder, filename) => {
 // POST /api/brochures — Create new (Admin/Manager)
 exports.create = async (req, res) => {
   try {
-    if (!['ADMIN', 'SALES_MANAGER'].includes(req.user.role)) {
+    if (!['ADMIN', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
     const count = await Brochure.countDocuments();
@@ -92,7 +92,7 @@ exports.create = async (req, res) => {
 // PATCH /api/brochures/:id — Update (Admin/Manager)
 exports.update = async (req, res) => {
   try {
-    if (!['ADMIN', 'SALES_MANAGER'].includes(req.user.role)) {
+    if (!['ADMIN', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
     
@@ -122,7 +122,7 @@ exports.update = async (req, res) => {
 // DELETE /api/brochures/:id — Delete (Admin/Manager)
 exports.remove = async (req, res) => {
   try {
-    if (!['ADMIN', 'SALES_MANAGER'].includes(req.user.role)) {
+    if (!['ADMIN', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
     const brochure = await Brochure.findByIdAndDelete(req.params.id);
@@ -201,7 +201,7 @@ exports.send = async (req, res) => {
 exports.history = async (req, res) => {
   try {
     const filter = {};
-    if (req.user.role === 'SALES_EXEC') filter.sentBy = req.user._id;
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC') filter.sentBy = req.user._id;
     
     const history = await History.find(filter)
       .populate('brochure', 'title brochureId')

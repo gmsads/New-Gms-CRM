@@ -26,11 +26,12 @@ class NotificationWorkflowService {
 
     // 2. Emit via Socket.io if available
     if (this.io) {
-      // Assuming users join a room with their userId
-      this.io.to(recipient.toString()).emit('new_notification', notification);
+      // Users join a room with 'user_userId' format
+      const roomName = `user_${recipient.toString()}`;
+      this.io.to(roomName).emit('new_notification', notification);
       
       // Also emit an event to trigger dashboard refresh
-      this.io.to(recipient.toString()).emit('dashboard_update', {
+      this.io.to(roomName).emit('dashboard_update', {
         type: 'NOTIFICATION_RECEIVED',
         notification
       });

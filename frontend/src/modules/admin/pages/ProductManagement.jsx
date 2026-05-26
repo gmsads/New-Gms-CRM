@@ -35,8 +35,13 @@ const ProductManagement = () => {
         'Pragma': 'no-cache'
       };
       
-      const p1 = fetch(`/api/products?t=${timestamp}`, { headers, cache: 'no-store' }).then(r => r.json());
-      const p2 = fetch(`/api/products/categories?t=${timestamp}`, { headers, cache: 'no-store' }).then(r => r.json());
+      const parseJsonSafe = async (r) => {
+        const text = await r.text();
+        return text ? JSON.parse(text) : {};
+      };
+
+      const p1 = fetch(`/api/products?t=${timestamp}`, { headers, cache: 'no-store' }).then(parseJsonSafe);
+      const p2 = fetch(`/api/products/categories?t=${timestamp}`, { headers, cache: 'no-store' }).then(parseJsonSafe);
       
       const [pRes, cRes] = await Promise.all([p1, p2]);
       

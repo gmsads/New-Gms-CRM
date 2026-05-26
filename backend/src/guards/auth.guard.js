@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../domains/users/user.model');
+const UserPermission = require('../domains/users/user_permission.model');
 
 /**
  * protect — Verifies JWT and loads user.
@@ -39,6 +40,10 @@ const protect = async (req, res, next) => {
       });
     }
 
+    // ── ATTACH DYNAMIC PERMISSIONS ─────────────────────────
+    const perms = await UserPermission.find({ user_id: user._id }).select('permission_key scope');
+    user.permissions = perms.map(p => ({ key: p.permission_key, scope: p.scope }));
+
     req.user = user;
     next();
   } catch (err) {
@@ -58,6 +63,31 @@ const authorize = (...roles) => {
     if (!req.user || !roles.includes(req.user.role)) {
       return res.status(403).json({
         message: `Access denied. Required roles: ${roles.join(', ')}. Your role: ${req.user?.role || 'Unknown'}.`,
+      });
+    }
+    next();
+  };
+};
+
+/**
+ * requirePermission — Dynamic permission-based access control.
+ * Usage: requirePermission('TARGET_ASSIGNMENT')
+ * Also allows access if the user has ADMIN or MD_CEO roles.
+ */
+const requirePermission = (permissionKey) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ message: 'Not authorized.' });
+    }
+    // Admins bypass
+    if (['ADMIN', 'MD_CEO'].includes(req.user.role)) {
+      return next();
+    }
+    // Check dynamic permissions
+    const hasPerm = req.user.permissions?.some(p => p.key === permissionKey);
+    if (!hasPerm) {
+      return res.status(403).json({
+        message: `Access denied. Missing required permission: ${permissionKey}.`
       });
     }
     next();
@@ -95,11 +125,11 @@ const hrOnly = authorize('HR', 'ADMIN', 'MD_CEO');
 /**
  * managerOnly — Shorthand: only Managers, ADMIN, MD_CEO can proceed.
  */
-const managerOnly = authorize('SALES_MANAGER', 'ADMIN', 'MD_CEO');
+const managerOnly = authorize('SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO');
 
 /**
  * adminOnly — Shorthand: only ADMIN and MD_CEO can proceed.
  */
 const adminOnly = authorize('ADMIN', 'MD_CEO');
 
-module.exports = { protect, authorize, preventRoleEscalation, hrOnly, adminOnly, managerOnly };
+module.exports = { protect, authorize, requirePermission, preventRoleEscalation, hrOnly, adminOnly, managerOnly };

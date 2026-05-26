@@ -56,7 +56,22 @@ const quotationSchema = new mongoose.Schema({
   notes: { type: String },
   
   pdfUrl: { type: String },
-  whatsappSentAt: { type: Date }
+  whatsappSentAt: { type: Date },
+  
+  convertedToOrder: { type: Boolean, default: false },
+  convertedOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+  convertedAt: { type: Date },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  sentBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  sentAt: { type: Date },
+  lastModifiedAt: { type: Date },
+  activityLogs: [{
+    action: { type: String },
+    performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    timestamp: { type: Date, default: Date.now },
+    notes: { type: String }
+  }]
 }, { timestamps: true, optimisticConcurrency: true });
 
 const softDeletePlugin = require('../../../utils/softDelete.plugin');

@@ -40,15 +40,74 @@ class ProspectWorkflowService {
     return prospect;
   }
 
-  async updateStage(id, stage, actorId, reqContext = {}) {
+  async updateStage(id, updateData, actorId, reqContext = {}) {
     const oldProspect = await Prospect.findById(id).lean();
     if (!oldProspect || oldProspect.softDelete?.isDeleted) throw new Error('Prospect not found');
 
+    const data = typeof updateData === 'string' ? { stage: updateData } : (updateData || {});
+    const updateFields = {
+      updatedBy: actorId,
+      lastInteraction: new Date()
+    };
+
+    if (data.stage) {
+      updateFields.stage = data.stage;
+    }
+
+    if (data.status) {
+      updateFields.status = data.status;
+      if (data.status === 'Canceled') {
+        updateFields.stage = 'Lost';
+      } else if (data.status === 'Sale Confirmed' || data.status === 'Order Confirmed') {
+        updateFields.stage = 'Won';
+      }
+    }
+
+    if (data.date) {
+      updateFields.nextFollowUpDate = new Date(data.date);
+    } else if (['Canceled', 'Sale Confirmed', 'Order Confirmed'].includes(data.status)) {
+      updateFields.nextFollowUpDate = null;
+    }
+
+    if (data.reason) {
+      updateFields.cancelReason = data.reason;
+    }
+
+    const notesStr = data.remark || (data.status === 'Canceled' ? `Prospect Canceled: ${data.reason || ''}` : data.status === 'Sale Confirmed' ? `Sale Confirmed - Order ID: ${data.orderId || ''}` : '');
+    if (notesStr) {
+      updateFields.lastInteractionNote = notesStr;
+    }
+
+    const updateQuery = { $set: updateFields };
+
+    if (notesStr) {
+      updateQuery.$push = {
+        interactions: {
+          type: data.status || 'Follow-up',
+          date: new Date(),
+          notes: notesStr
+        }
+      };
+    }
+
+    if (data.orderId) {
+      const Order = require('../../domains/orders/order.model');
+      const orderDoc = await Order.findOne({ orderNumber: data.orderId });
+      if (orderDoc) {
+        updateFields.linkedOrderId = orderDoc._id;
+      }
+    }
+
     const prospect = await Prospect.findByIdAndUpdate(
       id,
-      { stage, lastInteraction: new Date(), updatedBy: actorId },
+      updateQuery,
       { new: true }
     ).lean();
+
+    if (data.status === 'Sale Confirmed' || data.status === 'Order Confirmed') {
+      const appointmentService = require('../appointment.service');
+      await appointmentService.cancelActiveAppointmentsForProspect(id, actorId);
+    }
 
     await auditWorkflow.trackUpdate('Prospect', id, actorId, oldProspect, prospect, reqContext);
 

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Prospect = require('../../domains/sales/prospects/prospect.model');
+const Order = require('../../domains/orders/order.model');
 const prospectWorkflow = require('../../services/workflows/prospectWorkflow.service');
 
 const getReqContext = (req) => ({
@@ -16,10 +17,16 @@ exports.list = async (req, res) => {
     if (stage) filter.stage = stage;
     if (priority) filter.priority = priority;
     
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       filter.assignedTo = req.user._id;
     } else if (assignedTo) {
-      filter.assignedTo = assignedTo;
+      if (typeof assignedTo === 'string' && assignedTo.includes(',')) {
+        filter.assignedTo = { $in: assignedTo.split(',').map(id => id.trim()) };
+      } else if (Array.isArray(assignedTo)) {
+        filter.assignedTo = { $in: assignedTo };
+      } else {
+        filter.assignedTo = assignedTo;
+      }
     }
     if (search) filter.$or = [
       { name: { $regex: search, $options: 'i' } },
@@ -50,8 +57,43 @@ exports.searchByPhone = async (req, res) => {
       .populate('assignedTo', 'name email')
       .lean();
       
-    if (!prospect) return res.json({ success: true, found: false });
-    res.json({ success: true, found: true, data: prospect });
+    if (prospect) {
+      return res.json({ success: true, found: true, type: 'prospect', data: prospect });
+    }
+
+    // Fallback: search in Orders collection
+    const orderConditions = [];
+    if (phone) orderConditions.push({ 'clientSnapshot.phone': phone });
+    if (company) orderConditions.push({ 'clientSnapshot.company': { $regex: new RegExp(`^${company}$`, 'i') } });
+
+    const order = await Order.findOne({ $or: orderConditions, 'softDelete.isDeleted': { $ne: true } })
+      .populate('salesExec', 'name email role')
+      .lean();
+
+    if (order) {
+      // Map order clientSnapshot + metadata into a prospect-like structure
+      const mappedData = {
+        _id: order._id,
+        id: order._id,
+        name: order.clientSnapshot?.name || 'N/A',
+        phone: order.clientSnapshot?.phone || 'N/A',
+        company: order.clientSnapshot?.company || 'N/A',
+        email: order.clientSnapshot?.email || 'N/A',
+        location: order.deliveryAddress || 'N/A',
+        priority: 'N/A',
+        clientType: order.orderType || 'Retail',
+        source: 'Order Database',
+        assignedTo: order.salesExec || null,
+        executiveName: order.salesExec?.name || 'Not Assigned',
+        requirement: {
+          service: order.lineItems?.map(item => item.description).join(', ') || 'N/A',
+          notes: `Migrated from order ${order.orderNumber || 'N/A'}`
+        }
+      };
+      return res.json({ success: true, found: true, type: 'order', data: mappedData });
+    }
+
+    res.json({ success: true, found: false });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -61,7 +103,7 @@ exports.searchByPhone = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const data = { ...req.body };
-    if (!data.assignedTo && (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC')) {
+    if (!data.assignedTo && (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC')) {
       data.assignedTo = req.user._id;
     }
     const prospect = await prospectWorkflow.createProspect(data, req.user._id, getReqContext(req));
@@ -86,8 +128,7 @@ exports.update = async (req, res) => {
 // PATCH /api/prospects/:id/stage — move pipeline stage
 exports.updateStage = async (req, res) => {
   try {
-    const { stage } = req.body;
-    const prospect = await prospectWorkflow.updateStage(req.params.id, stage, req.user._id, getReqContext(req));
+    const prospect = await prospectWorkflow.updateStage(req.params.id, req.body, req.user._id, getReqContext(req));
     res.json({ success: true, data: prospect });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
@@ -118,17 +159,17 @@ exports.remove = async (req, res) => {
 exports.stats = async (req, res) => {
   try {
     const filter = { 'softDelete.isDeleted': { $ne: true } };
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       filter.assignedTo = new mongoose.Types.ObjectId(req.user._id);
     }
 
     const [total, inProgress, won, lost, hot, followUps, appointmentStage] = await Promise.all([
       Prospect.countDocuments(filter),
-      Prospect.countDocuments({ ...filter, status: 'In-progress' }),
+      Prospect.countDocuments({ ...filter, stage: { $nin: ['Won', 'Lost'] }, status: { $nin: ['Canceled', 'Order Confirmed', 'Sale Confirmed'] } }),
       Prospect.countDocuments({ ...filter, stage: 'Won' }),
       Prospect.countDocuments({ ...filter, stage: 'Lost' }),
       Prospect.countDocuments({ ...filter, priority: 'Hot' }),
-      Prospect.countDocuments({ ...filter, stage: 'Follow-up' }),
+      Prospect.countDocuments({ ...filter, nextFollowUpDate: { $ne: null }, stage: { $nin: ['Won', 'Lost'] }, status: { $nin: ['Canceled', 'Order Confirmed', 'Sale Confirmed'] } }),
       Prospect.countDocuments({ ...filter, stage: 'Appointment' }),
     ]);
 

@@ -84,6 +84,7 @@ const productSchema = new mongoose.Schema(
     
     // Financial Intelligence Engines
     pricingRules:  pricingRuleSchema,
+    clientTypePricing: { type: Map, of: Number, default: {} },
     costBreakdown: { type: Map, of: Number, default: {} },
     totalBaseCost: { type: Number, default: 0 },
     

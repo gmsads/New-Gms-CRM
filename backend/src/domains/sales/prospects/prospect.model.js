@@ -28,7 +28,7 @@ const prospectSchema = new mongoose.Schema(
     // Status / Lifecycle
     status: {
       type: String,
-      enum: ['In-progress', 'Canceled', 'Sale Closed', 'Order Confirmed'],
+      enum: ['In-progress', 'Canceled', 'Sale Confirmed', 'Order Confirmed', 'Active', 'Pending', 'Completed'],
       default: 'In-progress'
     },
     cancelReason: { type: String },
@@ -101,6 +101,9 @@ const prospectSchema = new mongoose.Schema(
     quotationSent: { type: Boolean, default: false },
     appointmentCreated: { type: Boolean, default: false },
 
+    gstNumber: { type: String, trim: true },
+    convertedToOrder: { type: Boolean, default: false },
+    convertedDate: { type: Date }
   },
   { timestamps: true, optimisticConcurrency: true }
 );

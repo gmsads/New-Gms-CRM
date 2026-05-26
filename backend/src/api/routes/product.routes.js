@@ -16,8 +16,14 @@ router.post('/categories', authorize('ADMIN', 'SALES_MANAGER'), productControlle
 router.patch('/categories/:id/status', authorize('ADMIN', 'SALES_MANAGER'), productController.updateCategoryStatus);
 router.delete('/categories/:id', authorize('ADMIN', 'SALES_MANAGER'), productController.deleteCategory);
 
+// ── Client Types / Cost Categories ──────────────────────────────────────────
+router.get('/client-types', productController.getClientTypes);
+router.post('/client-types', authorize('ADMIN', 'SALES_MANAGER'), productController.createClientType);
+router.delete('/client-types/:id', authorize('ADMIN', 'SALES_MANAGER'), productController.deleteClientType);
+
 // ── Pricing Engine ──────────────────────────────────────────────────────────
 router.post('/calculate-price', productController.calculatePrice);
+router.get('/price-engine', productController.priceEngine);
 
 // ── Products ────────────────────────────────────────────────────────────────
 router.get('/', productController.listProducts);

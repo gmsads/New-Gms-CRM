@@ -55,10 +55,19 @@ exports.getDashboardStats = async (req, res) => {
         { $match: filter },
         { $unwind: '$lineItems' },
         {
+          $lookup: {
+            from: 'orderservices',
+            localField: 'lineItems',
+            foreignField: '_id',
+            as: 'service'
+          }
+        },
+        { $unwind: '$service' },
+        {
           $group: {
-            _id: '$lineItems.description',
-            quantity: { $sum: '$lineItems.quantity' },
-            revenue: { $sum: '$lineItems.amount' }
+            _id: '$service.description',
+            quantity: { $sum: '$service.quantity' },
+            revenue: { $sum: '$service.amount' }
           }
         },
         { $sort: { quantity: -1 } }

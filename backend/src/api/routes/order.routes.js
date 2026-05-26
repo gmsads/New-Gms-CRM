@@ -48,5 +48,6 @@ router.patch('/:id/status',
 router.patch('/:id/line-items/:itemIndex', can('orders:update'), ctrl.updateLineItem);
 router.patch('/:id', can('orders:update'), ctrl.update);
 router.post('/:id/payments', can('orders:update'), ctrl.addPayment);
+router.post('/:id/verify', can('orders:update'), ctrl.verifyOrder);
 
 module.exports = router;

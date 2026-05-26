@@ -11,7 +11,7 @@ exports.list = async (req, res) => {
     if (orderId)     filter.order       = orderId;
     if (collectedBy) filter.collectedBy = collectedBy;
 
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       filter.collectedBy = new mongoose.Types.ObjectId(req.user._id);
     }
 
@@ -103,7 +103,7 @@ exports.pendingVerification = async (req, res) => {
     const filter = { status: 'Pending' };
     
     // Sales exec only sees their own pending payments
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       filter.collectedBy = new mongoose.Types.ObjectId(req.user._id);
     }
 

@@ -53,10 +53,16 @@ exports.getLeaves = async (req, res) => {
   try {
     const { status, employeeId, leaveType, page = 1, limit = 20 } = req.query;
     const filter = {};
-    if (status) filter.status = status;
+    if (status) {
+      if (status.includes(',')) {
+        filter.status = { $in: status.split(',') };
+      } else {
+        filter.status = status;
+      }
+    }
     if (leaveType) filter.leaveType = leaveType;
     // Employees can only see their own
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') filter.employee = req.user._id;
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') filter.employee = req.user._id;
     else if (employeeId) filter.employee = employeeId;
 
     const skip = (page - 1) * limit;

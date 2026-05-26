@@ -11,46 +11,47 @@
 const PERMISSIONS = {
 
   // ── Prospects ───────────────────────────────────────────────────────────────
-  'prospects:create': ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
-  'prospects:read':   ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO', 'AGENT'],
-  'prospects:update': ['SALES_EXEC', 'SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'prospects:delete': ['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'prospects:search': ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO', 'AGENT'],
+  'prospects:create': ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
+  'prospects:read':   ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO', 'AGENT'],
+  'prospects:update': ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'prospects:delete': ['SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'prospects:search': ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO', 'AGENT'],
 
   // ── Orders ──────────────────────────────────────────────────────────────────
-  'orders:create':    ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
-  'orders:read':      ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'OPERATION_EXEC', 'OPERATION_MANAGER', 'DESIGNER', 'ADMIN', 'MD_CEO'],
-  'orders:update':    ['SALES_EXEC', 'SALES_MANAGER', 'DESIGNER', 'OPERATION_EXEC', 'OPERATION_MANAGER', 'ADMIN', 'MD_CEO'],
-  'orders:cancel':    ['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'orders:confirm':   ['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'orders:create':    ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
+  'orders:read':      ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS', 'HR', 'FIELD_EXEC', 'OPERATION_EXEC', 'OPERATION_MANAGER', 'DESIGNER', 'ADMIN', 'MD_CEO'],
+  'orders:update':    ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS', 'HR', 'DESIGNER', 'OPERATION_EXEC', 'OPERATION_MANAGER', 'ADMIN', 'MD_CEO'],
+  'orders:cancel':    ['SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'orders:confirm':   ['SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
   'orders:approve_low_advance': ['ADMIN', 'MD_CEO'],
+  'orders:verify_sales_manager': ['SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS', 'HR', 'ADMIN', 'MD_CEO'],
 
   // ── Payments ─────────────────────────────────────────────────────────────────
-  'payments:collect': ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
-  'payments:verify':  ['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'payments:reject':  ['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'payments:read':    ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
+  'payments:collect': ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
+  'payments:verify':  ['SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS', 'ADMIN', 'MD_CEO'],
+  'payments:reject':  ['SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS', 'ADMIN', 'MD_CEO'],
+  'payments:read':    ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
 
   // ── Quotations ───────────────────────────────────────────────────────────────
-  'quotations:create': ['SALES_EXEC', 'SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'quotations:send':   ['SALES_EXEC', 'SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'quotations:read':   ['SALES_EXEC', 'SALES_MANAGER', 'ADMIN', 'MD_CEO', 'AGENT'],
+  'quotations:create': ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'quotations:send':   ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'quotations:read':   ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO', 'AGENT'],
 
   // ── Design ───────────────────────────────────────────────────────────────────
-  'design:request':   ['SALES_EXEC', 'SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'design:assign':    ['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'design:update':    ['DESIGNER', 'SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'design:approve':   ['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
-  'design:read':      ['SALES_EXEC', 'SALES_MANAGER', 'DESIGNER', 'OPERATION_EXEC', 'ADMIN', 'MD_CEO'],
+  'design:request':   ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'design:assign':    ['SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'design:update':    ['DESIGNER', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'design:approve':   ['SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'design:read':      ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'DESIGNER', 'OPERATION_EXEC', 'ADMIN', 'MD_CEO'],
 
   // ── Follow-ups ────────────────────────────────────────────────────────────────
-  'followups:create': ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
-  'followups:read':   ['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
-  'followups:complete':['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
+  'followups:create': ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
+  'followups:read':   ['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
+  'followups:complete':['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
 
   // ── Appointments ─────────────────────────────────────────────────────────────
-  'appointments:create':['SALES_EXEC', 'SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
-  'appointments:verify':['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'appointments:create':['SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'ADMIN', 'MD_CEO'],
+  'appointments:verify':['SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
 
   // ── Operations ────────────────────────────────────────────────────────────────
   'operations:read':   ['OPERATION_EXEC', 'OPERATION_MANAGER', 'ADMIN', 'MD_CEO'],
@@ -64,9 +65,9 @@ const PERMISSIONS = {
   'hr:salary':   ['ADMIN', 'MD_CEO'],
 
   // ── Analytics ─────────────────────────────────────────────────────────────────
-  'analytics:sales':    ['SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'analytics:sales':    ['SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
   'analytics:full':     ['ADMIN', 'MD_CEO'],
-  'analytics:personal': ['SALES_EXEC', 'FIELD_EXEC', 'SALES_MANAGER', 'ADMIN', 'MD_CEO'],
+  'analytics:personal': ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO'],
 
   // ── Admin ─────────────────────────────────────────────────────────────────────
   'admin:full':  ['ADMIN', 'MD_CEO'],
@@ -109,7 +110,7 @@ const selfOrManager = (ownerField = 'salesExec') => {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated.' });
 
-    const managerRoles = ['SALES_MANAGER', 'OPERATION_MANAGER', 'ADMIN', 'MD_CEO'];
+    const managerRoles = ['SALES_MANAGER', 'SR_SALES_MANAGER', 'OPERATION_MANAGER', 'ADMIN', 'MD_CEO'];
     if (managerRoles.includes(req.user.role)) return next();
 
     // For regular users — must own the resource

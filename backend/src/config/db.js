@@ -1,4 +1,26 @@
 const mongoose = require('mongoose');
+const ClientType = require('../domains/products/clientType.model');
+
+const seedClientTypes = async () => {
+  try {
+    const count = await ClientType.countDocuments();
+    if (count === 0) {
+      console.log('🌱 Seeding default Client Types / Cost Categories...');
+      const defaults = [
+        { name: 'Retail', key: 'retail', multiplier: 1.0 },
+        { name: 'Renewal', key: 'renewal', multiplier: 0.95 },
+        { name: 'Corporate', key: 'corporate', multiplier: 0.90 },
+        { name: 'Corporate Renewal', key: 'corporateRenewal', multiplier: 0.88 },
+        { name: 'Agent', key: 'agent', multiplier: 0.85 },
+        { name: 'Agent Renewal', key: 'agentRenewal', multiplier: 0.83 }
+      ];
+      await ClientType.insertMany(defaults);
+      console.log('✅ Seeded default Client Types successfully.');
+    }
+  } catch (err) {
+    console.error('❌ Failed to seed default Client Types:', err.message);
+  }
+};
 
 const connectDB = async () => {
   const URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/gms_crm';
@@ -14,6 +36,25 @@ const connectDB = async () => {
     try {
       const conn = await mongoose.connect(URI, options);
       console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+      
+      // Proactively drop obsolete unique index quotationNumber_1 on quotations collection if it exists
+      try {
+        const db = conn.connection.db;
+        const collection = db.collection('quotations');
+        const indexes = await collection.indexes();
+        const hasObsoleteIndex = indexes.some(idx => idx.name === 'quotationNumber_1');
+        if (hasObsoleteIndex) {
+          console.log('⚠️ Found obsolete index "quotationNumber_1" on quotations. Dropping it...');
+          await collection.dropIndex('quotationNumber_1');
+          console.log('✅ Successfully dropped obsolete index "quotationNumber_1"');
+        }
+      } catch (err) {
+        // Safe to ignore if collection doesn't exist or is empty
+      }
+
+      // Seed default client types
+      await seedClientTypes();
+
       return;
     } catch (error) {
       retries--;

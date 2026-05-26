@@ -41,7 +41,15 @@ export const useApi = (path = null, options = {}) => {
         },
         ...options,
       });
-      const json = await res.json();
+      let json = {};
+      const text = await res.text();
+      if (text) {
+        try {
+          json = JSON.parse(text);
+        } catch (e) {
+          json = { message: text };
+        }
+      }
       if (!res.ok) {
         if (res.status === 401) {
           localStorage.removeItem('gms_user');
@@ -76,7 +84,15 @@ export const useApi = (path = null, options = {}) => {
       },
       body: body ? JSON.stringify(body) : undefined,
     });
-    const json = await res.json();
+    let json = {};
+    const text = await res.text();
+    if (text) {
+      try {
+        json = JSON.parse(text);
+      } catch (e) {
+        json = { message: text };
+      }
+    }
     if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
     return json;
   }, [token]);

@@ -25,7 +25,7 @@ exports.create = async (req, res) => {
 // ── GET /api/appointments ────────────────────────────────────────────────────
 exports.list = async (req, res) => {
   try {
-    const appointments = await appointmentWorkflow.listAppointments(req.user);
+    const appointments = await appointmentWorkflow.listAppointments(req.user, req.query);
     res.json({ success: true, data: appointments });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

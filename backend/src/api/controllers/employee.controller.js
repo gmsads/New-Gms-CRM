@@ -16,11 +16,12 @@ const notifyAdmins = async (type, title, message, relatedEntity) => {
 // ── GET /api/employees ───────────────────────────────────────────
 exports.getEmployees = async (req, res) => {
   try {
-    const { status, role, department, search, page = 1, limit = 20 } = req.query;
+    const { status, role, department, search, reportingManager, page = 1, limit = 20 } = req.query;
     const filter = {};
     if (status) filter.status = status;
     if (role) filter.role = role;
     if (department) filter.department = department;
+    if (reportingManager) filter.reportingManager = reportingManager;
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -34,6 +35,7 @@ exports.getEmployees = async (req, res) => {
         .select('-password -aadhaarNumber -currentSalary -passwordResetToken')
         .populate('createdBy', 'name role')
         .populate('approvedBy', 'name role')
+        .populate('reportingManager', 'name role')
         .sort('-createdAt')
         .skip(skip)
         .limit(Number(limit)),
@@ -52,7 +54,8 @@ exports.getEmployee = async (req, res) => {
       .select('-password -passwordResetToken')
       .populate('createdBy', 'name role')
       .populate('approvedBy', 'name role')
-      .populate('lastModifiedBy', 'name role');
+      .populate('lastModifiedBy', 'name role')
+      .populate('reportingManager', 'name role');
     if (!employee) return res.status(404).json({ message: 'Employee not found' });
     res.json(employee);
   } catch (err) {

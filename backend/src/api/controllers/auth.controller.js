@@ -1,4 +1,5 @@
 const User = require('../../domains/users/user.model');
+const UserPermission = require('../../domains/users/user_permission.model');
 const jwt  = require('jsonwebtoken');
 const { createAuditLog } = require('../../guards/audit.helper');
 
@@ -92,6 +93,10 @@ exports.loginUser = async (req, res) => {
     // Log successful login (non-blocking)
     createAuditLog({ action: 'LOGIN', performedBy: user, req }).catch(() => {});
 
+    // Fetch dynamic permissions
+    const permissionsData = await UserPermission.find({ user_id: user._id }).select('permission_key scope');
+    const permissions = permissionsData.map(p => ({ key: p.permission_key, scope: p.scope }));
+
     return res.json({
       _id:                user._id,
       name:               user.name,
@@ -103,6 +108,7 @@ exports.loginUser = async (req, res) => {
       profileImage:       user.profileImage,
       mustChangePassword: user.mustChangePassword ?? false,
       token:              generateToken(user._id),
+      permissions:        permissions,
     });
   } catch (err) {
     console.error('[LOGIN ERROR]', err.message);
@@ -176,8 +182,14 @@ exports.getUserProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
       .select('-password -aadhaarNumber -currentSalary -passwordResetToken')
-      .populate('createdBy', 'name role');
+      .populate('createdBy', 'name role')
+      .lean();
     if (!user) return res.status(404).json({ message: 'User not found.' });
+    
+    // Fetch dynamic permissions
+    const permissionsData = await UserPermission.find({ user_id: user._id }).select('permission_key scope');
+    user.permissions = permissionsData.map(p => ({ key: p.permission_key, scope: p.scope }));
+    
     res.json(user);
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -6,7 +6,7 @@ import {
   TrendingUp, Calendar as CalendarIcon, Plus, UserPlus, 
   ShieldCheck, PhoneCall, RefreshCw, X, Quote,
   ChevronRight, Search, Filter, FileText, Send, History, Eye, ExternalLink, MoreVertical,
-  BarChart2 as BarChartIcon, MapPin, Phone, AlertCircle
+  BarChart2 as BarChartIcon, MapPin, Phone, AlertCircle, MessageCircle, Users
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
@@ -15,7 +15,7 @@ import {
 import { 
   prospectApi, orderApi, appointmentApi, 
   paymentApi, approvalApi, brochureApi,
-  quotationApi 
+  quotationApi, leaveApi 
 } from '../../../services/api';
 import { 
   BrochureCard, 
@@ -113,15 +113,18 @@ const MetricCard = ({ title, value, total, subtext, icon: Icon, color, trend, on
 };
 
 // ── Modals Renderer Helper ──────────────────────────────────────────────────
-const ModalsRenderer = ({ prospectFlow, orderFlow, user }) => (
+const ModalsRenderer = ({ prospectFlow, orderFlow, user, hideVerification }) => (
   <>
     {prospectFlow.showPhoneSearch && <PhoneSearchModal onClose={() => prospectFlow.setShowPhoneSearch(false)} onSearch={prospectFlow.handlePhoneSearch} />}
     {prospectFlow.showProspectDetails && (
       <ProspectDetailsModal 
         prospect={prospectFlow.showProspectDetails} 
-        onBack={() => { prospectFlow.setShowProspectDetails(null); prospectFlow.setShowPhoneSearch(true); }} 
+        onBack={() => { prospectFlow.setShowProspectDetails(null); prospectFlow.setShowPhoneSearch(false); }} 
         onCreateNew={() => { 
-          prospectFlow.setShowCreateProspect({ phone: prospectFlow.showProspectDetails.phoneNumber, company: prospectFlow.showProspectDetails.businessName });
+          prospectFlow.setShowCreateProspect({ 
+            phone: prospectFlow.showProspectDetails.phone || prospectFlow.showProspectDetails.phoneNumber, 
+            company: prospectFlow.showProspectDetails.company || prospectFlow.showProspectDetails.businessName 
+          });
           prospectFlow.setShowProspectDetails(null);
         }}
         onClose={() => prospectFlow.setShowProspectDetails(null)}
@@ -130,6 +133,7 @@ const ModalsRenderer = ({ prospectFlow, orderFlow, user }) => (
     {prospectFlow.showCreateProspect && (
       <CreateProspectModal 
         phone={prospectFlow.showCreateProspect?.phone || ''} 
+        company={prospectFlow.showCreateProspect?.company || ''} 
         executiveName={user?.name}
         initialData={prospectFlow.showCreateProspect?._id ? prospectFlow.showCreateProspect : null}
         onBack={() => prospectFlow.setShowCreateProspect(null)} 
@@ -195,7 +199,11 @@ const ModalsRenderer = ({ prospectFlow, orderFlow, user }) => (
     {orderFlow.selectedOrder && (
       <OrderDetailsModal 
         orderId={orderFlow.selectedOrder._id || orderFlow.selectedOrder.id} 
-        onClose={() => orderFlow.setSelectedOrder(null)} 
+        onVerificationSuccess={() => {
+          orderFlow.setSelectedOrder(null);
+          if (orderFlow.fetch) orderFlow.fetch();
+        }}
+        hideVerification={hideVerification}
       />
     )}
     {orderFlow.paymentOrder && (
@@ -238,14 +246,15 @@ const ExecDashboard = () => {
     if (!user?.token) return;
     try {
       setLoading(true);
+      const p = ['SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role) ? { salesExec: user._id } : {};
       const [orderStats, prospectStats, appointments, orders, approvals, brochures, qtnRes] = await Promise.all([
-        orderApi.stats(user.token).catch(() => ({ data: {} })),
-        prospectApi.stats(user.token).catch(() => ({ data: {} })),
-        appointmentApi.list(user.token).catch(() => ({ data: [] })),
-        orderApi.list({ limit: 100 }, user.token).catch(() => ({ data: [] })),
+        orderApi.stats(p, user.token).catch(() => ({ data: {} })),
+        prospectApi.stats(p, user.token).catch(() => ({ data: {} })),
+        appointmentApi.list(p, user.token).catch(() => ({ data: [] })),
+        orderApi.list({ ...p, limit: 100 }, user.token).catch(() => ({ data: [] })),
         approvalApi.stats(user.token).catch(() => ({ pendingCount: 0 })),
-        brochureApi.list({ limit: 4 }, user.token).catch(() => ({ data: [] })),
-        quotationApi.list({}, user.token).catch(() => ({ data: [] }))
+        brochureApi.list({ ...p, limit: 4 }, user.token).catch(() => ({ data: [] })),
+        quotationApi.list(p, user.token).catch(() => ({ data: [] }))
       ]);
 
       setApprovalCount(approvals.pendingCount || 0);
@@ -253,6 +262,16 @@ const ExecDashboard = () => {
       const oStats = orderStats.data || {};
       const pStats = prospectStats.data || {};
       const ords = orders.data || [];
+
+      let realTarget = null;
+      try {
+        const tRes = await targetApi.list({ status: 'Pending,In Progress', limit: 1 }, user.token);
+        if (tRes?.success && tRes.data?.length > 0) {
+          realTarget = tRes.data[0];
+        }
+      } catch (e) {
+        console.error('Failed to fetch real target', e);
+      }
 
       // Payment Analysis (Round Chart)
       const totalAmount = ords.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
@@ -281,6 +300,7 @@ const ExecDashboard = () => {
       const todayFollowups = pStats.pendingFollowups || 0; // Using pendingFollowups as proxy if todayFollowups not in stats
 
       setStats({
+        realTarget,
         target: { assigned: oStats.monthlyTarget || 500000, completed: oStats.totalRevenue || 0 },
         monthlyCompleted: oStats.monthlyCompleted || 0,
         monthlyTotal: oStats.monthlyTotal || 0,
@@ -310,12 +330,26 @@ const ExecDashboard = () => {
 
   useEffect(() => { if (user?.token) fetchDashboardData(); }, [user?.token]);
 
-  const progressPercent = stats.target.assigned > 0 ? Math.min(100, Math.round((stats.target.completed / stats.target.assigned) * 100)) : 0;
+  const progressPercent = stats.realTarget 
+    ? (stats.realTarget.progressPercent || 0)
+    : (stats.target.assigned > 0 ? Math.min(100, Math.round((stats.target.completed / stats.target.assigned) * 100)) : 0);
   
   const getProgressBarColor = (pct) => {
     if (pct < 40) return 'bg-rose-500';
     if (pct < 75) return 'bg-amber-500';
     return 'bg-emerald-500';
+  };
+
+  const getRoleBasedQuote = (role) => {
+    const quotes = {
+      'SALES_EXEC': "Every 'No' brings you closer to a 'Yes'. Keep pushing, top closer!",
+      'SR_SALES_EXEC': "Your experience is your greatest asset. Lead by example and crush those targets!",
+      'FIELD_EXEC': "The pavement you pound today paves the road to your success tomorrow.",
+      'TELE_EXEC': "Your voice is your most powerful tool. Make every call count!",
+      'SALES_MANAGER': "Great leaders inspire great results. Empower your team to victory!",
+      'BRANCH_HEAD': "Vision and execution go hand in hand. Steer your branch to the top!"
+    };
+    return quotes[role] || "Success is the sum of small efforts, repeated day-in and day-out.";
   };
 
   if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
@@ -403,7 +437,7 @@ const ExecDashboard = () => {
           <div className="space-y-8">
             <div>
               <h3 className="text-3xl font-black tracking-tight mb-2">Keep Pushing, <span className="text-blue-400">{user?.name?.split(' ')[0]}!</span></h3>
-              <p className="text-lg text-slate-400 font-medium tracking-tight">Your persistence is the key to unlocking new heights.</p>
+              <p className="text-lg text-slate-400 font-medium tracking-tight italic">"{getRoleBasedQuote(user?.role)}"</p>
             </div>
             
             <div className="flex gap-4">
@@ -422,31 +456,49 @@ const ExecDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-xl space-y-6">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Current Progress</span>
-              <Target className="text-blue-400 h-6 w-6" />
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-[2.5rem] border border-slate-700 shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-all duration-700 group-hover:bg-blue-500/20" />
+            
+            <div className="flex justify-between items-center relative z-10">
+              <div>
+                <span className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">Current Assigned Target</span>
+                {stats.realTarget && (
+                  <h4 className="text-lg font-bold text-white mt-1">
+                    {stats.realTarget.title} <span className="text-sm font-medium text-slate-400 ml-2 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">{stats.realTarget.period}</span>
+                  </h4>
+                )}
+                {!stats.realTarget && <h4 className="text-lg font-bold text-white mt-1">Revenue Target</h4>}
+              </div>
+              <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center border border-blue-500/30">
+                <Target className="text-blue-400 h-6 w-6" />
+              </div>
             </div>
             
-            <div className="flex items-baseline gap-4">
-              <span className="text-6xl font-black tracking-tighter">{progressPercent}%</span>
-              <span className="text-lg font-bold text-slate-500">Target Achieved</span>
+            <div className="flex items-baseline gap-4 mt-8 relative z-10">
+              <span className="text-7xl font-black tracking-tighter text-white drop-shadow-lg">
+                {progressPercent}<span className="text-4xl text-slate-400">%</span>
+              </span>
+              <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Achieved</span>
             </div>
 
-            <div className="space-y-3">
-              <div className="h-4 w-full bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner">
+            <div className="space-y-4 mt-8 relative z-10">
+              <div className="h-4 w-full bg-slate-950 rounded-full overflow-hidden p-1 shadow-inner border border-slate-800">
                 <div 
-                  className={`h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(59,130,246,0.3)] ${getProgressBarColor(progressPercent)}`} 
+                  className={`h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(59,130,246,0.5)] ${getProgressBarColor(progressPercent)}`} 
                   style={{ width: `${progressPercent}%` }} 
                 />
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <p className="font-bold text-slate-300">
-                  <span className="text-white">₹{stats.target.completed.toLocaleString()}</span> achieved
-                </p>
-                <p className="text-slate-500 font-medium">
-                  Goal: ₹{stats.target.assigned.toLocaleString()}
-                </p>
+              <div className="flex justify-between text-sm font-bold text-slate-300">
+                <span>
+                  {stats.realTarget 
+                    ? (stats.realTarget.targetType === 'Revenue Target' || stats.realTarget.targetType === 'Collection Target' ? '₹' : '') + stats.realTarget.achievedValue.toLocaleString('en-IN')
+                    : `₹${stats.target.completed.toLocaleString('en-IN')}`} completed
+                </span>
+                <span className="text-slate-500">
+                  Target: {stats.realTarget 
+                    ? (stats.realTarget.targetType === 'Revenue Target' || stats.realTarget.targetType === 'Collection Target' ? '₹' : '') + stats.realTarget.targetValue.toLocaleString('en-IN')
+                    : `₹${stats.target.assigned.toLocaleString('en-IN')}`}
+                </span>
               </div>
             </div>
           </div>
@@ -650,7 +702,7 @@ const ExecDashboard = () => {
 };
 
 // ── Sub-Page Wrappers ────────────────────────────────────────────────────────
-export const SalesProspects = () => {
+export const SalesProspects = ({ isTeamMode = false, globalFilters = {} }) => {
   const { user } = useAuth();
   const [prospects, setProspects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -659,14 +711,23 @@ export const SalesProspects = () => {
     if (!user?.token) return;
     setLoading(true);
     try {
-      const res = await prospectApi.list({}, user.token); 
+      let params = {};
+      if (!isTeamMode && ['SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role)) {
+        params.salesExec = user._id;
+        params.assignedTo = user._id;
+      }
+      if (isTeamMode) {
+        if (globalFilters.employee) params.salesExec = globalFilters.employee;
+        if (globalFilters.search) params.search = globalFilters.search;
+      }
+      const res = await prospectApi.list(params, user.token); 
       if (res.success) setProspects(res.data || []); 
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
   const pFlow = useProspectFlow(user, fetch);
   const oFlow = useOrderFlow(user, fetch);
 
@@ -680,9 +741,11 @@ export const SalesProspects = () => {
           <h1 className="text-2xl font-black text-slate-900">Prospective Clients</h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Manage your leads and sales pipeline</p>
         </div>
-        <button onClick={() => pFlow.setShowPhoneSearch(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100">
-          <Plus className="h-5 w-5" /> New Prospect
-        </button>
+        {!isTeamMode && (
+          <button onClick={() => pFlow.setShowPhoneSearch(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100">
+            <Plus className="h-5 w-5" /> New Prospect
+          </button>
+        )}
       </div>
       <ProspectTable 
         prospects={prospects} 
@@ -698,7 +761,7 @@ export const SalesProspects = () => {
   );
 };
 
-export const SalesOrders = () => {
+export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -707,14 +770,23 @@ export const SalesOrders = () => {
     if (!user?.token) return;
     setLoading(true);
     try {
-      const res = await orderApi.list({}, user.token); 
+      let params = {};
+      if (!isTeamMode && ['SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role)) {
+        params.salesExec = user._id;
+        params.assignedTo = user._id;
+      }
+      if (isTeamMode) {
+        if (globalFilters.employee) params.salesExec = globalFilters.employee;
+        if (globalFilters.search) params.search = globalFilters.search;
+      }
+      const res = await orderApi.list(params, user.token); 
       if (res.success) setOrders(res.data); 
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
   const oFlow = useOrderFlow(user, fetch);
 
   if (!user) return null;
@@ -727,31 +799,34 @@ export const SalesOrders = () => {
           <h1 className="text-2xl font-black text-slate-900">My Orders</h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Track order status and payments</p>
         </div>
-        <button onClick={() => oFlow.setShowOrderSearch(true)} className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100">
-          <Plus className="h-5 w-5" /> New Order
-        </button>
+        {!isTeamMode && (
+          <button onClick={() => oFlow.setShowOrderSearch(true)} className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100">
+            <Plus className="h-5 w-5" /> New Order
+          </button>
+        )}
       </div>
       <OrderList 
         orders={orders} 
         onUploadPayment={oFlow.setPaymentOrder} 
         onViewDetails={oFlow.setSelectedOrder} 
         onLineItemUpdated={fetch}
+        hideVerification={isTeamMode}
       />
-      <ModalsRenderer prospectFlow={{}} orderFlow={oFlow} user={user} />
+      <ModalsRenderer prospectFlow={{}} orderFlow={oFlow} user={user} hideVerification={isTeamMode} />
     </div>
   );
 };
 
 export const SalesPayments = () => {
   const { user } = useAuth();
-  const [payments, setPayments] = useState([]);
+  const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
 
   if (!user) return null;
 
   useEffect(() => { 
-    paymentApi.list({}, user.token).then(res => {
-      if (res.success) setPayments(res.data);
+    leaveApi.list({}, user.token).then(res => {
+      if (res.success || res.leaves) setLeaves(res.leaves || res.data || []);
       setLoading(false);
     }); 
   }, []);
@@ -760,30 +835,35 @@ export const SalesPayments = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-black text-slate-900">Payment Collections</h1>
+      <h1 className="text-2xl font-black text-slate-900">Leave Requests</h1>
       <div className="bg-white rounded-[2rem] border overflow-hidden shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
             <tr>
-              <th className="p-5 text-left">ID</th>
-              <th className="p-5 text-left">Client</th>
-              <th className="p-5 text-left">Order</th>
-              <th className="p-5 text-left">Amount</th>
+              <th className="p-5 text-left">Type</th>
+              <th className="p-5 text-left">From Date</th>
+              <th className="p-5 text-left">To Date</th>
+              <th className="p-5 text-left">Total Days</th>
+              <th className="p-5 text-left">Reason</th>
               <th className="p-5 text-left">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {payments.length === 0 ? (
-              <tr><td colSpan={5} className="p-10 text-center text-slate-400 italic">No payment records found</td></tr>
-            ) : payments.map(p => (
-              <tr key={p._id} className="hover:bg-slate-50 transition-colors">
-                <td className="p-5 font-mono font-bold text-slate-400">{p.paymentNumber}</td>
-                <td className="p-5 font-bold text-slate-700">{p.order?.clientSnapshot?.name || p.clientName}</td>
-                <td className="p-5 font-mono text-xs text-blue-600 font-bold">{p.order?.orderNumber}</td>
-                <td className="p-5 font-black text-slate-900">₹{p.amount.toLocaleString()}</td>
+            {leaves.length === 0 ? (
+              <tr><td colSpan={6} className="p-10 text-center text-slate-400 italic">No leave requests found</td></tr>
+            ) : leaves.map(lv => (
+              <tr key={lv._id} className="hover:bg-slate-50 transition-colors">
+                <td className="p-5 font-bold text-slate-700">{lv.leaveType}</td>
+                <td className="p-5 text-slate-600">{new Date(lv.fromDate).toLocaleDateString()}</td>
+                <td className="p-5 text-slate-600">{new Date(lv.toDate).toLocaleDateString()}</td>
+                <td className="p-5 font-black text-slate-950">{lv.totalDays}</td>
+                <td className="p-5 text-slate-600 italic">"{lv.reason}"</td>
                 <td className="p-5">
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${p.status === 'Verified' ? 'bg-green-100 text-green-700' : p.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {p.status}
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    lv.status.includes('APPROVED') ? 'bg-green-100 text-green-700' :
+                    lv.status.includes('REJECTED') ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {lv.status.replace('_', ' ')}
                   </span>
                 </td>
               </tr>
@@ -795,7 +875,7 @@ export const SalesPayments = () => {
   );
 };
 
-export const SalesFollowups = () => {
+export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
   const { user } = useAuth();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -803,18 +883,35 @@ export const SalesFollowups = () => {
 
   const [prospects, setProspects] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showRemark, setShowRemark] = useState(null);
 
   if (!user) return null;
 
   const fetch = async () => { 
     setLoading(true);
     try {
-      const pRes = await prospectApi.list({}, user.token); 
-      if (pRes.success) setProspects(pRes.data.filter(p => p.nextFollowUpDate && p.status === 'In-progress')); 
+      let params = {};
+      if (!isTeamMode && ['SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role)) {
+        params.salesExec = user._id;
+        params.assignedTo = user._id;
+      }
+      if (isTeamMode) {
+        if (globalFilters.employee) params.salesExec = globalFilters.employee;
+        if (globalFilters.search) params.search = globalFilters.search;
+      }
 
-      const oRes = await orderApi.list({}, user.token);
+      const pRes = await prospectApi.list(params, user.token); 
+      if (pRes.success) setProspects(pRes.data.filter(p => p.nextFollowUpDate && p.stage !== 'Won' && p.stage !== 'Lost' && p.status !== 'Canceled' && p.status !== 'Order Confirmed' && p.status !== 'Sale Confirmed')); 
+
+      const oRes = await orderApi.list(params, user.token);
       if (oRes.success) setOrders(oRes.data);
+
+      const aRes = await appointmentApi.list(params, user.token);
+      if (aRes.success) {
+        setAppointments(aRes.data.filter(a => a.status !== 'SALE_CONFIRMED' && a.status !== 'LOST' && a.status !== 'CANCELLED'));
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -822,7 +919,7 @@ export const SalesFollowups = () => {
     }
   };
   
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
   const pFlow = useProspectFlow(user, fetch);
   const oFlow = useOrderFlow(user, fetch);
 
@@ -836,10 +933,15 @@ export const SalesFollowups = () => {
             <h1 className="text-2xl font-black tracking-tight text-slate-900">Prospect Follow-ups</h1>
             <p className="text-slate-500 font-medium">Let's turn these leads into loyal clients! Reach out, build trust, and keep the momentum going. 🚀</p>
           </>
-        ) : (
+        ) : activeTab === 'orders' ? (
           <>
             <h1 className="text-2xl font-black tracking-tight text-slate-900">Order Follow-ups</h1>
             <p className="text-slate-500 font-medium">Ensure smooth execution, provide updates, and secure those pending payments. Finish strong! 🏆</p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">Appointment Follow-ups</h1>
+            <p className="text-slate-500 font-medium">Track your scheduled meetings, manage updates, and nurture client visits. 📅</p>
           </>
         )}
       </div>
@@ -855,7 +957,7 @@ export const SalesFollowups = () => {
           onUpdateStage={pFlow.handleUpdateStage}
           onDelete={pFlow.handleDeleteProspect}
         />
-      ) : (
+      ) : activeTab === 'orders' ? (
         <OrderList 
           orders={orders} 
           hideCompleted={true}
@@ -864,13 +966,136 @@ export const SalesFollowups = () => {
           onViewDetails={oFlow.setSelectedOrder} 
           onLineItemUpdated={fetch}
         />
+      ) : (
+        <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="border-b bg-slate-50">
+                <tr>
+                  {[
+                    { name: 'Client' },
+                    { name: 'Date & Time' },
+                    { name: 'Venue & Type' },
+                    { name: 'Assignee' },
+                    { name: 'Next Follow-up' },
+                    { name: 'Status' },
+                    { name: 'Executive Remark' },
+                    { name: 'Assignee Remark' },
+                    { name: 'Actions' }
+                  ].map(h => (
+                    <th key={h.name} className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide whitespace-nowrap bg-slate-50 border-b border-slate-200">
+                      {h.name}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {appointments.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground text-sm">
+                      No active appointment follow-ups.
+                    </td>
+                  </tr>
+                ) : appointments.map((apt, idx) => {
+                  let rowColor = "bg-white hover:bg-slate-50";
+                  if (apt.nextFollowUpDate) {
+                    const fDate = new Date(apt.nextFollowUpDate).setHours(0,0,0,0);
+                    const today = new Date().setHours(0,0,0,0);
+                    if (fDate < today) rowColor = "bg-red-50 hover:bg-red-100";
+                    else if (fDate === today) rowColor = "bg-blue-50 hover:bg-blue-100";
+                  }
+
+                  return (
+                    <tr key={apt._id || idx} className={`${rowColor} transition-colors group`}>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold bg-slate-800 shrink-0">
+                            {(apt.contactPerson || apt.prospect?.name || 'C').charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-sm">{apt.businessName || apt.prospect?.company || 'N/A'}</p>
+                            <p className="text-xs text-muted-foreground">{apt.contactPerson || apt.prospect?.name || 'N/A'}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{apt.phone || apt.prospect?.phone || 'N/A'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-700 whitespace-nowrap">
+                        <p className="font-bold">{new Date(apt.date).toLocaleDateString()}</p>
+                        <p className="text-slate-500 mt-0.5">{apt.time}</p>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-700 max-w-[200px] truncate" title={apt.venue}>
+                        <p className="font-medium truncate">{apt.venue}</p>
+                        <span className="inline-block px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded text-[10px] font-semibold mt-1">{apt.meetingType || 'Office Meeting'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-xs font-semibold text-slate-800 whitespace-nowrap">
+                        {apt.assignedTo?.name || <span className="text-amber-600">Pending Allocation</span>}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-xs">
+                        <span className={`font-semibold ${apt.nextFollowUpDate && new Date(apt.nextFollowUpDate) <= new Date() ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
+                          {apt.nextFollowUpDate ? new Date(apt.nextFollowUpDate).toLocaleDateString() : '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
+                          apt.status === 'SALE_CONFIRMED' ? 'bg-green-100 text-green-700' :
+                          apt.status === 'LOST' || apt.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                          apt.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                          apt.status === 'FOLLOWUP_REQUIRED' ? 'bg-amber-100 text-amber-700' :
+                          'bg-purple-50 text-purple-600'
+                        }`}>
+                          {apt.status === 'SALE_CONFIRMED' ? 'Sale Confirmed' :
+                           apt.status === 'IN_PROGRESS' ? 'In Progress' :
+                           apt.status === 'FOLLOWUP_REQUIRED' ? 'Follow-up Required' :
+                           apt.status === 'CLIENT_NOT_AVAILABLE' ? 'Client N/A' :
+                           apt.status === 'CANCELLED' ? 'Cancelled' :
+                           apt.status.charAt(0) + apt.status.slice(1).toLowerCase()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500 max-w-[150px] truncate" title={apt.executiveRemark || apt.remark || ''}>
+                        {apt.executiveRemark || apt.remark || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500 max-w-[150px] truncate" title={apt.assigneeRemark || ''}>
+                        {apt.assigneeRemark || '-'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <button onClick={() => window.location.href = `tel:${apt.phone || apt.prospect?.phone}`} className="h-7 w-7 rounded border border-blue-200 bg-blue-50 flex items-center justify-center transition-colors">
+                            <Phone className="h-3.5 w-3.5 text-blue-700" />
+                          </button>
+                          <button onClick={() => window.open(`https://wa.me/${(apt.phone || apt.prospect?.phone || '').replace(/\D/g, '')}`, '_blank')} className="h-7 w-7 rounded border border-emerald-200 bg-emerald-50 flex items-center justify-center">
+                            <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                          </button>
+                          {apt.assignedTo?._id === user._id && (
+                            <button 
+                              onClick={() => setShowRemark(apt)} 
+                              className="h-7 px-2 rounded border border-emerald-600 bg-emerald-600 text-white text-[10px] font-bold hover:bg-emerald-700 transition-colors"
+                            >
+                              Update Remark
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
       <ModalsRenderer prospectFlow={pFlow} orderFlow={oFlow} user={user} />
+      {showRemark && (
+        <UpdateAppointmentRemarkModal 
+          appointment={showRemark} 
+          onClose={() => setShowRemark(null)} 
+          onSaved={fetch} 
+        />
+      )}
     </div>
   );
 };
 
-export const SalesAppointments = () => {
+export const SalesAppointments = ({ isTeamMode = false, globalFilters = {} }) => {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -881,14 +1106,23 @@ export const SalesAppointments = () => {
     if (!user?.token) return;
     setLoading(true);
     try {
-      const res = await appointmentApi.list(user.token); 
+      let params = {};
+      if (!isTeamMode && ['SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role)) {
+        params.salesExec = user._id;
+        params.assignedTo = user._id;
+      }
+      if (isTeamMode) {
+        if (globalFilters.employee) params.salesExec = globalFilters.employee;
+        if (globalFilters.search) params.search = globalFilters.search;
+      }
+      const res = await appointmentApi.list(params, user.token); 
       if (res.success) setAppointments(res.data || []); 
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
 
   if (!user) return null;
   if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
@@ -906,7 +1140,20 @@ export const SalesAppointments = () => {
           <div key={apt._id} className="bg-white border rounded-[2rem] p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start">
               <h3 className="font-bold text-lg text-slate-900">{apt.businessName || apt.prospect?.company || apt.prospect?.name}</h3>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${apt.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-purple-50 text-purple-600'}`}>{apt.status}</span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                apt.status === 'SALE_CONFIRMED' ? 'bg-green-100 text-green-700' :
+                apt.status === 'LOST' || apt.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                apt.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                apt.status === 'FOLLOWUP_REQUIRED' ? 'bg-amber-100 text-amber-700' :
+                'bg-purple-50 text-purple-600'
+              }`}>{
+                apt.status === 'SALE_CONFIRMED' ? 'Sale Confirmed' :
+                apt.status === 'IN_PROGRESS' ? 'In Progress' :
+                apt.status === 'FOLLOWUP_REQUIRED' ? 'Follow-up Required' :
+                apt.status === 'CLIENT_NOT_AVAILABLE' ? 'Client N/A' :
+                apt.status === 'CANCELLED' ? 'Cancelled' :
+                apt.status.charAt(0) + apt.status.slice(1).toLowerCase()
+              }</span>
             </div>
             <div className="text-sm space-y-2">
               <div className="flex items-center gap-2 text-slate-500"><CalendarIcon className="h-4 w-4 shrink-0" /><span className="font-bold text-slate-700">{new Date(apt.date).toLocaleDateString()}</span> at <span className="font-bold text-slate-700">{apt.time}</span></div>
@@ -914,14 +1161,38 @@ export const SalesAppointments = () => {
               <div className="flex items-center gap-2 text-slate-500"><Phone className="h-4 w-4 shrink-0" /><span className="font-bold text-slate-700">{apt.phone || apt.prospect?.phone}</span></div>
               <div className="flex items-start gap-2 text-slate-500"><MapPin className="h-4 w-4 shrink-0 mt-0.5" /><span className="font-bold text-slate-700 line-clamp-2">{apt.venue}</span></div>
               <div className="flex items-center gap-2 text-slate-500"><Clock className="h-4 w-4 shrink-0" /><span className="font-bold text-slate-700">{apt.meetingType || apt.purpose}</span></div>
+              {apt.nextFollowUpDate && (
+                <div className="flex items-center gap-2 text-red-600 font-bold bg-red-50 p-2 rounded-lg border border-red-100"><CalendarIcon className="h-4 w-4 shrink-0 text-red-500" />Next Follow-up: <span>{new Date(apt.nextFollowUpDate).toLocaleDateString()}</span></div>
+              )}
             </div>
             <div className="pt-4 border-t flex flex-col gap-3">
                <div className="flex items-center justify-between">
                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assignee</span>
                  <span className="text-xs font-bold text-blue-600">{apt.assignedTo?.name || 'Pending Allocation'}</span>
                </div>
+               
+               <div className="space-y-1">
+                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Executive Remark</span>
+                 <div className="bg-slate-50 text-slate-700 text-xs p-2.5 rounded-xl border border-slate-100 italic">
+                   "{apt.executiveRemark || apt.remark || '-'}"
+                 </div>
+               </div>
+
+               {apt.assignedTo && (
+                 <div className="space-y-1">
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assignee Remark</span>
+                   {apt.assigneeRemark ? (
+                     <div className="bg-green-50 text-green-800 text-xs p-2.5 rounded-xl border border-green-100 italic">
+                       "{apt.assigneeRemark}"
+                     </div>
+                   ) : (
+                     <p className="text-[11px] text-slate-400 italic">Waiting for assignee updates...</p>
+                   )}
+                 </div>
+               )}
+
                <div className="flex gap-2">
-                 {['ADMIN', 'SALES_MANAGER'].includes(user.role) && !apt.assignedTo && (
+                 {['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user.role) && !apt.assignedTo && (
                    <button onClick={() => setShowAssign(apt)} className="flex-1 bg-slate-900 text-white py-2 rounded-xl text-xs font-bold hover:bg-blue-600 transition-colors">Assign</button>
                  )}
                  {apt.assignedTo?._id === user._id && (
@@ -968,7 +1239,7 @@ export const SalesBrochures = () => {
     setLoading(true);
     try {
       const [bRes, cRes] = await Promise.all([
-        brochureApi.list({ category: selectedCategory, search }, user.token),
+        brochureApi.list({ category: selectedCategory, search, ...(['SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role) ? { salesExec: user._id } : {}) }, user.token),
         brochureApi.categories(user.token)
       ]);
       if (bRes.success) setBrochures(bRes.data);
@@ -1091,7 +1362,7 @@ export const SalesBrochures = () => {
   );
 };
 
-export const SalesQuotations = () => {
+export const SalesQuotations = ({ isTeamMode = false, globalFilters = {} }) => {
   const { user } = useAuth();
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1100,6 +1371,7 @@ export const SalesQuotations = () => {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDate, setFilterDate] = useState('');
+  const [employeeFilter, setEmployeeFilter] = useState('All Employees');
 
   const isAdmin = ['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user?.role);
 
@@ -1107,25 +1379,38 @@ export const SalesQuotations = () => {
     if (!user?.token) return;
     setLoading(true);
     try {
-      // For managers/admins, list all. For executives, list only theirs.
-      // Backend list already handles assignedTo if passed, but if we want ALL, we pass empty or specific filter.
-      const res = await quotationApi.list({}, user.token);
+      let params = {};
+      if (!isTeamMode && ['SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role)) {
+        params.salesExec = user._id;
+        params.assignedTo = user._id;
+      }
+      if (isTeamMode) {
+        if (globalFilters.employee) params.salesExec = globalFilters.employee;
+        if (globalFilters.search) params.search = globalFilters.search;
+      }
+      const res = await quotationApi.list(params, user.token);
       setQuotations(res.data || []);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
 
   if (!user) return null;
+
+  const uniqueEmployees = Array.from(new Set(
+    quotations.map(q => q.executive?.name)
+              .filter(name => name)
+  )).sort();
 
   const filteredQuotations = quotations.filter(q => {
     const matchesSearch = (q.prospect?.company || q.prospect?.name || '').toLowerCase().includes(search.toLowerCase()) ||
                           (q.executive?.name || '').toLowerCase().includes(search.toLowerCase());
     const matchesStatus = filterStatus ? q.status === filterStatus : true;
     const matchesDate = filterDate ? new Date(q.createdAt).toLocaleDateString('en-CA') === filterDate : true; // en-CA gives YYYY-MM-DD
-    return matchesSearch && matchesStatus && matchesDate;
+    const matchesEmployee = employeeFilter === 'All Employees' || q.executive?.name === employeeFilter;
+    return matchesSearch && matchesStatus && matchesDate && matchesEmployee;
   });
 
   return (
@@ -1188,6 +1473,21 @@ export const SalesQuotations = () => {
               <option value="Order-Created">Order-Created</option>
             </select>
           </div>
+          {isAdmin && uniqueEmployees.length > 0 && (
+            <div className="relative flex-1">
+              <Users className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <select 
+                className="w-full h-14 pl-12 pr-4 bg-white border rounded-[1.5rem] text-sm font-bold shadow-sm outline-none appearance-none"
+                value={employeeFilter}
+                onChange={(e) => setEmployeeFilter(e.target.value)}
+              >
+                <option value="All Employees">All Employees</option>
+                {uniqueEmployees.map(emp => (
+                  <option key={emp} value={emp}>{emp}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex-1">
             <input 
               type="date" 
@@ -1215,7 +1515,7 @@ export const SalesQuotations = () => {
                   <th className="p-6 text-left">Quotation ID</th>
                   <th className="p-6 text-left">Client Entity</th>
                   <th className="p-6 text-left">Financials</th>
-                  {isAdmin && <th className="p-6 text-left text-blue-600">Executive</th>}
+                  {isAdmin && <th className="p-6 text-left text-blue-600">Employee</th>}
                   <th className="p-6 text-left">Status</th>
                   <th className="p-6 text-left">Sent At</th>
                   <th className="p-6 text-center">Action</th>

@@ -26,9 +26,15 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('All');
   const [monthFilter, setMonthFilter] = useState('All Months');
+  const [employeeFilter, setEmployeeFilter] = useState('All Employees');
   const [openStatusMenu, setOpenStatusMenu] = useState(null);
 
   const months = ['All Months', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const uniqueEmployees = Array.from(new Set(
+    prospects.map(p => (typeof p.assignedTo === 'object' ? p.assignedTo?.name : p.assignedTo) || p.executiveName || 'Not Assigned')
+             .filter(name => name)
+  )).sort();
 
   const filteredAndSorted = prospects
     .filter(p => {
@@ -41,12 +47,15 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
         matchMonth = pMonth === monthFilter;
       }
       
-      const hideInactive = sortByFollowUp ? !['Sale Closed', 'Canceled', 'Order Confirmed'].includes(p.status) : true;
+      const empName = (typeof p.assignedTo === 'object' ? p.assignedTo?.name : p.assignedTo) || p.executiveName || 'Not Assigned';
+      const matchEmployee = employeeFilter === 'All Employees' || empName === employeeFilter;
       
-      return matchSearch && matchStage && matchMonth && hideInactive;
+      const hideInactive = sortByFollowUp ? !['Sale Confirmed', 'Canceled', 'Order Confirmed'].includes(p.status) : true;
+      
+      return matchSearch && matchStage && matchMonth && matchEmployee && hideInactive;
     })
     .sort((a, b) => {
-      const order = { 'In-progress': 1, 'Sale Closed': 2, 'Canceled': 3 };
+      const order = { 'In-progress': 1, 'Sale Confirmed': 2, 'Canceled': 3 };
       const orderA = order[a.status || 'In-progress'] || 4;
       const orderB = order[b.status || 'In-progress'] || 4;
       
@@ -95,6 +104,15 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
               <option value="Other">Other</option>
             </select>
           </div>
+          <div className="flex flex-col gap-1 w-64">
+            <label className="text-sm font-medium text-slate-700">All Employees:</label>
+            <select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
+              <option value="All Employees">All Employees</option>
+              {uniqueEmployees.map(emp => (
+                <option key={emp} value={emp}>{emp}</option>
+              ))}
+            </select>
+          </div>
         </div>
         
         <div className="mb-4">
@@ -124,7 +142,7 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
                   { name: 'Client', sticky: 0, width: 220 }, 
                   { name: 'Created Date' }, 
                   { name: 'Requirement' }, 
-                  { name: 'Executive' }, 
+                  { name: 'Employee' }, 
                   { name: 'Source' }, 
                   { name: 'Budget' }, 
                   { name: 'History' }, 
@@ -150,11 +168,11 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
                 const fDate = new Date(p.nextFollowUpDate).setHours(0,0,0,0);
                 const today = new Date().setHours(0,0,0,0);
                 if (p.status === 'Canceled') rowColor = "bg-slate-50 hover:bg-slate-100";
-                else if (p.status === 'Sale Closed') rowColor = "bg-emerald-50 hover:bg-emerald-100"; 
+                else if (p.status === 'Sale Confirmed') rowColor = "bg-emerald-50 hover:bg-emerald-100"; 
                 else if (fDate < today) rowColor = "bg-red-50 hover:bg-red-100"; 
                 else if (fDate === today) rowColor = "bg-blue-50 hover:bg-blue-100"; 
               }
-              const dotColor = p.status === 'Canceled' ? 'bg-red-500' : p.status === 'Sale Closed' ? 'bg-emerald-500' : 'bg-blue-500';
+              const dotColor = p.status === 'Canceled' ? 'bg-red-500' : p.status === 'Sale Confirmed' ? 'bg-emerald-500' : 'bg-blue-500';
 
               return (
               <tr key={p._id || p.id || idx} className={`${rowColor} transition-colors group`}>
@@ -214,14 +232,14 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
                   <td className="px-4 py-3 whitespace-nowrap relative">
                     <button 
                       onClick={() => setOpenStatusMenu(openStatusMenu === (p._id || p.id) ? null : (p._id || p.id))}
-                      className={`rounded-full px-3 py-1 flex items-center justify-between min-w-[110px] text-xs font-bold border shadow-sm ${p.status === 'Canceled' ? 'bg-red-50 text-red-700' : p.status === 'Sale Closed' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}
+                      className={`rounded-full px-3 py-1 flex items-center justify-between min-w-[110px] text-xs font-bold border shadow-sm ${p.status === 'Canceled' ? 'bg-red-50 text-red-700' : p.status === 'Sale Confirmed' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}
                     >
                       <span>{p.status || 'In-progress'}</span>
                       <span className="text-[9px] opacity-60 ml-2">▼</span>
                     </button>
                     {openStatusMenu === (p._id || p.id) && (
                       <div className="absolute top-10 right-0 mt-1 w-36 bg-white rounded-lg shadow-xl border border-slate-200 z-[99] py-1">
-                        {['In-progress', 'Canceled', 'Sale Closed'].map(s => (
+                        {['In-progress', 'Canceled', 'Sale Confirmed'].map(s => (
                           <div 
                             key={s}
                             onClick={() => { setOpenStatusMenu(null); onUpdateStage && onUpdateStage(p._id || p.id, s, 'status', p); }}
@@ -264,9 +282,9 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
                       </button>
                       <button 
                         onClick={() => onCreateOrder && onCreateOrder(p)} 
-                        className={`h-7 px-2 rounded border flex items-center gap-1 text-[10px] font-bold ml-1 transition-all ${p.status === 'Sale Closed' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}
+                        className={`h-7 px-2 rounded border flex items-center gap-1 text-[10px] font-bold ml-1 transition-all ${p.status === 'Sale Confirmed' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}
                       >
-                        {p.status === 'Sale Closed' ? <CheckCircle className="h-3.5 w-3.5 text-white" /> : <Plus className="h-3.5 w-3.5" />}
+                        {p.status === 'Sale Confirmed' ? <CheckCircle className="h-3.5 w-3.5 text-white" /> : <Plus className="h-3.5 w-3.5" />}
                         Order
                       </button>
                       <button onClick={() => onEdit && onEdit(p)} className="h-7 w-7 rounded hover:bg-slate-100 flex items-center justify-center transition-colors ml-2"><Edit className="h-3.5 w-3.5 text-slate-500" /></button>

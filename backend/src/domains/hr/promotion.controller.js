@@ -3,7 +3,8 @@ const Promotion = require('./promotion.model');
 
 exports.promoteEmployee = async (req, res) => {
   try {
-    const { employeeId, newRole, newHierarchyLevel, newReportingManager, newDepartment, newTeam, reason } = req.body;
+    const { employeeId: bodyEmpId, newRole, newHierarchyLevel, newReportingManager, newDepartment, newTeam, reason } = req.body;
+    const employeeId = bodyEmpId || req.params.id;
 
     const employee = await User.findById(employeeId);
     if (!employee) return res.status(404).json({ success: false, message: 'Employee not found' });

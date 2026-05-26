@@ -57,6 +57,23 @@ const validateOrderTransition = (currentStatus, targetStatus, userRole) => {
   };
 };
 
+const cancelActiveAppointments = async (order, user) => {
+  try {
+    let prospectId = order.prospect?._id || order.prospect;
+    if (!prospectId && order.clientSnapshot?.phone) {
+      const Prospect = require('../domains/sales/prospects/prospect.model');
+      const pDoc = await Prospect.findOne({ phone: order.clientSnapshot.phone });
+      if (pDoc) prospectId = pDoc._id;
+    }
+    if (prospectId) {
+      const appointmentService = require('../services/appointment.service');
+      await appointmentService.cancelActiveAppointmentsForProspect(prospectId, user?._id);
+    }
+  } catch (err) {
+    console.error('Error auto-cancelling appointments in order workflow:', err);
+  }
+};
+
 /**
  * confirmOrder — Validates and confirms a draft order.
  * Called when Sales Exec submits an order.
@@ -103,11 +120,13 @@ const confirmOrder = async (orderId, user) => {
         grandTotal: order.grandTotal,
         advancePaid: order.advancePaid,
         advancePct: parseFloat(advancePct.toFixed(2)),
-        status: 'Pending'
+        status: 'Pending',
+        escalationRole: user.role === 'SALES_MANAGER' ? 'BRANCH_HEAD' : 'SALES_MANAGER'
       });
     }
   } else {
     order.status = 'Confirmed';
+    order.verificationStatus = 'Pending';
     order.addTimelineEvent('Order Confirmed', `Confirmed by ${user.role}: ${user.name}`, user);
 
     // Trigger design workflow
@@ -125,13 +144,36 @@ const confirmOrder = async (orderId, user) => {
         console.error('Failed to assign designer automatically:', err);
       }
     }
+  }
 
-    // Move prospect to Won
-    if (order.prospect) {
-      await Prospect.findByIdAndUpdate(order.prospect._id || order.prospect, {
+  // Move prospect to Won
+  if (order.prospect) {
+    await Prospect.findByIdAndUpdate(order.prospect._id || order.prospect, {
+      stage: 'Won',
+      status: 'Order Confirmed',
+      linkedOrderId: order._id,
+      convertedToOrder: true,
+      convertedDate: new Date(),
+      probability: 100,
+      lastInteraction: new Date(),
+      lastInteractionNote: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`,
+      $push: {
+        interactions: {
+          type: 'Order',
+          date: new Date(),
+          notes: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`
+        }
+      }
+    });
+  } else if (order.clientSnapshot?.phone) {
+    await Prospect.findOneAndUpdate(
+      { phone: order.clientSnapshot.phone },
+      {
         stage: 'Won',
         status: 'Order Confirmed',
         linkedOrderId: order._id,
+        convertedToOrder: true,
+        convertedDate: new Date(),
         probability: 100,
         lastInteraction: new Date(),
         lastInteractionNote: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`,
@@ -142,28 +184,12 @@ const confirmOrder = async (orderId, user) => {
             notes: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`
           }
         }
-      });
-    } else if (order.clientSnapshot?.phone) {
-      await Prospect.findOneAndUpdate(
-        { phone: order.clientSnapshot.phone },
-        {
-          stage: 'Won',
-          status: 'Order Confirmed',
-          linkedOrderId: order._id,
-          probability: 100,
-          lastInteraction: new Date(),
-          lastInteractionNote: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`,
-          $push: {
-            interactions: {
-              type: 'Order',
-              date: new Date(),
-              notes: `Order Confirmed - Order ID: ${order.orderNumber || order._id}`
-            }
-          }
-        }
-      );
-    }
+      }
+    );
   }
+
+  // Cancel associated active appointments
+  await cancelActiveAppointments(order, user);
 
   await order.save();
   return order;
@@ -256,16 +282,16 @@ const updateOrderStatus = async (orderId, targetStatus, user, extraData = {}) =>
     if (order.prospect) {
       await Prospect.findByIdAndUpdate(order.prospect._id || order.prospect, {
         stage: 'Won',
-        status: 'Sale Closed',
+        status: 'Sale Confirmed',
         linkedOrderId: order._id,
         probability: 100,
         lastInteraction: new Date(),
-        lastInteractionNote: `Sale Closed - Order ID: ${order.orderNumber || order._id}`,
+        lastInteractionNote: `Sale Confirmed - Order ID: ${order.orderNumber || order._id}`,
         $push: {
           interactions: {
             type: 'Order',
             date: new Date(),
-            notes: `Sale Closed - Order ID: ${order.orderNumber || order._id}`
+            notes: `Sale Confirmed - Order ID: ${order.orderNumber || order._id}`
           }
         }
       });
@@ -274,16 +300,16 @@ const updateOrderStatus = async (orderId, targetStatus, user, extraData = {}) =>
         { phone: order.clientSnapshot.phone },
         {
           stage: 'Won',
-          status: 'Sale Closed',
+          status: 'Sale Confirmed',
           linkedOrderId: order._id,
           probability: 100,
           lastInteraction: new Date(),
-          lastInteractionNote: `Sale Closed - Order ID: ${order.orderNumber || order._id}`,
+          lastInteractionNote: `Sale Confirmed - Order ID: ${order.orderNumber || order._id}`,
           $push: {
             interactions: {
               type: 'Order',
               date: new Date(),
-              notes: `Sale Closed - Order ID: ${order.orderNumber || order._id}`
+              notes: `Sale Confirmed - Order ID: ${order.orderNumber || order._id}`
             }
           }
         }
@@ -326,6 +352,10 @@ const updateOrderStatus = async (orderId, targetStatus, user, extraData = {}) =>
         }
       );
     }
+  }
+
+  if (targetStatus === 'Completed' || targetStatus === 'Confirmed') {
+    await cancelActiveAppointments(order, user);
   }
 
   await order.save();

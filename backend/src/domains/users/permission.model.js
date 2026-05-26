@@ -1,0 +1,10 @@
+const mongoose = require('mongoose');
+
+const permissionSchema = new mongoose.Schema({
+  permission_key: { type: String, required: true, unique: true, uppercase: true, trim: true },
+  permission_name: { type: String, required: true, trim: true },
+  module_name: { type: String, required: true, trim: true },
+  description: { type: String, trim: true },
+}, { timestamps: true });
+
+module.exports = mongoose.model('Permission', permissionSchema);

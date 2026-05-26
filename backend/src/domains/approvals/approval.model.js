@@ -22,6 +22,12 @@ const approvalSchema = new mongoose.Schema({
     enum: ['Pending', 'Approved', 'Rejected'], 
     default: 'Pending' 
   },
+
+  escalationRole: {
+    type: String,
+    enum: ['ADMIN', 'BRANCH_HEAD', 'MD_CEO', 'SALES_MANAGER', 'NONE'],
+    default: 'NONE'
+  },
   
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   approvedAt: { type: Date },

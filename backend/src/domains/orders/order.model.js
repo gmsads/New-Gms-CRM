@@ -118,6 +118,17 @@ const orderSchema = new mongoose.Schema({
   designAssignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   designApprovedAt: { type: Date },
   designNotes:      { type: String },
+  
+  // ── Verification
+  verificationStatus: {
+    type: String,
+    enum: ['None', 'Pending', 'Verified'],
+    default: 'None',
+  },
+  verifiedBy:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  verifiedByName: { type: String },
+  verifiedByRole: { type: String },
+  verifiedAt:     { type: Date },
 
   // ── Delivery
   deliveryTimeline: { type: String },
@@ -197,7 +208,11 @@ orderSchema.pre('save', async function () {
   // Recompute totals from payment records
   const verified    = this.paymentRecords.filter(p => p.status === 'Verified');
   this.totalPaid    = verified.reduce((s, p) => s + p.amount, 0);
-  this.advancePaid  = this.totalPaid; // first payment is advance
+  
+  // Advance paid should include pending payments so approvals and dashboards show the correct entered amount
+  const activePayments = this.paymentRecords.filter(p => p.status === 'Verified' || p.status === 'Pending');
+  this.advancePaid  = activePayments.reduce((s, p) => s + p.amount, 0);
+  
   this.balanceDue   = parseFloat(Math.max(0, this.grandTotal - this.totalPaid).toFixed(2));
 
   if (this.totalPaid >= this.grandTotal)        this.paymentStatus = 'Paid';

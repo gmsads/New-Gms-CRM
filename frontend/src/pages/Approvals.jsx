@@ -225,18 +225,28 @@ const Approvals = () => {
                       </span>
                     </div>
                   </div>
-                  <h3 className="font-black text-slate-900 text-xl tracking-tight">{p.order?.clientSnapshot?.name || 'Client'}</h3>
+                  <h3 className="font-black text-slate-900 text-xl tracking-tight">
+                    {p.order?.clientSnapshot?.company || p.order?.clientSnapshot?.name || 'Client'}
+                  </h3>
                   <p className="text-xs text-slate-400 mt-1 font-bold">Collected by <span className="text-slate-600">{p.collectedBy?.name || 'You'}</span> · {new Date(p.createdAt).toLocaleDateString()}</p>
                 </div>
 
                 <div className="flex items-center gap-10 px-8 border-x border-slate-100 h-16">
                   <div>
-                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Amount</p>
-                    <p className="font-black text-blue-600 text-lg">₹{p.amount.toLocaleString()}</p>
+                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Order Total</p>
+                    <p className="font-black text-slate-900 text-lg">₹{(p.order?.grandTotal || 0).toLocaleString('en-IN')}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Received</p>
+                    <p className="font-black text-blue-600 text-lg">₹{p.amount.toLocaleString('en-IN')}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Balance Pending</p>
+                    <p className="font-black text-rose-600 text-lg">₹{Math.max(0, (p.order?.grandTotal || 0) - p.amount).toLocaleString('en-IN')}</p>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest mb-1">Order</p>
-                    <p className="font-black text-slate-900 text-lg">#{p.order?.orderNumber}</p>
+                    <p className="font-black text-slate-900">#{p.order?.orderNumber}</p>
                   </div>
                 </div>
 
@@ -260,89 +270,323 @@ const Approvals = () => {
         </div>
       )}
 
-      {/* Modals remain similarly styled... */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="p-6 bg-slate-50 border-b flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-black text-slate-900">Review Request</h2>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">{selected.orderNumber} · {selected.clientName}</p>
-              </div>
-              <button onClick={() => setSelected(null)} className="p-2 rounded-full hover:bg-white text-slate-300 hover:text-slate-900 transition-colors">
-                <XCircle className="h-6 w-6" />
-              </button>
-            </div>
-            <div className="p-8 space-y-6">
-               <div className="grid grid-cols-2 gap-4">
-                <div className="p-5 rounded-2xl bg-slate-50 border">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Grand Total</p>
-                  <p className="text-xl font-black text-slate-900">₹{selected.grandTotal.toLocaleString()}</p>
+      {/* Manager: Review Advance Payment Request Modal */}
+      {selected && (() => {
+        // Pull the first pending/any payment record from the linked order
+        const pmtRecord = selected.order?.paymentRecords?.[0] || null;
+        const balanceDue = (selected.grandTotal || 0) - (selected.advancePaid || 0);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden">
+
+              {/* Header */}
+              <div className="p-6 bg-slate-50 border-b flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900">Review Advance Payment Request</h2>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+                    {selected.orderNumber} · Submitted by {selected.requestedBy?.name || 'Executive'}
+                  </p>
                 </div>
-                <div className="p-5 rounded-2xl bg-red-50 border border-red-100">
-                  <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-1">Paid Advance</p>
-                  <p className="text-xl font-black text-red-600">₹{selected.advancePaid.toLocaleString()}</p>
-                  <p className="text-[10px] font-black text-red-400 mt-1">{selected.advancePct.toFixed(1)}% of total</p>
-                </div>
+                <button onClick={() => { setSelected(null); setNotes(''); }} className="p-2 rounded-full hover:bg-white text-slate-300 hover:text-slate-900 transition-colors">
+                  <XCircle className="h-6 w-6" />
+                </button>
               </div>
-              <textarea 
-                value={notes} onChange={(e) => setNotes(e.target.value)}
-                placeholder="Enter verification notes..."
-                className="w-full rounded-2xl border-slate-200 bg-slate-50 p-5 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all h-32 resize-none"
-              />
-              <div className="flex gap-4">
-                <button onClick={() => handleRejectOrder(selected._id)} className="flex-1 h-14 rounded-2xl border-2 border-red-100 text-red-600 font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-colors">Reject</button>
-                <button onClick={() => handleApproveOrder(selected._id)} className="flex-2 h-14 px-8 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-100">Approve Order</button>
+
+              <div className="p-7 space-y-5 max-h-[80vh] overflow-y-auto">
+
+                {/* Client info */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Client</p>
+                  <p className="text-lg font-black text-slate-900">{selected.clientName}</p>
+                  {selected.order?.clientSnapshot?.phone && (
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">{selected.order.clientSnapshot.phone}</p>
+                  )}
+                </div>
+
+                {/* Financial summary */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-4 rounded-2xl bg-slate-900 text-white">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Order Total</p>
+                    <p className="text-xl font-black">₹{(selected.grandTotal || 0).toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-amber-500 text-white">
+                    <p className="text-[9px] font-black text-amber-100 uppercase tracking-widest mb-1">Advance Paid</p>
+                    <p className="text-xl font-black">₹{(selected.advancePaid || 0).toLocaleString('en-IN')}</p>
+                    <p className="text-[10px] text-amber-100 font-bold mt-0.5">
+                      {(selected.advancePct || 0).toFixed(1)}% of total — below 50%
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100">
+                    <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest mb-1">Balance Pending</p>
+                    <p className="text-xl font-black text-rose-600">₹{balanceDue.toLocaleString('en-IN')}</p>
+                    <p className="text-[10px] text-rose-400 font-bold mt-0.5">
+                      {(100 - (selected.advancePct || 0)).toFixed(1)}% remaining
+                    </p>
+                  </div>
+                </div>
+
+                {/* Payment proof section */}
+                {pmtRecord ? (
+                  <div className="flex gap-5 items-start">
+                    <div className="flex-1 space-y-3">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Advance Payment Details</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl bg-slate-50 border">
+                          <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Method</p>
+                          <p className="text-sm font-black text-slate-900">{pmtRecord.method || '—'}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border">
+                          <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Reference / UTR</p>
+                          <p className="text-sm font-black text-slate-900 truncate">{pmtRecord.reference || '—'}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border">
+                          <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Payment Amount</p>
+                          <p className="text-sm font-black text-blue-600">₹{(pmtRecord.amount || selected.advancePaid || 0).toLocaleString('en-IN')}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-slate-50 border">
+                          <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Payment Status</p>
+                          <p className={`text-sm font-black ${
+                            pmtRecord.status === 'Verified' ? 'text-emerald-600' :
+                            pmtRecord.status === 'Rejected' ? 'text-rose-600' : 'text-amber-600'
+                          }`}>{pmtRecord.status || 'Pending'}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Proof image */}
+                    <div className="shrink-0">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Payment Proof</p>
+                      {pmtRecord.proofUrl ? (
+                        <div
+                          className="w-40 h-40 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-inner group relative cursor-zoom-in"
+                          onClick={() => window.open(pmtRecord.proofUrl)}
+                        >
+                          <img
+                            src={pmtRecord.proofUrl}
+                            alt="Payment proof"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                            <Eye className="h-5 w-5 text-white" />
+                            <span className="text-[10px] font-bold text-white uppercase">View Full</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-40 h-40 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50">
+                          <div className="text-center">
+                            <IndianRupee className="h-7 w-7 mx-auto text-slate-300 mb-1" />
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">No proof uploaded</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center">
+                    <p className="text-xs font-bold text-slate-400">No payment record found for this order.</p>
+                  </div>
+                )}
+
+                {/* Notes warning */}
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-100">
+                  <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">
+                    ⚠ Approval will confirm this order. Rejection returns it to Draft for the executive to fix.
+                  </p>
+                </div>
+
+                {/* Manager notes */}
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Enter approval notes or rejection reason..."
+                  className="w-full rounded-2xl border-slate-200 bg-slate-50 p-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all h-24 resize-none"
+                />
+
+                {/* Action buttons */}
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => handleRejectOrder(selected._id)}
+                    className="flex-1 h-14 rounded-2xl border-2 border-red-100 text-red-600 font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-colors"
+                  >
+                    ✕ Reject — Return to Draft
+                  </button>
+                  <button
+                    onClick={() => handleApproveOrder(selected._id)}
+                    className="flex-[2] h-14 px-8 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-100"
+                  >
+                    ✓ Approve & Confirm Order
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {selectedPayment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden">
+
+            {/* Header */}
             <div className="p-8 bg-slate-50 border-b flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Verify Payment</h2>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">{selectedPayment.paymentNumber} · {selectedPayment.order?.orderNumber}</p>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Verify Advance Payment</h2>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                  {selectedPayment.paymentNumber} · Order {selectedPayment.order?.orderNumber || '—'}
+                </p>
               </div>
-              <button onClick={() => setSelectedPayment(null)} className="p-2 rounded-full hover:bg-white text-slate-300 hover:text-slate-900 transition-colors">
+              <button onClick={() => { setSelectedPayment(null); setNotes(''); }} className="p-2 rounded-full hover:bg-white text-slate-300 hover:text-slate-900 transition-colors">
                 <XCircle className="h-6 w-6" />
               </button>
             </div>
-            <div className="p-10 space-y-8">
-              <div className="flex gap-8 items-start">
-                <div className="flex-1 space-y-4">
-                  <div className="p-5 rounded-3xl bg-blue-50 border border-blue-100">
-                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Amount to Verify</p>
-                    <p className="text-3xl font-black text-blue-700">₹{selectedPayment.amount.toLocaleString()}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment Info</p>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                      <div><p className="text-[9px] text-slate-400 font-bold uppercase">Method</p><p className="text-xs font-black text-slate-900">{selectedPayment.method}</p></div>
-                      <div><p className="text-[9px] text-slate-400 font-bold uppercase">Reference</p><p className="text-xs font-black text-slate-900 truncate">{selectedPayment.reference || '—'}</p></div>
-                    </div>
-                  </div>
-                </div>
-                <div className="w-48 h-48 rounded-3xl overflow-hidden border-4 border-slate-100 shadow-inner group relative">
-                   <img src={selectedPayment.proofUrl} className="w-full h-full object-cover cursor-zoom-in" onClick={() => window.open(selectedPayment.proofUrl)} />
-                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                     <span className="text-[10px] font-bold text-white uppercase tracking-widest">View Full Proof</span>
-                   </div>
+
+            <div className="p-8 space-y-6 max-h-[80vh] overflow-y-auto">
+
+              {/* ── Row 1: Client + Order context ─────────────────────── */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Client / Company</p>
+                  <p className="text-lg font-black text-slate-900">
+                    {selectedPayment.order?.clientSnapshot?.company
+                      ? `${selectedPayment.order.clientSnapshot.company}`
+                      : (selectedPayment.order?.clientSnapshot?.name || 'Client')}
+                  </p>
+                  {selectedPayment.order?.clientSnapshot?.company && selectedPayment.order?.clientSnapshot?.name && (
+                    <p className="text-xs font-bold text-slate-500 mt-0.5">Contact: {selectedPayment.order.clientSnapshot.name}</p>
+                  )}
+                  {selectedPayment.order?.clientSnapshot?.phone && (
+                    <p className="text-xs text-slate-400 font-mono mt-0.5">{selectedPayment.order.clientSnapshot.phone}</p>
+                  )}
                 </div>
               </div>
 
-              <textarea 
-                value={notes} onChange={(e) => setNotes(e.target.value)}
-                placeholder="Enter internal verification notes or rejection reason..."
-                className="w-full rounded-2xl border-slate-200 bg-slate-50 p-5 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all h-24 resize-none"
-              />
+              {/* ── Row 2: Financial breakdown ─────────────────────────── */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-4 rounded-2xl bg-slate-900 text-white">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Order Grand Total</p>
+                  <p className="text-xl font-black">₹{(selectedPayment.order?.grandTotal || 0).toLocaleString('en-IN')}</p>
+                </div>
+                <div className="p-4 rounded-2xl bg-blue-600 text-white">
+                  <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1">This Payment</p>
+                  <p className="text-xl font-black">₹{selectedPayment.amount.toLocaleString('en-IN')}</p>
+                  {selectedPayment.order?.grandTotal > 0 && (
+                    <p className="text-[10px] text-blue-200 font-bold mt-0.5">
+                      {((selectedPayment.amount / selectedPayment.order.grandTotal) * 100).toFixed(1)}% of total
+                    </p>
+                  )}
+                </div>
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                  <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest mb-1">Payment Type</p>
+                  <p className="text-lg font-black text-amber-700">{selectedPayment.paymentType || 'Advance'}</p>
+                  <p className="text-[9px] text-amber-500 font-bold uppercase mt-0.5">
+                    Balance after: ₹{Math.max(0, (selectedPayment.order?.grandTotal || 0) - selectedPayment.amount).toLocaleString('en-IN')}
+                  </p>
+                </div>
+              </div>
 
-              <div className="flex gap-4">
-                <button onClick={() => handleRejectPayment(selectedPayment._id)} className="flex-1 h-14 rounded-2xl border-2 border-red-100 text-red-600 font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-colors">Reject Proof</button>
-                <button onClick={() => handleVerifyPayment(selectedPayment._id)} className="flex-2 h-14 px-8 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-green-500 transition-all shadow-lg shadow-slate-200">Verify Receipt</button>
+              {/* ── Row 3: Payment details + Proof ────────────────────── */}
+              <div className="flex gap-6 items-start">
+                {/* Payment details */}
+                <div className="flex-1 space-y-3">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Payment Details</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-slate-50 border">
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Method</p>
+                      <p className="text-sm font-black text-slate-900">{selectedPayment.method}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 border">
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Reference / UTR</p>
+                      <p className="text-sm font-black text-slate-900 truncate">{selectedPayment.reference || '—'}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 border">
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Collected By</p>
+                      <p className="text-sm font-black text-slate-900">{selectedPayment.collectedBy?.name || '—'}</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-50 border">
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mb-1">Collection Date</p>
+                      <p className="text-sm font-black text-slate-900">
+                        {new Date(selectedPayment.collectedAt || selectedPayment.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                  {selectedPayment.notes && (
+                    <div className="p-3 rounded-xl bg-blue-50 border border-blue-100">
+                      <p className="text-[9px] text-blue-400 font-bold uppercase mb-1">Executive Notes</p>
+                      <p className="text-xs text-blue-700 font-medium italic">"{selectedPayment.notes}"</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Proof image */}
+                <div className="shrink-0">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Payment Proof</p>
+                  {selectedPayment.proofUrl ? (
+                    <div
+                      className="w-44 h-44 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-inner group relative cursor-zoom-in"
+                      onClick={() => window.open(selectedPayment.proofUrl)}
+                    >
+                      <img
+                        src={selectedPayment.proofUrl}
+                        alt="Payment proof"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                      />
+                      <div style={{ display: 'none' }} className="w-full h-full items-center justify-center bg-slate-100 text-slate-400 text-xs font-bold">
+                        Image unavailable
+                      </div>
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                        <Eye className="h-5 w-5 text-white" />
+                        <span className="text-[10px] font-bold text-white uppercase">View Full</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-44 h-44 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50">
+                      <div className="text-center">
+                        <IndianRupee className="h-8 w-8 mx-auto text-slate-300 mb-1" />
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">No proof uploaded</p>
+                      </div>
+                    </div>
+                  )}
+                  {selectedPayment.proofUrl && (
+                    <a
+                      href={selectedPayment.proofUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 flex items-center gap-1 text-[10px] font-black text-blue-500 hover:underline uppercase tracking-widest"
+                    >
+                      <Eye className="h-3 w-3" /> Open Full Image
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Notes textarea */}
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                  Verification Notes (optional for approval, required for rejection)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Enter internal verification notes or rejection reason..."
+                  className="w-full rounded-2xl border-slate-200 bg-slate-50 p-4 text-sm font-medium outline-none focus:border-blue-500 focus:bg-white transition-all h-20 resize-none"
+                />
+              </div>
+
+              {/* ── Action buttons */}
+              <div className="flex gap-4 pt-2">
+                <button
+                  onClick={() => handleRejectPayment(selectedPayment._id)}
+                  className="flex-1 h-14 rounded-2xl border-2 border-red-100 text-red-600 font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-colors"
+                >
+                  ✕ Reject Proof
+                </button>
+                <button
+                  onClick={() => handleVerifyPayment(selectedPayment._id)}
+                  className="flex-[2] h-14 px-8 rounded-2xl bg-slate-900 text-white font-black text-xs uppercase tracking-widest hover:bg-green-600 transition-all shadow-lg shadow-slate-200"
+                >
+                  ✓ Verify Payment — ₹{selectedPayment.amount.toLocaleString('en-IN')}
+                </button>
               </div>
             </div>
           </div>

@@ -5,7 +5,7 @@ const promotionController = require('../../domains/hr/promotion.controller');
 const { protect, authorize, preventRoleEscalation, hrOnly, adminOnly } = require('../../guards/auth.guard');
 
 router.use(protect);
-router.get('/', authorize('HR', 'ADMIN', 'MD_CEO', 'SALES_MANAGER'), c.getEmployees);
+router.get('/', authorize('HR', 'ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'BRANCH_HEAD'), c.getEmployees);
 router.get('/:id', hrOnly, c.getEmployee);
 router.post('/', hrOnly, preventRoleEscalation, c.createEmployee);
 router.put('/:id', hrOnly, preventRoleEscalation, c.updateEmployee);

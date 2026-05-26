@@ -1,5 +1,7 @@
-const mongoose = require('mongoose');
-const User = require('./backend/src/domains/auth/user.model');
+const path = require('path');
+require('./backend/node_modules/dotenv').config({ path: path.join(__dirname, 'backend/.env.development') });
+const mongoose = require('./backend/node_modules/mongoose');
+const User = require('./backend/src/domains/users/user.model');
 const Prospect = require('./backend/src/domains/sales/prospects/prospect.model');
 const Order = require('./backend/src/domains/orders/order.model');
 const orderWorkflow = require('./backend/src/workflows/order.workflow');
@@ -7,7 +9,7 @@ const prospectWorkflow = require('./backend/src/services/workflows/prospectWorkf
 const { updateOrderStatus } = require('./backend/src/workflows/order.workflow');
 
 async function test() {
-  await mongoose.connect('mongodb://127.0.0.1:27017/gms_crm');
+  await mongoose.connect(process.env.MONGO_URI);
   console.log('Connected to DB');
 
   try {
@@ -29,7 +31,7 @@ async function test() {
 
     // 2. Create an Order linked to Prospect
     const orderData = {
-      client: prospect.name,
+      client: undefined,
       clientSnapshot: {
         name: prospect.name,
         company: prospect.company,
@@ -48,9 +50,9 @@ async function test() {
           quantity: 1,
           unitPrice: 1000,
           amount: 1000,
-          designerStatus: 'update pending',
-          operationStatus: 'update pending',
-          serviceStatus: 'update pending'
+          designerStatus: 'Pending',
+          operationStatus: 'operation update pending',
+          serviceStatus: 'service update pending'
         }
       ]
     };

@@ -35,6 +35,11 @@ const appointmentSchema = new mongoose.Schema({
     default: 'PENDING' 
   },
   
+  remark: { type: String },
+  executiveRemark: { type: String },
+  assigneeRemark: { type: String },
+  nextFollowUpDate: { type: Date },
+
   assignedAt: { type: Date },
 
   // Escalation System

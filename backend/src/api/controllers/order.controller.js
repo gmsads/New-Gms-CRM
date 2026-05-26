@@ -15,16 +15,20 @@ const getReqContext = (req) => ({
 // ── GET /api/orders ───────────────────────────────────────────────────────────
 exports.list = async (req, res) => {
   try {
-    const { status, salesExec, paymentStatus, designStatus, search } = req.query;
+    const { status, salesExec, paymentStatus, designStatus, search, verificationStatus } = req.query;
     const filter = {};
 
-    if (status)        filter.status        = status;
-    if (paymentStatus) filter.paymentStatus = paymentStatus;
-    if (designStatus)  filter.designStatus  = designStatus;
+    if (status)             filter.status             = status;
+    if (paymentStatus)      filter.paymentStatus      = paymentStatus;
+    if (designStatus)       filter.designStatus       = designStatus;
+    if (verificationStatus) filter.verificationStatus = verificationStatus;
 
     // Role-based visibility
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       filter.salesExec = new mongoose.Types.ObjectId(req.user._id);
+      if (!status) {
+        filter.status = { $ne: 'Pending_Approval' };
+      }
     } else if (req.user.role === 'DESIGNER') {
       filter.$or = [
         { designAssignedTo: new mongoose.Types.ObjectId(req.user._id) },
@@ -84,7 +88,7 @@ exports.searchClient = async (req, res) => {
 
     const filter = { $or: conditions };
 
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       filter.salesExec = req.user._id;
     }
 
@@ -108,7 +112,7 @@ exports.getOne = async (req, res) => {
       .populate('operationsExec', 'name email')
       .populate('designAssignedTo', 'name email')
       .populate('prospect', 'name phone company stage')
-      .populate('quotation', 'quotationNumber grandTotal status');
+      .populate('quotation', 'quotationId totalAmount status');
 
     if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
     
@@ -125,7 +129,7 @@ exports.getOne = async (req, res) => {
       delete orderObj.paymentRecords;
       delete orderObj.advanceRequired;
       delete orderObj.advancePaid;
-      if (orderObj.quotation) delete orderObj.quotation.grandTotal;
+      if (orderObj.quotation) delete orderObj.quotation.totalAmount;
     }
 
     res.json({ success: true, data: orderObj });
@@ -139,8 +143,36 @@ exports.create = async (req, res) => {
   try {
     const body = req.body;
 
+    // Intelligent Prospect Matching
+    let prospectId = body.prospect;
+    if (!prospectId) {
+      const phone = body.phone || body.clientSnapshot?.phone;
+      const email = body.email || body.clientSnapshot?.email;
+      const gstNumber = body.gstNumber || body.clientSnapshot?.gstNumber;
+      const company = body.company || body.clientSnapshot?.company;
+
+      let matchedProspect = null;
+      if (phone) {
+        matchedProspect = await Prospect.findOne({ phone, 'softDelete.isDeleted': { $ne: true } });
+      }
+      if (!matchedProspect && email) {
+        matchedProspect = await Prospect.findOne({ email, 'softDelete.isDeleted': { $ne: true } });
+      }
+      if (!matchedProspect && gstNumber) {
+        matchedProspect = await Prospect.findOne({ gstNumber, 'softDelete.isDeleted': { $ne: true } });
+      }
+      if (!matchedProspect && company) {
+        matchedProspect = await Prospect.findOne({ company: { $regex: new RegExp(`^${company}$`, 'i') }, 'softDelete.isDeleted': { $ne: true } });
+      }
+
+      if (matchedProspect) {
+        prospectId = matchedProspect._id;
+      }
+    }
+
     const order = new Order({
       ...body,
+      prospect: prospectId,
       salesExec: req.user._id,
       status:    'Draft',
     });
@@ -203,6 +235,37 @@ exports.create = async (req, res) => {
       error: err.name,
       stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
+  }
+};
+
+// ── POST /api/orders/:id/verify ───────────────────────────────────────────────
+exports.verifyOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+
+    const allowedRoles = ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS'];
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to verify orders.' });
+    }
+
+    order.verificationStatus = 'Verified';
+    order.verifiedBy = req.user._id;
+    order.verifiedByName = req.user.name;
+    order.verifiedByRole = req.user.role;
+    order.verifiedAt = new Date();
+
+    order.addTimelineEvent(
+      'Order Verified',
+      `Verified by ${req.user.name} (${req.user.role.replace('_', ' ')}).`,
+      req.user
+    );
+
+    await order.save();
+
+    res.json({ success: true, data: order });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -323,7 +386,7 @@ exports.approveAdvance = async (req, res) => {
 exports.stats = async (req, res) => {
   try {
     const filter = {};
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       filter.salesExec = new mongoose.Types.ObjectId(req.user._id);
     }
 

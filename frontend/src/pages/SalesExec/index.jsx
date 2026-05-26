@@ -6,7 +6,7 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 import { ProspectTable } from './components/ProspectTable';
 import { OrderList, PaymentUploadModal, OrderDetailsModal, PhoneSearchModal, ProspectDetailsModal, CreateProspectModal, UpdateStatusModal, ScheduleAppointmentModal, OrderSearchModal, OrderClientDetailsModal, CreateOrderModal, AssignAppointmentModal, UpdateAppointmentRemarkModal } from './components/Panels';
 import QuotationBuilder from './components/QuotationBuilder';
-import { prospectApi, orderApi, appointmentApi, paymentApi, approvalApi } from '../../services/api';
+import { prospectApi, orderApi, appointmentApi, paymentApi, approvalApi, leaveApi } from '../../services/api';
 
 const useProspectFlow = (user, onSaved) => {
   const [showPhoneSearch, setShowPhoneSearch] = useState(false);
@@ -124,33 +124,15 @@ const useProspectFlow = (user, onSaved) => {
           onClose={() => setShowUpdateStatus(null)}
           onSubmit={async (data) => {
             try {
-              const payload = { status: data.status };
-              let note = '';
-              if (data.status === 'In-progress') {
-                if (data.date) payload.nextFollowUpDate = new Date(data.date);
-                if (data.remark) {
-                  payload.lastInteractionNote = data.remark;
-                  payload.lastInteraction = new Date();
-                  note = data.remark;
-                }
-              } else if (data.status === 'Canceled') {
-                payload.cancelReason = data.reason;
-                payload.lastInteractionNote = `Canceled: ${data.reason}`;
-                note = `Canceled: ${data.reason}`;
-              } else if (data.status === 'Sale Closed' || data.status === 'Order Confirmed') {
-                const orderText = data.orderId ? ` - Order ID: ${data.orderId}` : '';
-                payload.lastInteractionNote = `${data.status}${orderText}`;
-                note = `${data.status}${orderText}`;
-              }
+              const payload = { 
+                status: data.status,
+                date: data.date,
+                reason: data.reason,
+                remark: data.remark || (data.status === 'Canceled' ? `Canceled: ${data.reason}` : data.status === 'Sale Confirmed' || data.status === 'Order Confirmed' ? `${data.status}${data.orderId ? ` - Order ID: ${data.orderId}` : ''}` : ''),
+                orderId: data.orderId
+              };
 
-              // Append to interactions history
-              payload.interactions = [...(showUpdateStatus.prospect.interactions || []), {
-                type: 'Other',
-                date: new Date(),
-                notes: note || `Status updated to ${data.status}`
-              }];
-
-              await prospectApi.update(showUpdateStatus.prospect._id || showUpdateStatus.prospect.id, payload, user?.token);
+              await prospectApi.moveStage(showUpdateStatus.prospect._id || showUpdateStatus.prospect.id, payload, user?.token);
               setToastMsg(`Successfully updated to ${data.status}`);
               setTimeout(() => setToastMsg(null), 3000);
               setShowUpdateStatus(null);
@@ -246,6 +228,7 @@ const useOrderFlow = (user, onSaved) => {
           orderId={selectedOrder._id || selectedOrder.id} 
           onClose={() => setSelectedOrder(null)} 
           onPaymentUpload={(o) => { setSelectedOrder(null); setPaymentOrder(o); }}
+          onVerificationSuccess={onSaved}
         />
       )}
       {paymentOrder && (
@@ -375,7 +358,7 @@ const SalesExecDashboard = () => {
         monthlyTotal: oStats.monthlyTotal || 0,
         monthlyCompleted: oStats.monthlyCompleted || 0,
         pendingFollowups: pStats.pendingFollowups || 0,
-        appointments: apps.filter(a => a.status !== 'Canceled').length,
+        appointments: apps.filter(a => a.status !== 'SALE_CONFIRMED' && a.status !== 'LOST' && a.status !== 'CANCELLED').length,
         pendingPayments: { amount: pendingAmount, count: pendingOrders.length },
         analysis: [
           { name: 'Confirmed', value: oStats.confirmed || 0, color: '#3b82f6' },
@@ -1021,14 +1004,14 @@ export const SalesOrders = () => {
 export const SalesPayments = () => {
   const { user } = useAuth();
   if (!user) return null;
-  const [payments, setPayments] = useState([]);
+  const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchPayments = async () => {
+  const fetchLeaves = async () => {
     try {
       setLoading(true);
-      const res = await paymentApi.list({}, user.token);
-      if (res.success) setPayments(res.data);
+      const res = await leaveApi.list({}, user.token);
+      if (res.success || res.leaves) setLeaves(res.leaves || res.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -1036,72 +1019,70 @@ export const SalesPayments = () => {
     }
   };
 
-  React.useEffect(() => { fetchPayments(); }, []);
+  React.useEffect(() => { fetchLeaves(); }, []);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight">Payment Collections</h1>
-          <p className="text-muted-foreground">Track advance payments, installments, and final settlements with proofs.</p>
+          <h1 className="text-2xl font-bold tracking-tight">My Leave Requests</h1>
+          <p className="text-muted-foreground">Track your requested sick, casual, annual, and unpaid leaves.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="bg-blue-50 border border-blue-100 rounded-2xl px-5 py-3 flex flex-col items-end shadow-sm">
-            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Total Collected</span>
-            <span className="text-xl font-black text-blue-600">₹{payments.reduce((s,p) => s + (p.status === 'Verified' ? p.amount : 0), 0).toLocaleString()}</span>
+          <div className="bg-purple-50 border border-purple-100 rounded-2xl px-5 py-3 flex flex-col items-end shadow-sm">
+            <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Total Days Taken</span>
+            <span className="text-xl font-black text-purple-600">{leaves.reduce((s,lv) => s + (lv.status.includes('APPROVED') ? lv.totalDays : 0), 0)} Day(s)</span>
           </div>
           <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex flex-col items-end shadow-sm">
-            <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Awaiting Verification</span>
-            <span className="text-xl font-black text-amber-600">₹{payments.reduce((s,p) => s + (p.status === 'Pending' ? p.amount : 0), 0).toLocaleString()}</span>
+            <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Pending Review</span>
+            <span className="text-xl font-black text-amber-600">{leaves.reduce((s,lv) => s + (lv.status === 'PENDING' ? 1 : 0), 0)} Request(s)</span>
           </div>
         </div>
       </div>
 
       {loading ? (
-        <div className="p-20 text-center text-muted-foreground">Loading payment ledger...</div>
-      ) : payments.length === 0 ? (
+        <div className="p-20 text-center text-muted-foreground">Loading leaves history...</div>
+      ) : leaves.length === 0 ? (
         <div className="rounded-2xl border bg-white shadow-sm p-12 text-center text-muted-foreground">
-          <IndianRupee className="h-12 w-12 mx-auto mb-3 opacity-20" />
-          <p className="font-bold">No payments recorded yet.</p>
-          <p className="text-sm">Payments uploaded via orders will appear here.</p>
+          <CalendarIcon className="h-12 w-12 mx-auto mb-3 opacity-20" />
+          <p className="font-bold">No leave requests found.</p>
+          <p className="text-sm">Submit leaves via the HR panel or contact HR.</p>
         </div>
       ) : (
         <div className="rounded-2xl border bg-white shadow-sm overflow-hidden overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b text-slate-400 font-bold uppercase text-[10px] tracking-widest">
-                <th className="px-6 py-4 text-left">Payment ID</th>
-                <th className="px-6 py-4 text-left">Order</th>
-                <th className="px-6 py-4 text-left">Client</th>
-                <th className="px-6 py-4 text-left">Amount</th>
-                <th className="px-6 py-4 text-left">Method</th>
+                <th className="px-6 py-4 text-left">Type</th>
+                <th className="px-6 py-4 text-left">From Date</th>
+                <th className="px-6 py-4 text-left">To Date</th>
+                <th className="px-6 py-4 text-left">Total Days</th>
+                <th className="px-6 py-4 text-left">Reason</th>
                 <th className="px-6 py-4 text-left">Status</th>
-                <th className="px-6 py-4 text-left">Date</th>
+                <th className="px-6 py-4 text-left">Created At</th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {payments.map(p => (
-                <tr key={p._id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-5 font-mono font-bold text-slate-400">{p.paymentNumber}</td>
-                  <td className="px-6 py-5 font-bold text-blue-600">#{p.order?.orderNumber}</td>
-                  <td className="px-6 py-5">
-                    <p className="font-bold text-slate-900">{p.order?.clientSnapshot?.name}</p>
-                    <p className="text-[10px] text-slate-500">{p.order?.clientSnapshot?.company}</p>
-                  </td>
-                  <td className="px-6 py-5 font-black text-slate-900">₹{p.amount.toLocaleString()}</td>
-                  <td className="px-6 py-5">
-                    <span className="px-2 py-1 bg-slate-100 rounded-lg text-[10px] font-bold text-slate-600 uppercase">{p.method}</span>
-                  </td>
+              {leaves.map(lv => (
+                <tr key={lv._id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-5 font-bold text-slate-800">{lv.leaveType}</td>
+                  <td className="px-6 py-5 text-slate-600">{new Date(lv.fromDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-5 text-slate-600">{new Date(lv.toDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-5 font-black text-slate-900">{lv.totalDays} Day(s)</td>
+                  <td className="px-6 py-5 text-slate-600 italic">"{lv.reason}"</td>
                   <td className="px-6 py-5">
                     <div className="flex items-center gap-1.5">
-                      <div className={`h-2 w-2 rounded-full ${p.status === 'Verified' ? 'bg-green-500' : p.status === 'Pending' ? 'bg-amber-400' : 'bg-red-500'}`} />
-                      <span className={`text-[10px] font-bold uppercase tracking-wider ${p.status === 'Verified' ? 'text-green-600' : p.status === 'Pending' ? 'text-amber-600' : 'text-red-600'}`}>
-                        {p.status}
+                      <div className={`h-2 w-2 rounded-full ${lv.status.includes('APPROVED') ? 'bg-green-500' : lv.status.includes('REJECTED') ? 'bg-red-500' : 'bg-amber-400'}`} />
+                      <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                        lv.status.includes('APPROVED') ? 'text-green-600' :
+                        lv.status.includes('REJECTED') ? 'text-red-600' : 'text-amber-600'
+                      }`}>
+                        {lv.status.replace('_', ' ')}
                       </span>
                     </div>
                   </td>
                   <td className="px-6 py-5 text-slate-500 font-medium">
-                    {new Date(p.collectedAt).toLocaleDateString()}
+                    {new Date(lv.createdAt).toLocaleDateString()}
                   </td>
                 </tr>
               ))}
@@ -1260,7 +1241,7 @@ export const SalesAppointments = () => {
     try {
       const res = await appointmentApi.list(user?.token);
       if (res.success) {
-        setAppointments(res.data);
+        setAppointments((res.data || []).filter(a => a.status !== 'SALE_CONFIRMED' && a.status !== 'LOST' && a.status !== 'CANCELLED'));
       }
     } catch (err) {
       console.error(err);
@@ -1293,8 +1274,19 @@ export const SalesAppointments = () => {
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Business Name</span>
                 <h3 className="font-bold text-base text-slate-800">{apt.businessName}</h3>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${apt.remark ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                {apt.remark ? 'Updated' : apt.status}
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+                apt.status === 'SALE_CONFIRMED' ? 'bg-green-100 text-green-700' :
+                apt.status === 'LOST' || apt.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                apt.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                apt.status === 'FOLLOWUP_REQUIRED' ? 'bg-amber-100 text-amber-700' :
+                'bg-purple-100 text-purple-700'
+              }`}>
+                {apt.status === 'SALE_CONFIRMED' ? 'Sale Confirmed' :
+                 apt.status === 'IN_PROGRESS' ? 'In Progress' :
+                 apt.status === 'FOLLOWUP_REQUIRED' ? 'Follow-up Required' :
+                 apt.status === 'CLIENT_NOT_AVAILABLE' ? 'Client N/A' :
+                 apt.status === 'CANCELLED' ? 'Cancelled' :
+                 apt.status.charAt(0) + apt.status.slice(1).toLowerCase()}
               </span>
             </div>
             <div className="p-4 space-y-4 flex-1">
@@ -1318,6 +1310,12 @@ export const SalesAppointments = () => {
                   <p className="text-sm font-bold text-blue-900">{apt.time}</p>
                 </div>
               </div>
+              {apt.nextFollowUpDate && (
+                <div className="bg-red-50/50 p-3 rounded-xl border border-red-100">
+                  <p className="text-[10px] font-bold uppercase text-red-600 mb-0.5">Next Follow-up Date</p>
+                  <p className="text-sm font-bold text-red-700">{new Date(apt.nextFollowUpDate).toLocaleDateString('en-GB')}</p>
+                </div>
+              )}
               <div>
                 <p className="text-[10px] font-bold uppercase text-muted-foreground mb-0.5">Venue/Address</p>
                 <p className="text-sm text-slate-600 bg-slate-50 p-2 rounded-lg border">{apt.venue}</p>
@@ -1339,12 +1337,19 @@ export const SalesAppointments = () => {
                 )}
               </div>
               
+              <div>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground mb-0.5">Executive Remark</p>
+                <div className="bg-white text-slate-700 text-xs p-2.5 rounded-lg border border-slate-200 italic">
+                  "{apt.executiveRemark || apt.remark || '-'}"
+                </div>
+              </div>
+
               {apt.assignedTo && (
                 <div>
-                  <p className="text-[10px] font-bold uppercase text-muted-foreground mb-0.5">Executive Remark</p>
-                  {apt.remark ? (
-                    <div className="bg-green-50 text-green-800 text-sm p-3 rounded-lg border border-green-200 italic">
-                      "{apt.remark}"
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground mb-0.5">Assignee Remark</p>
+                  {apt.assigneeRemark ? (
+                    <div className="bg-green-50 text-green-800 text-xs p-2.5 rounded-lg border border-green-200 italic">
+                      "{apt.assigneeRemark}"
                     </div>
                   ) : (
                     <div className="flex flex-col gap-2">

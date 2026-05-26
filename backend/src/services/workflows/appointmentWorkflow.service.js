@@ -9,7 +9,7 @@ const eventBus = require('./eventBus'); // Will create this next
 
 class AppointmentWorkflowService {
   async createAppointment(data, creatorId, reqContext = {}) {
-    const { prospectId, date, time, venue, meetingType, priority, managerId, forceCreate } = data;
+    const { prospectId, date, time, venue, meetingType, priority, managerId, forceCreate, remark, executiveRemark } = data;
 
     const prospect = await Prospect.findById(prospectId);
     if (!prospect) throw new Error('Prospect not found');
@@ -49,7 +49,9 @@ class AppointmentWorkflowService {
         venue,
         meetingType: meetingType || 'Office Meeting',
         priority: priority || 'Medium',
-        status: 'PENDING'
+        status: 'PENDING',
+        executiveRemark: executiveRemark || remark || '',
+        remark: executiveRemark || remark || ''
       });
       await appointment.save({ session });
 
@@ -184,39 +186,56 @@ class AppointmentWorkflowService {
   }
 
   async addRemark(id, data, actorId, reqContext = {}) {
-    const { outcomeType, notes, nextActionDate } = data;
+    const { outcomeType, notes, nextActionDate, remark, assigneeRemark, status, nextFollowUpDate } = data;
     const oldAppt = await appointmentRepo.findById(id);
     if (!oldAppt) throw new Error('Appointment not found');
 
-    const remark = await AppointmentRemark.create({
+    const finalNotes = notes || assigneeRemark || remark || '';
+    const finalNextDate = nextActionDate || nextFollowUpDate || null;
+
+    let targetStatus = status || oldAppt.status;
+    
+    // Map status from select value back to enum format if lowercase/prospect format is used
+    if (targetStatus === 'In-progress') targetStatus = 'IN_PROGRESS';
+    else if (targetStatus === 'Sale Closed' || targetStatus === 'Sale Confirmed') targetStatus = 'SALE_CONFIRMED';
+    else if (targetStatus === 'Canceled') targetStatus = 'LOST';
+
+    let targetOutcome = outcomeType;
+    if (!targetOutcome) {
+      if (targetStatus === 'SALE_CONFIRMED') targetOutcome = 'Sale Confirmed';
+      else if (targetStatus === 'LOST') targetOutcome = 'Not Interested';
+      else if (targetStatus === 'CANCELLED') targetOutcome = 'Not Interested';
+      else if (targetStatus === 'FOLLOWUP_REQUIRED') targetOutcome = 'Need Follow-up';
+      else targetOutcome = 'Interested';
+    }
+
+    const newRemark = await AppointmentRemark.create({
       appointmentId: oldAppt._id,
       addedBy: actorId,
-      outcomeType,
-      notes,
-      nextActionDate
+      outcomeType: targetOutcome,
+      notes: finalNotes,
+      nextActionDate: finalNextDate
     });
 
-    let newStatus = oldAppt.status;
-    if (outcomeType === 'Need Follow-up' || outcomeType === 'Interested') newStatus = 'FOLLOWUP_REQUIRED';
-    if (outcomeType === 'Sale Confirmed') newStatus = 'SALE_CONFIRMED';
-    if (outcomeType === 'Not Interested' || outcomeType === 'Competitor Chosen') newStatus = 'LOST';
-    if (outcomeType === 'Quotation Requested') newStatus = 'FOLLOWUP_REQUIRED'; // Or IN_PROGRESS
-
-    let updatedAppointment = oldAppt;
-    if (newStatus !== oldAppt.status) {
-      updatedAppointment = await this.updateStatus(id, newStatus, actorId, reqContext);
-    }
+    // Update appointment document
+    const updatedAppointment = await appointmentRepo.updateById(id, {
+      status: targetStatus,
+      assigneeRemark: finalNotes,
+      remark: finalNotes,
+      nextFollowUpDate: finalNextDate
+    });
 
     await AppointmentTimeline.create({
       appointmentId: oldAppt._id,
       actor: actorId,
-      action: 'REMARK_ADDED',
-      newState: { outcomeType, notes }
+      action: 'STATUS_CHANGED',
+      previousState: { status: oldAppt.status, remark: oldAppt.remark, executiveRemark: oldAppt.executiveRemark, assigneeRemark: oldAppt.assigneeRemark, nextFollowUpDate: oldAppt.nextFollowUpDate },
+      newState: { status: targetStatus, remark: finalNotes, assigneeRemark: finalNotes, nextFollowUpDate: finalNextDate }
     });
 
     await Prospect.findByIdAndUpdate(oldAppt.prospect, { 
       lastInteraction: new Date(),
-      lastInteractionNote: `Meeting Outcome: ${outcomeType} - ${notes}`
+      lastInteractionNote: `Meeting Outcome: ${targetOutcome} - ${finalNotes}`
     });
 
     await auditWorkflow.log({
@@ -224,13 +243,13 @@ class AppointmentWorkflowService {
       performedBy: actorId,
       targetModel: 'Appointment',
       targetId: oldAppt._id,
-      newValue: { outcomeType, notes, nextActionDate },
+      newValue: { status: targetStatus, remark: finalNotes, nextFollowUpDate: finalNextDate },
       ipAddress: reqContext.ipAddress,
       userAgent: reqContext.userAgent,
       device: reqContext.device
     });
 
-    return remark;
+    return newRemark;
   }
 
   async getTimeline(appointmentId) {

@@ -6,7 +6,7 @@ import { Zap } from 'lucide-react';
 import AdminDashboard from '../modules/admin/pages/AdminDashboard';
 import HRDashboard from '../modules/hr/pages/HRDashboard';
 import ExecDashboard from '../modules/sales/pages/ExecDashboard';
-import ManagerDashboard from '../modules/sales/pages/ManagerDashboard';
+import SalesManagerWorkspace from '../modules/sales/pages/SalesManagerWorkspace';
 import DesignDashboard from '../modules/design/pages/DesignDashboard';
 import ITDashboard from '../modules/it/pages/ITDashboard';
 import OperationsDashboard from '../modules/operations/pages/OperationsDashboard';
@@ -27,7 +27,7 @@ const Dashboard = () => {
       case 'SALES_EXEC':
         return <ExecDashboard />;
       case 'SALES_MANAGER':
-        return <ManagerDashboard />;
+        return <SalesManagerWorkspace />;
       case 'DESIGNER':
         return <DesignDashboard />;
       case 'IT_ADMIN':

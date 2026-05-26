@@ -52,11 +52,11 @@ class AppointmentService {
     const userId = user._id;
     const query = { ...filter };
     
-    if (user.role === 'SALES_EXEC') {
+    if (user.role === 'SALES_EXEC' || user.role === 'SR_SALES_EXEC') {
       query.$or = [{ createdBy: userId }, { assignedTo: userId }];
     } else if (user.role === 'FIELD_EXEC' || user.role === 'AGENT') {
       query.assignedTo = userId;
-    } else if (user.role === 'SALES_MANAGER') {
+    } else if (user.role === 'SALES_MANAGER' || user.role === 'SR_SALES_MANAGER') {
       // Temporary: allow manager to see all appointments until team assignment is built
       // query.$or = [{ createdBy: userId }, { managerId: userId }];
     }
@@ -148,6 +148,33 @@ class AppointmentService {
     });
 
     return remark;
+  }
+
+  async cancelActiveAppointmentsForProspect(prospectId, actorId) {
+    const Appointment = require('../domains/sales/appointments/appointment.model');
+    const AppointmentTimeline = require('../domains/sales/appointments/appointmentTimeline.model');
+    
+    const activeAppts = await Appointment.find({
+      prospect: prospectId,
+      status: { $in: ['PENDING', 'SCHEDULED', 'RESCHEDULED', 'IN_PROGRESS', 'FOLLOWUP_REQUIRED'] }
+    });
+    
+    for (const appt of activeAppts) {
+      const prevStatus = appt.status;
+      
+      await Appointment.findByIdAndUpdate(appt._id, {
+        status: 'SALE_CONFIRMED',
+        remark: (appt.remark ? appt.remark + '\n' : '') + 'Automated: Sale confirmed, appointment canceled.'
+      });
+      
+      await AppointmentTimeline.create({
+        appointmentId: appt._id,
+        actor: actorId || appt.createdBy,
+        action: 'STATUS_CHANGED',
+        previousState: { status: prevStatus },
+        newState: { status: 'SALE_CONFIRMED' }
+      });
+    }
   }
 
   async getTimeline(appointmentId) {

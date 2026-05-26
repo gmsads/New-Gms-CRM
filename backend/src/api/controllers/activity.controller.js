@@ -7,9 +7,9 @@ exports.getFeed = async (req, res, next) => {
     const filter = {};
 
     // Role-based visibility
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
+    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       filter.performedBy = req.user._id;
-    } else if (req.user.role === 'SALES_MANAGER') {
+    } else if (req.user.role === 'SALES_MANAGER' || req.user.role === 'SR_SALES_MANAGER') {
       // In a full implementation, you'd find all users managed by this manager.
       // For now, we allow managers to see actions performed by anyone or we can filter later.
     }

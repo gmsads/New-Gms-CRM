@@ -24,6 +24,10 @@ exports.list = async (req, res) => {
     const approvals = await OrderApproval.find(filter)
       .populate('requestedBy', 'name email role')
       .populate('approvedBy', 'name email')
+      .populate({
+        path: 'order',
+        select: 'orderNumber clientSnapshot paymentRecords grandTotal advancePaid balanceDue status'
+      })
       .sort({ createdAt: -1 })
       .lean();
 
@@ -34,40 +38,40 @@ exports.list = async (req, res) => {
 };
 
 // ── GET /api/approvals/stats ──────────────────────────────────────────────────
-const Payment = require('../../domains/payments/payment.model');
+const Leave = require('../../domains/hr/leave.model');
 
 exports.getStats = async (req, res) => {
   try {
     const filter = {};
-    const paymentFilter = {};
+    const leaveFilter = {};
     
     if (req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
       const uid = new mongoose.Types.ObjectId(req.user._id);
       filter.requestedBy = uid;
-      paymentFilter.collectedBy = uid;
+      leaveFilter.employee = uid;
     }
 
-    const [orderPending, paymentPending, orderRejected, paymentRejected] = await Promise.all([
+    const [orderPending, leavePending, orderRejected, leaveRejected] = await Promise.all([
       OrderApproval.countDocuments({ ...filter, status: 'Pending' }),
-      Payment.countDocuments({ ...paymentFilter, status: 'Pending' }),
+      Leave.countDocuments({ ...leaveFilter, status: 'PENDING' }),
       OrderApproval.countDocuments({ ...filter, status: 'Rejected' }),
-      Payment.countDocuments({ ...paymentFilter, status: 'Rejected' })
+      Leave.countDocuments({ ...leaveFilter, status: { $in: ['HR_REJECTED', 'ADMIN_REJECTED'] } })
     ]);
 
     // For executives, both Pending and Rejected are "Action Required" items
     const isExec = req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC';
     const totalCount = isExec 
-      ? (orderPending + paymentPending + orderRejected + paymentRejected)
-      : (orderPending + paymentPending);
+      ? (orderPending + leavePending + orderRejected + leaveRejected)
+      : (orderPending + leavePending);
 
     res.json({ 
       success: true, 
       pendingCount: totalCount,
       details: {
         orders: orderPending,
-        payments: paymentPending,
+        leaves: leavePending,
         rejectedOrders: orderRejected,
-        rejectedPayments: paymentRejected
+        rejectedLeaves: leaveRejected
       }
     });
   } catch (err) {
@@ -78,8 +82,21 @@ exports.getStats = async (req, res) => {
 // ── POST /api/approvals/:id/approve ───────────────────────────────────────────
 exports.approve = async (req, res) => {
   try {
-    const approval = await OrderApproval.findById(req.params.id);
+    const approval = await OrderApproval.findById(req.params.id).populate('requestedBy');
     if (!approval) return res.status(404).json({ success: false, message: 'OrderApproval request not found.' });
+
+    // Block self-approval
+    if (approval.requestedBy._id.toString() === req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Self-approval is not allowed.' });
+    }
+
+    // Role check for Sales Manager escalations
+    if (approval.requestedBy.role === 'SALES_MANAGER') {
+      const ALLOWED_APPROVERS = ['ADMIN', 'BRANCH_HEAD', 'MD_CEO'];
+      if (!ALLOWED_APPROVERS.includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Unauthorized: Only Branch Heads or Admins can approve Sales Manager requests.' });
+      }
+    }
 
     if (approval.status !== 'Pending') {
       return res.status(400).json({ success: false, message: `Request is already ${approval.status}` });
@@ -100,6 +117,7 @@ exports.approve = async (req, res) => {
       
       // Advance approved, now confirm the order or move to design
       order.status = 'Confirmed';
+      order.verificationStatus = 'Pending';
       if (order.designRequired) {
         order.status = 'Design_Pending';
         order.designStatus = 'Pending';
@@ -130,8 +148,21 @@ exports.approve = async (req, res) => {
 // ── POST /api/approvals/:id/reject ────────────────────────────────────────────
 exports.reject = async (req, res) => {
   try {
-    const approval = await OrderApproval.findById(req.params.id);
+    const approval = await OrderApproval.findById(req.params.id).populate('requestedBy');
     if (!approval) return res.status(404).json({ success: false, message: 'OrderApproval request not found.' });
+
+    // Block self-rejection
+    if (approval.requestedBy._id.toString() === req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Self-rejection is not allowed.' });
+    }
+
+    // Role check for Sales Manager escalations
+    if (approval.requestedBy.role === 'SALES_MANAGER') {
+      const ALLOWED_APPROVERS = ['ADMIN', 'BRANCH_HEAD', 'MD_CEO'];
+      if (!ALLOWED_APPROVERS.includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Unauthorized: Only Branch Heads or Admins can reject Sales Manager requests.' });
+      }
+    }
 
     approval.status = 'Rejected';
     approval.approvedBy = req.user._id;

@@ -58,11 +58,17 @@ try {
   console.log('[ROUTES] ✅ auth');
 } catch (e) { console.error('[ROUTES] ❌ auth:', e.message); }
 
+try {
+  app.use('/api/permissions', require('./api/routes/permission.routes'));
+  console.log('[ROUTES] ✅ permissions');
+} catch (e) { console.error('[ROUTES] ❌ permissions:', e.message); }
+
 // ── Core modules ─────────────────────────────────────────────────────────────
 const coreRoutes = [
   ['/api/clients',   './api/routes/client.routes'],
   ['/api/campaigns', './api/routes/campaign.routes'],
   ['/api/tasks',     './api/routes/task.routes'],
+  ['/api/targets',   './api/routes/target.routes'],
 ];
 for (const [path, mod] of coreRoutes) {
   try { app.use(path, require(mod)); console.log(`[ROUTES] ✅ ${path}`); }
@@ -110,6 +116,10 @@ catch (e) { console.error('[ROUTES] ❌ /api/payments:', e.message); }
 
 try { app.use('/api/analytics', require('./api/routes/analytics.routes')); console.log('[ROUTES] ✅ /api/analytics'); }
 catch (e) { console.error('[ROUTES] ❌ /api/analytics:', e.message); }
+
+// ── Operations Module ─────────────────────────────────────────────────────────
+try { app.use('/api/vendors', require('./api/routes/vendor.routes')); console.log('[ROUTES] ✅ /api/vendors'); }
+catch (e) { console.error('[ROUTES] ❌ /api/vendors:', e.message); }
 
 // ── 404 catch ────────────────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ message: `Route ${req.method} ${req.path} not found` }));

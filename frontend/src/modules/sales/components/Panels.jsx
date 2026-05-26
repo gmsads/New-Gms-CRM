@@ -66,9 +66,13 @@ export const AppointmentHub = ({ appointments = [], onSchedule }) => (
 );
 
 // ─── Order List ───────────────────────────────────────────────────────────────
-export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewDetails, onLineItemUpdated, compact, hideCompleted }) => {
+export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewDetails, onLineItemUpdated, compact, hideCompleted, hideVerification }) => {
   const { user } = useAuth();
   const [updatingLineItem, setUpdatingLineItem] = useState(null);
+  const [verificationTab, setVerificationTab] = useState('All');
+  const isVerifier = !hideVerification && ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS'].includes(user?.role);
+  const pendingVerificationCount = (orders || []).filter(o => o.verificationStatus === 'Pending').length;
+
   const statusColors = { Confirmed: 'bg-blue-100 text-blue-700', 'In Production': 'bg-amber-100 text-amber-700', 'Design Review': 'bg-purple-100 text-purple-700', Completed: 'bg-green-100 text-green-700' };
   const paymentColors = { Partial: 'bg-orange-100 text-orange-700', Paid: 'bg-green-100 text-green-700', Pending: 'bg-red-100 text-red-700' };
 
@@ -76,9 +80,19 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
   const [statusFilter, setStatusFilter] = useState('All');
   const [paymentFilter, setPaymentFilter] = useState('All');
   const [monthFilter, setMonthFilter] = useState('All Months');
+  const [employeeFilter, setEmployeeFilter] = useState('All Employees');
   const months = ['All Months', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+  const uniqueEmployees = Array.from(new Set(
+    (orders || []).map(o => o.salesExec?.name || o.salesExec)
+                  .filter(name => name)
+  )).sort();
+
   const filteredOrders = (orders || []).filter(o => {
+    // Hide Pending_Approval orders from general lists for Sales Execs
+    const isSalesExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(user?.role);
+    if (isSalesExec && o.status === 'Pending_Approval') return false;
+
     const matchSearch = !search || [o.orderNumber, o.id, o.clientSnapshot?.name, o.client].some(v => String(v || '').toLowerCase().includes(search.toLowerCase()));
     const matchStatus = statusFilter === 'All' || o.status === statusFilter;
     const matchPayment = paymentFilter === 'All' || o.paymentStatus === paymentFilter;
@@ -87,8 +101,11 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
       const oMonth = new Date(o.createdAt || o.date || new Date()).toLocaleString('default', { month: 'long' });
       matchMonth = oMonth === monthFilter;
     }
+    const empName = o.salesExec?.name || o.salesExec;
+    const matchEmployee = employeeFilter === 'All Employees' || empName === employeeFilter;
     const matchHide = hideCompleted ? !['Completed', 'Cancelled'].includes(o.status) : true;
-    return matchSearch && matchStatus && matchPayment && matchMonth && matchHide;
+    const matchVerification = verificationTab === 'All' || o.verificationStatus === 'Pending';
+    return matchSearch && matchStatus && matchPayment && matchMonth && matchEmployee && matchHide && matchVerification;
   });
 
   return (
@@ -129,6 +146,17 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
                 <option value="Paid">Paid</option>
               </select>
             </div>
+            {uniqueEmployees.length > 0 && (
+              <div className="flex flex-col gap-1 w-48">
+                <label className="text-sm font-medium text-slate-700">All Employees:</label>
+                <select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
+                  <option value="All Employees">All Employees</option>
+                  {uniqueEmployees.map(emp => (
+                    <option key={emp} value={emp}>{emp}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           
           <div className="mb-4">
@@ -151,11 +179,34 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
       )}
 
       <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between p-5 border-b">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border-b gap-4">
           <div>
             <h3 className="font-bold text-base">🧾 My Orders</h3>
             <p className="text-xs text-muted-foreground mt-0.5">{filteredOrders.length} active orders</p>
           </div>
+          {isVerifier && !compact && (
+            <div className="flex p-1 bg-slate-100 rounded-xl w-fit shrink-0">
+              <button
+                type="button"
+                onClick={() => setVerificationTab('All')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${verificationTab === 'All' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                All Orders
+              </button>
+              <button
+                type="button"
+                onClick={() => setVerificationTab('Pending')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${verificationTab === 'Pending' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Pending Verification
+                {pendingVerificationCount > 0 && (
+                  <span className="bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none">
+                    {pendingVerificationCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
         </div>
         {filteredOrders.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground text-sm">
@@ -172,6 +223,22 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
                       <span className="font-mono font-bold text-sm text-blue-700">{order.orderNumber || order.id}</span>
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>{order.status}</span>
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${paymentColors[order.paymentStatus] || 'bg-gray-100 text-gray-600'}`}>{order.paymentStatus} Payment</span>
+                      {/* Payment Verification Pending badge — shown when any paymentRecord is Pending */}
+                      {(order.paymentRecords || []).some(p => p.status === 'Pending') && (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 animate-pulse">
+                          💰 Payment Verification Pending
+                        </span>
+                      )}
+                      {order.verificationStatus === 'Pending' && (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                          ⏳ Order Verification Pending
+                        </span>
+                      )}
+                      {order.verificationStatus === 'Verified' && (
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          🛡 Order Verified by {order.verifiedByName || 'Manager'} ({order.verifiedByRole?.replace('_', ' ') || 'Admin'})
+                        </span>
+                      )}
                     </div>
                     <p className="font-semibold text-sm">
                       {order.clientSnapshot?.company 
@@ -179,98 +246,79 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
                         : (order.clientSnapshot?.name || order.client)}
                     </p>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      {order.salesExec && (
+                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
+                          👤 {order.salesExec?.name || order.salesExec}
+                        </span>
+                      )}
                       <span className="text-xs text-muted-foreground">Total: <span className="font-bold text-foreground">₹{order.grandTotal?.toLocaleString('en-IN') || order.amount}</span></span>
-                      <span className="text-xs text-muted-foreground">Paid: <span className="font-semibold text-emerald-600">₹{order.totalPaid?.toLocaleString('en-IN') || order.advance}</span></span>
-                      <span className="text-xs text-muted-foreground">Balance: <span className="font-bold text-red-500">₹{( (order.grandTotal || 0) - (order.totalPaid || 0) ).toLocaleString('en-IN')}</span></span>
+                      {/* Show Paid/Balance only when payments are verified OR there are no pending payment records */}
+                      {(order.paymentRecords || []).some(p => p.status === 'Pending') ? (
+                        <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
+                          💰 Advance payment awaiting verification
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-xs text-muted-foreground">Paid: <span className="font-semibold text-emerald-600">₹{order.totalPaid?.toLocaleString('en-IN') || '0'}</span></span>
+                          <span className="text-xs text-muted-foreground">Balance: <span className="font-bold text-red-500">₹{( (order.grandTotal || 0) - (order.totalPaid || 0) ).toLocaleString('en-IN')}</span></span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    <div className={`rounded-xl px-3 py-1.5 text-center ${
+                      order.designStatus === 'Approved' || order.designStatus === 'Completed' 
+                        ? 'bg-green-100 border border-green-200' 
+                        : order.designStatus === 'Not_Required' 
+                          ? 'bg-slate-100 border border-slate-200' 
+                          : 'bg-amber-50 border border-amber-200'
+                    }`}>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Design</p>
+                      <p className={`text-xs font-bold mt-0.5 ${
+                        order.designStatus === 'Approved' 
+                          ? 'text-green-700' 
+                          : order.designStatus === 'Completed'
+                            ? 'text-emerald-700'
+                            : order.designStatus === 'Not_Required'
+                              ? 'text-slate-600'
+                              : 'text-amber-700'
+                      }`}>
+                        {order.designStatus === 'Approved' 
+                          ? '✅ Ready for Print' 
+                          : order.designStatus === 'Not_Required'
+                            ? 'Not Required'
+                            : '🎨 ' + (order.designStatus?.replace('_', ' ') || 'Pending')}
+                      </p>
                     </div>
                   </div>
                 </div>
-                {order.lineItems && order.lineItems.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-slate-100">
-                    <h4 className="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Added Products / Services</h4>
-                    <div className="space-y-2">
-                      {order.lineItems.map((item, idx) => (
-                        <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 gap-3">
-                          <div className="flex-1">
-                            <p className="text-sm font-semibold text-slate-800">{item.description}</p>
-                            <p className="text-[10px] text-slate-500 font-medium mt-0.5">Qty: {item.quantity} | Unit Price: ₹{item.unitPrice}</p>
-                          </div>
-                          
-                          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 mt-3 sm:mt-0">
-                            <div className="flex items-center gap-2 flex-wrap justify-end">
-                              {/* Designer Status */}
-                              <div className="flex items-center gap-1">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase">Design</span>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider
-                                  ${item.designerStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                    item.designerStatus === 'work-in progress' ? 'bg-blue-100 text-blue-700' :
-                                    item.designerStatus === 'reached to designer' ? 'bg-amber-100 text-amber-700' :
-                                    'bg-slate-200 text-slate-700'}`}>
-                                  {item.designerStatus?.replace('designer ', '') || 'update pending'}
-                                </span>
-                                {item.designFileUrl && (
-                                  <a href={item.designFileUrl} target="_blank" rel="noreferrer" className="flex items-center text-[10px] font-bold text-blue-600 hover:underline">
-                                    <FileText className="h-3 w-3" />
-                                  </a>
-                                )}
-                              </div>
-                              
-                              {/* Operation Status */}
-                              <div className="flex items-center gap-1">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase">Ops</span>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider
-                                  ${item.operationStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                    item.operationStatus === 'work-in progress' ? 'bg-blue-100 text-blue-700' :
-                                    item.operationStatus === 'reached to operation' ? 'bg-amber-100 text-amber-700' :
-                                    'bg-slate-200 text-slate-700'}`}>
-                                  {item.operationStatus?.replace('operation ', '') || 'update pending'}
-                                </span>
-                                {item.operationFileUrl && (
-                                  <a href={item.operationFileUrl} target="_blank" rel="noreferrer" className="flex items-center text-[10px] font-bold text-blue-600 hover:underline">
-                                    <FileText className="h-3 w-3" />
-                                  </a>
-                                )}
-                              </div>
-                              
-                              {/* Service Status */}
-                              <div className="flex items-center gap-1">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase">Service</span>
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider
-                                  ${item.serviceStatus === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                    item.serviceStatus === 'work-in progress' ? 'bg-blue-100 text-blue-700' :
-                                    item.serviceStatus === 'reached to service' ? 'bg-amber-100 text-amber-700' :
-                                    item.serviceStatus === 'payment pending' ? 'bg-red-100 text-red-700' :
-                                    'bg-slate-200 text-slate-700'}`}>
-                                  {item.serviceStatus?.replace('service ', '') || 'update pending'}
-                                </span>
-                                {item.serviceFileUrl && (
-                                  <a href={item.serviceFileUrl} target="_blank" rel="noreferrer" className="flex items-center text-[10px] font-bold text-blue-600 hover:underline">
-                                    <FileText className="h-3 w-3" />
-                                  </a>
-                                )}
-                              </div>
-                            </div>
-
-                            {(user?.role === 'DESIGNER' || user?.role === 'OPERATION_EXEC' || user?.role === 'OPERATION_MANAGER' || user?.role === 'ADMIN' || user?.role === 'MD_CEO') && (
-                              <button 
-                                onClick={() => setUpdatingLineItem({ order, itemIndex: idx, item })}
-                                className="flex items-center gap-1 h-7 px-2.5 rounded text-white text-xs font-semibold hover:opacity-90 transition-opacity" style={{ background: '#7c3aed' }}>
-                                <Edit className="h-3 w-3" /> Update
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="flex gap-2 mt-4">
+                <div className="flex gap-2 mt-4 items-center">
                   <button onClick={() => onUploadPayment?.(order)} className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 transition-colors">
                     <Upload className="h-3 w-3" /> Upload Payment
                   </button>
                   <button onClick={() => onViewDetails?.(order)} className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-muted text-muted-foreground text-xs font-medium hover:bg-muted/80 transition-colors">
                     <FileText className="h-3 w-3" /> View Details
                   </button>
+                  {isVerifier && order.verificationStatus === 'Pending' && (
+                    <button 
+                      onClick={async () => {
+                        if (window.confirm(`Are you sure you want to verify payments and confirm Order #${order.orderNumber}?`)) {
+                          try {
+                            const res = await orderApi.verify(order._id || order.id, user.token);
+                            if (res.success) {
+                              alert('Order verified successfully!');
+                              onLineItemUpdated?.();
+                            }
+                          } catch (err) {
+                            alert(err.message || 'Verification failed');
+                          }
+                        }
+                      }} 
+                      className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors shadow-sm ml-auto animate-bounce"
+                    >
+                      🛡 Verify Order
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -460,7 +508,8 @@ export const ScheduleAppointmentModal = ({ prospect, onClose, onSaved }) => {
   const [formData, setFormData] = useState({
     date: '',
     time: '',
-    venue: ''
+    venue: '',
+    executiveRemark: ''
   });
   const [loading, setLoading] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(null);
@@ -474,6 +523,7 @@ export const ScheduleAppointmentModal = ({ prospect, onClose, onSaved }) => {
         date: formData.date,
         time: formData.time,
         venue: formData.venue,
+        executiveRemark: formData.executiveRemark,
         forceCreate
       }, user.token);
       if (res.success) {
@@ -525,7 +575,7 @@ export const ScheduleAppointmentModal = ({ prospect, onClose, onSaved }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-full max-w-md rounded-2xl border bg-card shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-md rounded-2xl border bg-card shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
         <div className="flex items-center justify-between p-5 border-b shrink-0" style={{ background: 'linear-gradient(135deg, #4f46e5, #4338ca)' }}>
           <div>
             <h2 className="text-white font-bold text-lg">📅 Schedule Appointment</h2>
@@ -534,7 +584,7 @@ export const ScheduleAppointmentModal = ({ prospect, onClose, onSaved }) => {
           <button onClick={onClose} className="text-indigo-200 hover:text-white"><X className="h-5 w-5" /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 flex-1 overflow-y-auto">
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Executive Name</label>
             <input value={user?.name || ''} readOnly className="h-9 w-full rounded-lg border border-input bg-gray-50 px-3 text-sm text-gray-500 cursor-not-allowed outline-none" />
@@ -566,6 +616,10 @@ export const ScheduleAppointmentModal = ({ prospect, onClose, onSaved }) => {
           <div>
             <label className="text-xs font-medium text-muted-foreground mb-1 block">Venue / Address</label>
             <textarea required rows={3} placeholder="Enter full address or meeting link..." value={formData.venue} onChange={e => setFormData({ ...formData, venue: e.target.value })} className="w-full rounded-lg border border-input bg-background p-3 text-sm outline-none focus:border-indigo-500 resize-none" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Executive Remark</label>
+            <textarea rows={2} placeholder="Enter initial remark or notes..." value={formData.executiveRemark} onChange={e => setFormData({ ...formData, executiveRemark: e.target.value })} className="w-full rounded-lg border border-input bg-background p-3 text-sm outline-none focus:border-indigo-500 resize-none" />
           </div>
 
           <div className="pt-2 flex gap-3">
@@ -685,11 +739,16 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 
   const { user } = useAuth();
   const [availableProducts, setAvailableProducts] = useState([]);
+  const [clientTypes, setClientTypes] = useState([]);
   
   React.useEffect(() => {
-    productApi.list(user?.token)
-      .then(res => {
-        if (res.success) setAvailableProducts(res.data.filter(p => p.status === 'Active'));
+    Promise.all([
+      productApi.list(user?.token),
+      productApi.getClientTypes(user?.token).catch(() => ({ data: [] }))
+    ])
+      .then(([pRes, ctRes]) => {
+        if (pRes.success) setAvailableProducts(pRes.data.filter(p => p.status === 'Active'));
+        if (ctRes.data) setClientTypes(ctRes.data);
       })
       .catch(console.error);
   }, [user]);
@@ -703,9 +762,27 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
   const [applyGst, setApplyGst] = useState(false);
   const [discount, setDiscount] = useState(0);
   const [errors, setErrors] = useState({});
+  const [designFile, setDesignFile] = useState(null);
+  const getProductPriceForOrderType = (product, orderType) => {
+    if (!product) return 0;
+    if (!orderType) return product.pricingRules?.sellingPrice || product.pricingRules?.totalBasePrice || product.basePrice || 0;
+    
+    if (product.clientTypePricing) {
+      if (product.clientTypePricing[orderType] !== undefined) {
+        return product.clientTypePricing[orderType];
+      }
+      const matchKey = Object.keys(product.clientTypePricing).find(
+        k => k.toLowerCase() === orderType.toLowerCase()
+      );
+      if (matchKey && product.clientTypePricing[matchKey] !== undefined) {
+        return product.clientTypePricing[matchKey];
+      }
+    }
+    return product.pricingRules?.sellingPrice || product.pricingRules?.totalBasePrice || product.basePrice || 0;
+  };
 
   const handleSelectFromCatalogue = (product) => {
-    const price = product.pricingRules?.totalBasePrice || product.basePrice || 0;
+    const price = getProductPriceForOrderType(product, formData.orderType);
     const desc = product.productName || product.name;
     const moq = product.minimumOrderQuantity || 1;
     
@@ -754,8 +831,15 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     if (!formData.pincode) newErrors.pincode = 'Required';
     else if (formData.pincode.length !== 6) newErrors.pincode = 'Enter 6 digits';
 
-    if (!advance || Number(advance) <= 0) newErrors.advance = 'Required';
+    if (!advance || Number(advance) <= 0) {
+      newErrors.advance = 'Required';
+    } else if (Number(advance) > totalAmount) {
+      newErrors.advance = 'You enter more then Final Amount';
+    }
     if (!paymentProof) newErrors.paymentProof = 'Required';
+    if (formData.designStatus === 'Design Provided' && !designFile) {
+      newErrors.designFile = 'Required';
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -776,7 +860,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
           ...item,
           productId,
           desc: product.productName || product.name,
-          cost: product.pricingRules?.totalBasePrice || product.basePrice || 0,
+          cost: getProductPriceForOrderType(product, formData.orderType),
           qty: Math.max(item.qty, product.minimumOrderQuantity || 1),
           isCustom: false
         };
@@ -811,6 +895,18 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 
     setFormData(prev => ({ ...prev, [name]: finalValue }));
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
+
+    if (name === 'orderType') {
+      setItems(prevItems => prevItems.map(item => {
+        if (!item.productId || item.isCustom) return item;
+        const product = availableProducts.find(p => p._id === item.productId);
+        if (!product) return item;
+        return {
+          ...item,
+          cost: getProductPriceForOrderType(product, finalValue)
+        };
+      }));
+    }
   };
   
   const handleFileChange = (e) => {
@@ -825,9 +921,25 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     }
   };
 
+  const handleDesignFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setDesignFile(reader.result);
+        if (errors.designFile) setErrors(prev => ({ ...prev, designFile: null }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAdvanceChange = (val) => {
     setAdvance(val);
-    if (errors.advance && Number(val) > 0) setErrors(prev => ({ ...prev, advance: null }));
+    if (Number(val) > totalAmount) {
+      setErrors(prev => ({ ...prev, advance: 'You enter more then Final Amount' }));
+    } else {
+      setErrors(prev => ({ ...prev, advance: null }));
+    }
   };
 
   const handleFormSubmit = () => {
@@ -844,6 +956,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     onSubmit({
       ...formData,
       lineItems,
+      designFileUrl: designFile,
       clientSnapshot: {
         name: formData.name,
         phone: formData.phone,
@@ -898,7 +1011,11 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                 <label className="text-xs font-bold text-slate-800 mb-1 block">Order Type *</label>
                 <select name="orderType" value={formData.orderType} onChange={handleChange} className={`h-9 w-full rounded border ${errors.orderType ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`}>
                   <option value="">Select Type...</option>
-                  {['renewal', 'renewal-agent', 'retail', 'retail-agent', 'agent', 'corporate', 'corporate-renewal', 'website', 'walk-in'].map(t => <option key={t} value={t}>{t}</option>)}
+                  {clientTypes.length === 0 ? (
+                    ['renewal', 'renewal-agent', 'retail', 'retail-agent', 'agent', 'corporate', 'corporate-renewal', 'website', 'walk-in'].map(t => <option key={t} value={t}>{t}</option>)
+                  ) : clientTypes.map(ct => (
+                    <option key={ct._id} value={ct.key}>{ct.name}</option>
+                  ))}
                 </select>
                 {errors.orderType && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.orderType}</p>}
               </div>
@@ -959,6 +1076,33 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                   <option value="Need Design">Need Design</option>
                 </select>
               </div>
+              {formData.designStatus === 'Design Provided' && (
+                <div className="col-span-full md:col-span-3">
+                  <label className="text-xs font-bold text-slate-800 mb-1 block">Upload Design File *</label>
+                  <div className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-slate-50 relative min-h-[120px] transition-colors ${errors.designFile ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}>
+                    {designFile ? (
+                      <div className="text-center w-full">
+                        {designFile.startsWith('data:image/') ? (
+                          <img src={designFile} alt="Design Preview" className="w-full h-32 object-contain rounded-lg mb-2" />
+                        ) : (
+                          <div className="h-32 flex flex-col items-center justify-center bg-slate-100 rounded-lg mb-2 border border-slate-200">
+                            <FileText className="h-10 w-10 text-slate-400 mb-1" />
+                            <span className="text-xs font-bold text-slate-600 truncate max-w-[90%]">Design File Uploaded</span>
+                          </div>
+                        )}
+                        <button type="button" onClick={() => setDesignFile(null)} className="text-xs text-red-600 font-bold hover:underline">Remove File</button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer flex flex-col items-center justify-center w-full h-full py-4">
+                        <Upload className={`h-8 w-8 mb-2 ${errors.designFile ? 'text-red-300' : 'text-slate-300'}`} />
+                        <span className={`text-[10px] font-bold ${errors.designFile ? 'text-red-500' : 'text-slate-500'}`}>Click to upload design file</span>
+                        <input type="file" onChange={handleDesignFileChange} className="hidden" />
+                      </label>
+                    )}
+                  </div>
+                  {errors.designFile && <p className="text-[10px] text-red-500 mt-1 font-bold text-center">{errors.designFile}</p>}
+                </div>
+              )}
             </div>
           </div>
 
@@ -990,21 +1134,10 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                     <div className="col-span-1 sm:col-span-2">
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Requirement</label>
                       <div className="flex gap-2">
-                        <select value={item.productId} onChange={e => handleProductSelect(i, e.target.value)} className="h-9 flex-1 rounded border border-slate-300 bg-white px-3 text-sm outline-none">
+                        <select value={item.productId} onChange={e => handleProductSelect(i, e.target.value)} className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none">
                           <option value="">Select product...</option>
-                          {availableProducts.map(p => <option key={p._id} value={p._id}>{p.productName || p.name} - ₹{(p.pricingRules?.totalBasePrice || p.basePrice || 0).toLocaleString()}</option>)}
+                          {availableProducts.map(p => <option key={p._id} value={p._id}>{p.productName || p.name}</option>)}
                         </select>
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            setActiveItemIndex(i);
-                            setIsCatalogueOpen(true);
-                          }} 
-                          className="h-9 px-2.5 rounded bg-indigo-600 text-white transition-colors hover:bg-indigo-700 flex items-center justify-center shrink-0 shadow" 
-                          title="Browse Catalogue"
-                        >
-                          <ShoppingBag className="h-4 w-4" />
-                        </button>
                       </div>
                       <div className="mt-2 flex items-center gap-2">
                         <input type="checkbox" id={`custom-${i}`} checked={item.isCustom} onChange={e => updateItem(i, 'isCustom', e.target.checked)} className="rounded cursor-pointer" />
@@ -1083,7 +1216,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
           </div>
 
           <div className="bg-white p-5 rounded-xl border shadow-sm">
-            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">4. Payment & Proof</h3>
+            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">4. Advanced Payment & Proof</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
@@ -1155,6 +1288,27 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 export const PhoneSearchModal = ({ onClose, onSearch }) => {
   const [phone, setPhone] = useState('');
   const [company, setCompany] = useState('');
+  const [error, setError] = useState('');
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!phone) {
+      setError('10-Digit Mobile Number is required');
+      return;
+    }
+    if (phone.length !== 10) {
+      setError('Mobile Number must be exactly 10 digits');
+      return;
+    }
+    if (!company.trim()) {
+      setError('Business Name is required');
+      return;
+    }
+
+    onSearch({ phone, company: (company || '').toLowerCase().trim() });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
@@ -1162,13 +1316,21 @@ export const PhoneSearchModal = ({ onClose, onSearch }) => {
         <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-slate-900">
           <X className="h-5 w-5" />
         </button>
-        <h2 className="text-2xl font-bold text-center mb-8 text-slate-900">Search Prospect</h2>
-        <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-center mb-6 text-slate-900">Search Prospect</h2>
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-lg">
+            {error}
+          </div>
+        )}
+        <form onSubmit={handleFormSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-bold text-slate-800 mb-2 block">10-Digit Mobile Number:</label>
             <input 
               value={phone} 
-              onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+              onChange={e => {
+                setError('');
+                setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
+              }} 
               placeholder="Enter mobile number" 
               className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
             />
@@ -1177,19 +1339,22 @@ export const PhoneSearchModal = ({ onClose, onSearch }) => {
             <label className="text-sm font-bold text-slate-800 mb-2 block">Business Name:</label>
             <input 
               value={company} 
-              onChange={e => setCompany(e.target.value)} 
+              onChange={e => {
+                setError('');
+                setCompany(e.target.value);
+              }} 
               placeholder="Enter business name" 
               className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
             />
           </div>
           <button
-            onClick={() => onSearch({ phone, company: (company || '').toLowerCase() })}
+            type="submit"
             className="w-full h-10 rounded text-white font-semibold text-sm transition-colors hover:opacity-90"
             style={{ background: '#003366' }}
           >
             Search
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -1228,7 +1393,10 @@ export const ProspectDetailsModal = ({ prospect, onBack, onCreateNew, onClose })
           ))}
         </div>
         <div className="pt-6 flex justify-center gap-4 shrink-0">
-          <button onClick={onBack} className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:bg-green-600" style={{ background: '#4caf50' }}>
+          <button onClick={() => {
+              if (onBack) onBack();
+              navigate('/');
+            }}  className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:bg-green-600" style={{ background: '#4caf50' }}>
             Back to Dashboard
           </button>
           <button onClick={onCreateNew} className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:bg-blue-600" style={{ background: '#2196f3' }}>
@@ -1241,12 +1409,12 @@ export const ProspectDetailsModal = ({ prospect, onBack, onCreateNew, onClose })
 };
 
 // ─── Create/Edit Prospect Modal ────────────────────────────────────────────────
-export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, onClose, initialData = null }) => {
+export const CreateProspectModal = ({ phone, company, executiveName, onBack, onSubmit, onClose, initialData = null }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     executiveName: (typeof initialData?.assignedTo === 'object' ? initialData?.assignedTo?.name : null) || initialData?.executiveName || executiveName || '',
     name: initialData?.name || '',
-    company: initialData?.company || '',
+    company: initialData?.company || company || '',
     phone: initialData?.phone || phone || '',
     location: initialData?.requirement?.location || '',
     source: initialData?.source || '',
@@ -1258,6 +1426,7 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
   });
 
   const [predefinedProducts, setPredefinedProducts] = useState([]);
+  const [clientTypes, setClientTypes] = useState([]);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState(initialData?.requirement?.service ? initialData.requirement.service.split(', ').filter(Boolean) : []);
   const [customProduct, setCustomProduct] = useState('');
@@ -1268,8 +1437,12 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
   useEffect(() => {
     const loadMasterData = async () => {
       try {
-        const pRes = await productApi.list(user?.token);
+        const [pRes, ctRes] = await Promise.all([
+          productApi.list(user?.token),
+          productApi.getClientTypes(user?.token).catch(() => ({ data: [] }))
+        ]);
         if (pRes.success) setPredefinedProducts(pRes.data);
+        if (ctRes.data) setClientTypes(ctRes.data);
       } catch (err) { console.error(err); }
     };
     loadMasterData();
@@ -1382,12 +1555,18 @@ export const CreateProspectModal = ({ phone, executiveName, onBack, onSubmit, on
           </div>
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Client Type (For Pricing) *</label>
             <select name="clientType" value={formData.clientType} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
-              <option value="Retail">Retail</option>
-              <option value="Renewal">Renewal</option>
-              <option value="Corporate">Corporate</option>
-              <option value="Corporate-Renewal">Corporate-Renewal</option>
-              <option value="Agent">Agent</option>
-              <option value="Agent-Renewal">Agent-Renewal</option>
+              {clientTypes.length === 0 ? (
+                <>
+                  <option value="Retail">Retail</option>
+                  <option value="Renewal">Renewal</option>
+                  <option value="Corporate">Corporate</option>
+                  <option value="Corporate-Renewal">Corporate-Renewal</option>
+                  <option value="Agent">Agent</option>
+                  <option value="Agent-Renewal">Agent-Renewal</option>
+                </>
+              ) : clientTypes.map(ct => (
+                <option key={ct._id} value={ct.name}>{ct.name}</option>
+              ))}
             </select>
           </div>
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Budget</label><input name="budget" value={formData.budget} onChange={handleChange} placeholder="e.g. 5000" className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]" /></div>
@@ -1494,16 +1673,47 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const getProductPriceForClientType = (product, clientType) => {
+    if (!product) return 0;
+    if (product.clientTypePricing) {
+      if (product.clientTypePricing[clientType] !== undefined) {
+        return product.clientTypePricing[clientType];
+      }
+      const match = Object.keys(product.clientTypePricing).find(
+        k => k.toLowerCase() === clientType?.toLowerCase()
+      );
+      if (match && product.clientTypePricing[match] !== undefined) {
+        return product.clientTypePricing[match];
+      }
+    }
+    return product.pricingRules?.sellingPrice || product.pricingRules?.totalBasePrice || product.basePrice || 0;
+  };
+
   const handleSelectFromCatalogue = async (product) => {
+    const clientType = prospect?.clientType || 'Retail';
+    const price = getProductPriceForClientType(product, clientType);
+    const name = product.productName || product.name;
+
     if (activeItemIndex !== null) {
       const newItems = [...items];
       newItems[activeItemIndex].productId = product._id;
       newItems[activeItemIndex].variantId = '';
-      newItems[activeItemIndex].unitPrice = 0;
+      newItems[activeItemIndex].unitPrice = price;
+      newItems[activeItemIndex].systemPrice = price;
+      newItems[activeItemIndex].customPrice = false;
+      newItems[activeItemIndex].name = name;
       setItems(newItems);
       await fetchVariants(product._id);
     } else {
-      const newItem = { productId: product._id, variantId: '', name: '', qty: 1, unitPrice: 0, customPrice: false, systemPrice: 0 };
+      const newItem = { 
+        productId: product._id, 
+        variantId: '', 
+        name: name, 
+        qty: product.minimumOrderQuantity || 1, 
+        unitPrice: price, 
+        systemPrice: price,
+        customPrice: false 
+      };
       let newItemsList;
       if (items.length === 1 && !items[0].productId) {
         newItemsList = [newItem];
@@ -1530,7 +1740,10 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
     try {
       const res = await fetch(`/api/products/${productId}`, { 
         headers: { 'Authorization': `Bearer ${user.token}` } 
-      }).then(r => r.json());
+      }).then(async r => {
+        const text = await r.text();
+        return text ? JSON.parse(text) : {};
+      });
       if (res.success) {
         setVariants(prev => ({ ...prev, [productId]: res.data.variants }));
       }
@@ -1542,7 +1755,20 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
     if (field === 'productId') {
       newItems[index].productId = value;
       newItems[index].variantId = '';
-      newItems[index].unitPrice = 0;
+      const prod = productList.find(p => p._id === value);
+      if (prod) {
+        const clientType = prospect?.clientType || 'Retail';
+        const price = getProductPriceForClientType(prod, clientType);
+        newItems[index].unitPrice = price;
+        newItems[index].systemPrice = price;
+        newItems[index].customPrice = false;
+        newItems[index].name = prod.productName || prod.name;
+      } else {
+        newItems[index].unitPrice = 0;
+        newItems[index].systemPrice = 0;
+        newItems[index].customPrice = false;
+        newItems[index].name = '';
+      }
       await fetchVariants(value);
     } else if (field === 'variantId') {
       const v = variants[newItems[index].productId]?.find(v => v._id === value);
@@ -1554,7 +1780,10 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
         const clientType = prospect?.clientType || 'Retail';
         const priceRes = await fetch(`/api/products/price-engine?variantId=${value}&clientType=${clientType}`, {
           headers: { 'Authorization': `Bearer ${user.token}` }
-        }).then(r => r.json());
+        }).then(async r => {
+          const text = await r.text();
+          return text ? JSON.parse(text) : {};
+        });
         
         if (priceRes.success) {
           const systemPrice = priceRes.data.unitPrice;
@@ -1692,7 +1921,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                           className="flex-1 h-12 px-4 bg-slate-50 border-0 rounded-2xl text-xs font-black outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                         >
                           <option value="">Select Product...</option>
-                          {productList.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                          {productList.map(p => <option key={p._id} value={p._id}>{p.productName || p.name}</option>)}
                         </select>
                         <button 
                           type="button" 
@@ -1867,7 +2096,7 @@ export const UpdateStatusModal = ({ prospect, newStatus, onClose, onSubmit }) =>
             {formData.status === 'Canceled' && (
               <div><label className="text-sm font-semibold text-slate-700 mb-1.5 block">Cancellation Reason *</label><textarea value={formData.reason} onChange={(e) => setFormData({...formData, reason: e.target.value})} className="w-full rounded-lg border border-slate-300 px-3 py-3 text-sm outline-none focus:border-red-600 min-h-[90px]" placeholder="e.g. Budget too low..." /></div>
             )}
-            {['Sale Closed', 'Order Confirmed'].includes(formData.status) && (
+            {['Sale Confirmed', 'Order Confirmed'].includes(formData.status) && (
               <div><label className="text-sm font-semibold text-slate-700 mb-1.5 block">Order ID Reference *</label><input type="text" value={formData.orderId} onChange={(e) => setFormData({...formData, orderId: e.target.value.toUpperCase()})} className="h-11 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-emerald-600" placeholder="e.g. ORD-12345" /></div>
             )}
           </div>
@@ -1965,7 +2194,7 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
                   <span className="font-black">-₹{(discount.amount || 0).toLocaleString()}</span>
                 </div>
               )}
-              {tax?.enabled && (
+              {tax?.enabled && tax?.amount > 0 && (
                 <div className="flex justify-between text-[10px] text-slate-500">
                   <span className="font-bold uppercase">GST (18%)</span>
                   <span className="font-black">₹{(tax.amount || 0).toLocaleString()}</span>
@@ -2056,7 +2285,7 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
 };
 
 // ─── Order Details Modal ─────────────────────────────────────────────────────
-export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload }) => {
+export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerificationSuccess, hideVerification }) => {
   const { user } = useAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2074,6 +2303,8 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload }) => {
   if (loading) return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"><div className="bg-white p-8 rounded-2xl shadow-xl flex flex-col items-center gap-4"><div className="h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /><p className="text-sm font-bold text-slate-600">Loading...</p></div></div>;
   if (!order) return null;
 
+  const isVerifier = !hideVerification && ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS'].includes(user?.role);
+
   const steps = [
     { label: 'Sales Mgr', status: order.status === 'Pending_Approval' ? 'pending' : 'done' },
     { label: 'Ops Mgr', status: ['Draft', 'Pending_Approval', 'Confirmed'].includes(order.status) ? 'waiting' : (['Delivered', 'Completed'].includes(order.status) ? 'done' : 'current') },
@@ -2087,7 +2318,22 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload }) => {
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-xl bg-blue-600 flex items-center justify-center"><FileText className="h-6 w-6" /></div>
             <div>
-              <div className="flex items-center gap-3"><h2 className="text-xl font-bold">{order.orderNumber}</h2><span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${order.status === 'Completed' ? 'bg-green-500' : 'bg-blue-500'}`}>{order.status.replace('_', ' ')}</span></div>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-bold">{order.orderNumber}</h2>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${order.status === 'Completed' ? 'bg-green-500' : 'bg-blue-500'}`}>
+                  {order.status.replace('_', ' ')}
+                </span>
+                {order.verificationStatus === 'Pending' && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-500 text-white">
+                    Order Verification Pending
+                  </span>
+                )}
+                {order.verificationStatus === 'Verified' && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-600 text-white">
+                    Order Verified by {order.verifiedByName} ({order.verifiedByRole})
+                  </span>
+                )}
+              </div>
               <p className="text-slate-400 text-xs font-medium mt-0.5">Created on {new Date(order.createdAt).toLocaleDateString()}</p>
             </div>
           </div>
@@ -2131,13 +2377,122 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload }) => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center opacity-60"><span className="text-xs font-bold uppercase tracking-widest">Subtotal</span><span className="text-sm font-bold">₹{order.subtotal}</span></div>
                 <div className="flex justify-between items-center opacity-60"><span className="text-xs font-bold uppercase tracking-widest">Tax (GST)</span><span className="text-sm font-bold">₹{order.totalGST}</span></div>
-                <div className="h-px bg-white/10 my-4" /><div className="flex justify-between items-end"><span className="text-xs font-black uppercase tracking-widest text-blue-400">Grand Total</span><span className="text-2xl font-black">₹{order.grandTotal}</span></div>
+                <div className="h-px bg-white/10 my-4" /><div className="flex justify-between items-end"><span className="text-xs font-black uppercase tracking-widest text-blue-400">Grand Total</span><span className="text-2xl font-black">₹{order.grandTotal?.toLocaleString('en-IN')}</span></div>
               </div>
-              <div className="mt-8 pt-6 border-t border-white/10"><div className="flex justify-between text-xs font-bold mb-1"><span className="text-slate-400">Amount Paid</span><span className="text-emerald-400">₹{order.totalPaid}</span></div><div className="w-full h-2 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, (order.totalPaid / order.grandTotal) * 100)}%` }} /></div><p className="text-[10px] text-slate-500 mt-2 text-right uppercase">Balance: ₹{order.balanceDue}</p></div>
+              {/* Payment Verification Status */}
+              {(order.paymentRecords || []).some(p => p.status === 'Pending') ? (
+                <div className="mt-8 pt-6 border-t border-white/10">
+                  <div className="flex items-center gap-2 bg-red-500/20 rounded-xl p-3 border border-red-400/30">
+                    <span className="text-lg">💰</span>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-red-300">Payment Verification Pending</p>
+                      <p className="text-[9px] text-red-400 mt-0.5">Advance payment awaiting verification by Accountant/Admin</p>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-3 text-right uppercase">Paid & Balance will show after verification</p>
+                </div>
+              ) : (
+                <div className="mt-8 pt-6 border-t border-white/10">
+                  <div className="flex justify-between text-xs font-bold mb-1"><span className="text-slate-400">Amount Paid (Verified)</span><span className="text-emerald-400">₹{order.totalPaid?.toLocaleString('en-IN')}</span></div>
+                  <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${Math.min(100, ((order.totalPaid || 0) / (order.grandTotal || 1)) * 100)}%` }} /></div>
+                  <p className="text-[10px] text-slate-500 mt-2 text-right uppercase">Balance: ₹{order.balanceDue?.toLocaleString('en-IN')}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+
+          {/* Payment History */}
+          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+            <div className="p-4 border-b bg-slate-50 flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Payment History</h3>
+              {onPaymentUpload && (
+                <button
+                  onClick={() => onPaymentUpload(order)}
+                  className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Add Installment
+                </button>
+              )}
+            </div>
+            <div className="p-4">
+              {!order.paymentRecords || order.paymentRecords.length === 0 ? (
+                <p className="text-slate-400 text-sm">No payment records found.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b text-slate-400 font-bold uppercase">
+                        <th className="pb-2">Date</th>
+                        <th className="pb-2">Method</th>
+                        <th className="pb-2">Amount</th>
+                        <th className="pb-2">Status</th>
+                        <th className="pb-2">Proof</th>
+                        <th className="pb-2">Verification Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {order.paymentRecords.map((pay, pIdx) => (
+                        <tr key={pay._id || pIdx} className="hover:bg-slate-50/50">
+                          <td className="py-2 text-slate-600">{new Date(pay.receivedAt || pay.createdAt).toLocaleString()}</td>
+                          <td className="py-2 font-medium text-slate-800">{pay.method}</td>
+                          <td className="py-2 font-bold text-slate-900">₹{pay.amount}</td>
+                          <td className="py-2">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                              pay.status === 'Verified' ? 'bg-green-100 text-green-700' :
+                              pay.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {pay.status}
+                            </span>
+                          </td>
+                          <td className="py-2">
+                            {pay.proofUrl ? (
+                              <a href={pay.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">View Receipt</a>
+                            ) : '-'}
+                          </td>
+                          <td className="py-2 text-slate-500">
+                            {pay.status === 'Verified' ? (
+                              <span>Verified on {pay.verifiedAt ? new Date(pay.verifiedAt).toLocaleDateString() : '-'}</span>
+                            ) : pay.status === 'Rejected' ? (
+                              <span className="text-red-500">Reason: {pay.rejectionNote || 'None'}</span>
+                            ) : 'Awaiting confirmation'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
-        <div className="p-4 border-t bg-slate-50 flex justify-end gap-3"><button onClick={() => window.print()} className="h-9 px-4 rounded-xl border bg-white text-xs font-bold flex items-center gap-2"><Printer className="h-3.5 w-3.5" /> Print Invoice</button><button onClick={onClose} className="h-9 px-8 rounded-xl bg-slate-900 text-white text-xs font-bold">Close View</button></div>
+
+        <div className="p-4 border-t bg-slate-50 flex justify-end gap-3">
+          {isVerifier && order.verificationStatus === 'Pending' && (
+            <button 
+              onClick={async () => {
+                if (window.confirm(`Are you sure you want to verify payments and confirm Order #${order.orderNumber}?`)) {
+                  try {
+                    const res = await orderApi.verify(order._id || order.id, user.token);
+                    if (res.success) {
+                      alert('Order verified successfully!');
+                      const updated = await orderApi.get(order._id || order.id, user.token);
+                      if (updated.success) setOrder(updated.data);
+                      onVerificationSuccess?.();
+                    }
+                  } catch (err) {
+                    alert(err.message || 'Verification failed');
+                  }
+                }
+              }}
+              className="mr-auto h-9 px-4 rounded-xl bg-emerald-600 text-white text-xs font-bold flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-sm animate-pulse"
+            >
+              🛡 Verify Order
+            </button>
+          )}
+          <button onClick={() => window.print()} className="h-9 px-4 rounded-xl border bg-white text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors"><Printer className="h-3.5 w-3.5" /> Print Invoice</button>
+          <button onClick={onClose} className="h-9 px-8 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors">Close View</button>
+        </div>
       </div>
     </div>
   );
@@ -2222,20 +2577,102 @@ export const AssignAppointmentModal = ({ appointment, onClose, onAssigned }) => 
 // ─── Update Appointment Remark Modal ──────────────────────────────────────────
 export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState({ remark: appointment.remark || '', prospectStatus: appointment.prospect?.status || 'In-progress' });
+  const [formData, setFormData] = useState({
+    assigneeRemark: appointment.assigneeRemark || appointment.remark || '',
+    status: appointment.status || 'IN_PROGRESS',
+    nextFollowUpDate: (appointment.nextFollowUpDate && !isNaN(new Date(appointment.nextFollowUpDate).getTime())) ? new Date(appointment.nextFollowUpDate).toISOString().split('T')[0] : ''
+  });
   const [loading, setLoading] = useState(false);
+
   const handleSubmit = async (e) => {
-    e.preventDefault(); if (!formData.remark.trim()) return alert('Please enter a remark');
-    setLoading(true); try { const res = await appointmentApi.updateRemark(appointment._id, formData, user.token); if (res.success) { onSaved?.(); onClose(); } } catch (err) { alert(err.message || 'Update failed'); } finally { setLoading(false); }
+    e.preventDefault();
+    if (!formData.assigneeRemark.trim()) return alert('Please enter an assignee remark');
+    
+    if ((formData.status === 'FOLLOWUP_REQUIRED' || formData.status === 'RESCHEDULED') && !formData.nextFollowUpDate) {
+      return alert('Please select a next follow-up date');
+    }
+
+    setLoading(true);
+    try {
+      const res = await appointmentApi.updateRemark(
+        appointment._id,
+        {
+          assigneeRemark: formData.assigneeRemark,
+          status: formData.status,
+          nextFollowUpDate: formData.nextFollowUpDate
+        },
+        user.token
+      );
+      if (res.success) {
+        onSaved?.();
+        onClose();
+      }
+    } catch (err) {
+      alert(err.message || 'Update failed');
+    } finally {
+      setLoading(false);
+    }
   };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-full max-w-md rounded-2xl border bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="p-5 border-b bg-emerald-600 text-white flex items-center justify-between"><div><h2 className="font-bold text-lg">Update Visit Outcome</h2><p className="text-emerald-100 text-xs">Appt: {appointment.businessName}</p></div><button onClick={onClose}><X className="h-5 w-5" /></button></div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Remark / Notes</label><textarea required rows={4} placeholder="Outcome of visit..." value={formData.remark} onChange={e => setFormData({ ...formData, remark: e.target.value })} className="w-full rounded-xl border bg-slate-50 p-4 text-sm outline-none focus:bg-white resize-none" /></div>
-          <div><label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Update Status</label><select value={formData.prospectStatus} onChange={e => setFormData({ ...formData, prospectStatus: e.target.value })} className="w-full h-12 rounded-xl border bg-white px-4 text-sm font-bold shadow-sm"><option value="In-progress">In-progress</option><option value="Sale Closed">Sale Closed (Won)</option><option value="Canceled">Canceled (Lost)</option></select></div>
-          <div className="flex gap-3"><button type="button" onClick={onClose} className="h-12 flex-1 rounded-xl border text-sm font-bold">Cancel</button><button type="submit" disabled={loading} className="h-12 flex-1 rounded-xl bg-emerald-600 text-white text-sm font-bold">{loading ? 'Updating...' : 'Save & Close Visit'}</button></div>
+      <div className="w-full max-w-md rounded-2xl border bg-white shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-5 border-b bg-emerald-600 text-white">
+          <div>
+            <h2 className="font-bold text-lg">Update Visit Outcome</h2>
+            <p className="text-emerald-100 text-xs">Appt: {appointment.businessName}</p>
+          </div>
+          <button onClick={onClose}><X className="h-5 w-5" /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Assignee Remark / Notes</label>
+            <textarea
+              required
+              rows={4}
+              placeholder="Outcome of visit..."
+              value={formData.assigneeRemark}
+              onChange={e => setFormData({ ...formData, assigneeRemark: e.target.value })}
+              className="w-full rounded-xl border bg-slate-50 p-4 text-sm outline-none focus:bg-white resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Update Status</label>
+            <select
+              value={formData.status}
+              onChange={e => setFormData({ ...formData, status: e.target.value })}
+              className="w-full h-12 rounded-xl border bg-white px-4 text-sm font-bold shadow-sm outline-none focus:border-emerald-500"
+            >
+              <option value="PENDING">Pending</option>
+              <option value="SCHEDULED">Scheduled</option>
+              <option value="RESCHEDULED">Rescheduled</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="FOLLOWUP_REQUIRED">Follow-up Required</option>
+              <option value="CLIENT_NOT_AVAILABLE">Client Not Available</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="SALE_CONFIRMED">Sale Confirmed (Won)</option>
+              <option value="LOST">Lost / Rejected</option>
+            </select>
+          </div>
+
+          {(formData.status === 'FOLLOWUP_REQUIRED' || formData.status === 'RESCHEDULED') && (
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Next Follow-up Date</label>
+              <input
+                required
+                type="date"
+                value={formData.nextFollowUpDate}
+                onChange={e => setFormData({ ...formData, nextFollowUpDate: e.target.value })}
+                className="w-full h-12 rounded-xl border bg-white px-4 text-sm font-medium shadow-sm outline-none focus:border-emerald-500"
+              />
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-xl border text-sm font-bold">Cancel</button>
+            <button type="submit" disabled={loading} className="h-12 flex-1 rounded-xl bg-emerald-600 text-white text-sm font-bold">{loading ? 'Updating...' : 'Save & Close Visit'}</button>
+          </div>
         </form>
       </div>
     </div>

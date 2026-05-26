@@ -19,7 +19,7 @@ exports.getTemplate = async (req, res) => {
           branch: 'Main Branch'
         },
         termsAndConditions: [
-          'Payment: 50% advance, 50% before delivery',
+          'Payment: 50% advance, 30% after Production Completed 10% before delivery',
           'Validity: 15 days from quotation date'
         ],
         footerText: 'Thank you for your business!'

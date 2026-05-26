@@ -42,7 +42,15 @@ export const AuthProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ login: loginId, password }),
       });
-      const data = await res.json();
+      let data = {};
+      const text = await res.text();
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          data = { message: text };
+        }
+      }
       if (!res.ok) throw new Error(data.message || 'Login failed.');
 
       localStorage.setItem('gms_user', JSON.stringify(data));
@@ -72,7 +80,15 @@ export const AuthProvider = ({ children }) => {
         },
         body: JSON.stringify({ currentPassword, newPassword }),
       });
-      const data = await res.json();
+      let data = {};
+      const text = await res.text();
+      if (text) {
+        try {
+          data = JSON.parse(text);
+        } catch (e) {
+          data = { message: text };
+        }
+      }
       if (!res.ok) throw new Error(data.message || 'Failed to change password.');
 
       // Clear mustChangePassword flag locally
@@ -93,7 +109,15 @@ export const AuthProvider = ({ children }) => {
         headers: { 'Authorization': `Bearer ${user.token}` },
       });
       if (res.ok) {
-        const data = await res.json();
+        let data = {};
+        const text = await res.text();
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            data = { message: text };
+          }
+        }
         const updated = { ...user, ...data };
         localStorage.setItem('gms_user', JSON.stringify(updated));
         setUser(updated);

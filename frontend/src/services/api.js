@@ -17,7 +17,15 @@ const request = async (method, path, body, token) => {
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  const data = await res.json();
+  let data = {};
+  const text = await res.text();
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      data = { message: text };
+    }
+  }
   if (!res.ok) {
     const err = new Error(data.message || `HTTP ${res.status}`);
     err.status = res.status;
@@ -66,7 +74,11 @@ export const employeeApi = {
 // Prospects (Sales)
 export const prospectApi = {
   list:        (params, token)   => api.get(`/prospects?${new URLSearchParams(params)}`, token),
-  stats:       (token)           => api.get('/prospects/stats', token),
+  stats:       (p1, p2) => {
+    const token = typeof p1 === 'string' ? p1 : p2;
+    const params = typeof p1 === 'string' ? {} : (p1 || {});
+    return api.get(`/prospects/stats?${new URLSearchParams(params)}`, token);
+  },
   searchPhone: (params, token)   => api.get(`/prospects/search?${new URLSearchParams(params)}`, token),
   create:      (data, token)     => api.post('/prospects', data, token),
   update:      (id, data, token) => api.patch(`/prospects/${id}`, data, token),
@@ -88,13 +100,18 @@ export const orderApi = {
   list:           (params, token)   => api.get(`/orders?${new URLSearchParams(params)}`, token),
   searchClient:   (params, token)    => api.get(`/orders/search?${new URLSearchParams(params)}`, token),
   get:            (id, token)       => api.get(`/orders/${id}`, token),
-  stats:          (token)           => api.get('/orders/stats', token),
+  stats:          (p1, p2) => {
+    const token = typeof p1 === 'string' ? p1 : p2;
+    const params = typeof p1 === 'string' ? {} : (p1 || {});
+    return api.get(`/orders/stats?${new URLSearchParams(params)}`, token);
+  },
   create:         (data, token)     => api.post('/orders', data, token),
   confirm:        (id, token)       => api.post(`/orders/${id}/confirm`, {}, token),
   updateStatus:   (id, data, token) => api.patch(`/orders/${id}/status`, data, token),
   approveAdvance: (id, token)       => api.post(`/orders/${id}/approve-advance`, {}, token),
   addPayment:     (id, data, token) => api.post(`/orders/${id}/payments`, data, token),
   updateLineItem: (id, itemIndex, data, token) => api.patch(`/orders/${id}/line-items/${itemIndex}`, data, token),
+  verify:         (id, token)       => api.post(`/orders/${id}/verify`, {}, token),
 };
 
 // Payments
@@ -109,8 +126,16 @@ export const paymentApi = {
 
 // Appointments
 export const appointmentApi = {
-  list:         (token)           => api.get('/appointments', token),
-  stats:        (token)           => api.get('/appointments/stats', token),
+  list:         (p1, p2) => {
+    const token = typeof p1 === 'string' ? p1 : p2;
+    const params = typeof p1 === 'string' ? {} : (p1 || {});
+    return api.get(`/appointments?${new URLSearchParams(params)}`, token);
+  },
+  stats:        (p1, p2) => {
+    const token = typeof p1 === 'string' ? p1 : p2;
+    const params = typeof p1 === 'string' ? {} : (p1 || {});
+    return api.get(`/appointments/stats?${new URLSearchParams(params)}`, token);
+  },
   create:       (data, token)     => api.post('/appointments', data, token),
   assign:       (id, data, token) => api.patch(`/appointments/${id}/assign`, data, token),
   updateRemark: (id, data, token) => api.post(`/appointments/${id}/remarks`, data, token),
@@ -125,8 +150,31 @@ export const approvalApi = {
   reject:  (id, data, token) => api.post(`/approvals/${id}/reject`, data, token),
 };
 
+// Leaves
+export const leaveApi = {
+  list:          (params, token) => api.get(`/leaves?${new URLSearchParams(params)}`, token),
+  hrReview:      (id, data, token) => api.put(`/leaves/${id}/hr-review`, data, token),
+  adminOverride: (id, data, token) => api.put(`/leaves/${id}/admin-override`, data, token),
+};
+
 export const analyticsApi = {
   getStats: (params, token) => api.get(`/analytics/stats?${new URLSearchParams(params)}`, token),
+};
+
+export const targetApi = {
+  list:           (params, token)   => api.get(`/targets?${new URLSearchParams(params)}`, token),
+  analytics:      (params, token)   => api.get(`/targets/analytics?${new URLSearchParams(params)}`, token),
+  assign:         (data, token)     => api.post('/targets', data, token),
+  update:         (id, data, token) => api.patch(`/targets/${id}`, data, token),
+  updateProgress: (id, data, token) => api.patch(`/targets/${id}/progress`, data, token),
+};
+
+export const permissionApi = {
+  available: (token) => api.get('/permissions/available', token),
+  assigned:  (token) => api.get('/permissions/assigned', token),
+  getUserPermissions: (userId, token) => api.get(`/permissions/user/${userId}`, token),
+  assign:    (data, token) => api.post('/permissions/assign', data, token),
+  revoke:    (id, token)   => api.delete(`/permissions/revoke/${id}`, token),
 };
 
 export const brochureApi = {
@@ -143,6 +191,10 @@ export const productApi = {
   list:   (token)       => api.get('/products', token),
   getCategories: (token) => api.get('/products/categories', token),
   create: (data, token) => api.post('/products', data, token),
+  getClientTypes: (token) => api.get('/products/client-types', token),
+  createClientType: (data, token) => api.post('/products/client-types', data, token),
+  deleteClientType: (id, token) => api.delete(`/products/client-types/${id}`, token),
+  update: (id, data, token) => api.patch(`/products/${id}`, data, token),
 };
 
 export const quotationApi = {
@@ -153,6 +205,36 @@ export const quotationApi = {
   getById:        (id, token)     => api.get(`/quotations/${id}`, token),
   update:         (id, data, token) => api.patch(`/quotations/${id}`, data, token),
   updateStatus:   (id, data, token) => api.patch(`/quotations/${id}/status`, data, token),
+};
+
+// ── Vendors ───────────────────────────────────────────────────────────────────
+export const vendorApi = {
+  list:     (params, token)   => api.get(`/vendors?${new URLSearchParams(params)}`, token),
+  get:      (id, token)       => api.get(`/vendors/${id}`, token),
+  create:   (data, token)     => api.post('/vendors', data, token),
+  update:   (id, data, token) => api.patch(`/vendors/${id}`, data, token),
+  delete:   (id, token)       => api.delete(`/vendors/${id}`, token),
+};
+
+export const vendorCategoryApi = {
+  list:     (token)           => api.get('/vendors/categories', token),
+  create:   (data, token)     => api.post('/vendors/categories', data, token),
+  update:   (id, data, token) => api.patch(`/vendors/categories/${id}`, data, token),
+  delete:   (id, token)       => api.delete(`/vendors/categories/${id}`, token),
+};
+
+export const vendorAssignmentApi = {
+  list:     (params, token)   => api.get(`/vendors/assignments?${new URLSearchParams(params)}`, token),
+  create:   (data, token)     => api.post('/vendors/assignments', data, token),
+  update:   (id, data, token) => api.patch(`/vendors/assignments/${id}`, data, token),
+  delete:   (id, token)       => api.delete(`/vendors/assignments/${id}`, token),
+};
+
+export const vendorPaymentApi = {
+  list:     (params, token)   => api.get(`/vendors/payments?${new URLSearchParams(params)}`, token),
+  create:   (data, token)     => api.post('/vendors/payments', data, token),
+  update:   (id, data, token) => api.patch(`/vendors/payments/${id}`, data, token),
+  delete:   (id, token)       => api.delete(`/vendors/payments/${id}`, token),
 };
 
 export default api;
