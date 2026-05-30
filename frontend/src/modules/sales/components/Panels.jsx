@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toTitleCase } from '../../../utils/stringUtils';
 import {
   Calendar, CheckCircle, Clock, MapPin, ShieldCheck,
   Plus, X, Upload, Printer, IndianRupee, AlertCircle, FileText, MessageCircle, Image, Link, Edit, Trash2, XCircle, AlertTriangle, Quote, User, Phone, Eye, ShoppingBag
 } from 'lucide-react';
+import { calculateDeliveryPriority } from '../../../utils/deliveryUtils';
 import { requirementTypes } from '../data/constants';
 import { useAuth } from '../../../context/AuthContext';
 import { 
@@ -66,18 +68,49 @@ export const AppointmentHub = ({ appointments = [], onSchedule }) => (
 );
 
 // ─── Order List ───────────────────────────────────────────────────────────────
+const getStatusBadgeStyle = (statusStr) => {
+  const s = (statusStr || '').toLowerCase();
+  if (!s || s.includes('pending')) return 'bg-red-50 text-red-600 border-red-200';
+  if (s.includes('completed') || s.includes('done')) return 'bg-emerald-50 text-emerald-600 border-emerald-200';
+  return 'bg-blue-50 text-blue-600 border-blue-200';
+};
+
 export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewDetails, onLineItemUpdated, compact, hideCompleted, hideVerification }) => {
   const { user } = useAuth();
   const [updatingLineItem, setUpdatingLineItem] = useState(null);
   const [verificationTab, setVerificationTab] = useState('All');
   const isVerifier = !hideVerification && ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS'].includes(user?.role);
+  const isOpsOrAdmin = ['ADMIN', 'OPERATION_MANAGER', 'MD_CEO'].includes(user?.role);
   const pendingVerificationCount = (orders || []).filter(o => o.verificationStatus === 'Pending').length;
+
+  const handleDeleteLineItem = async (orderId, itemIndex) => {
+    if (!window.confirm('Are you sure you want to cancel/delete this service? This may auto-push the order to production if other services are completed.')) return;
+    try {
+      const res = await orderApi.deleteLineItem(orderId, itemIndex, user.token);
+      if (res.success) {
+        alert('Service deleted successfully');
+        onLineItemUpdated?.();
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete service');
+    }
+  };
+
+  const [clientTypes, setClientTypes] = useState([]);
+  
+  useEffect(() => {
+    if (user?.token) {
+      productApi.getClientTypes(user.token)
+        .then(res => { if (res.data) setClientTypes(res.data); })
+        .catch(console.error);
+    }
+  }, [user]);
 
   const statusColors = { Confirmed: 'bg-blue-100 text-blue-700', 'In Production': 'bg-amber-100 text-amber-700', 'Design Review': 'bg-purple-100 text-purple-700', Completed: 'bg-green-100 text-green-700' };
   const paymentColors = { Partial: 'bg-orange-100 text-orange-700', Paid: 'bg-green-100 text-green-700', Pending: 'bg-red-100 text-red-700' };
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [typeFilter, setTypeFilter] = useState('All');
   const [paymentFilter, setPaymentFilter] = useState('All');
   const [monthFilter, setMonthFilter] = useState('All Months');
   const [employeeFilter, setEmployeeFilter] = useState('All Employees');
@@ -94,7 +127,7 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
     if (isSalesExec && o.status === 'Pending_Approval') return false;
 
     const matchSearch = !search || [o.orderNumber, o.id, o.clientSnapshot?.name, o.client].some(v => String(v || '').toLowerCase().includes(search.toLowerCase()));
-    const matchStatus = statusFilter === 'All' || o.status === statusFilter;
+    const matchType = typeFilter === 'All' || o.orderType === typeFilter;
     const matchPayment = paymentFilter === 'All' || o.paymentStatus === paymentFilter;
     let matchMonth = true;
     if (monthFilter !== 'All Months') {
@@ -105,14 +138,41 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
     const matchEmployee = employeeFilter === 'All Employees' || empName === employeeFilter;
     const matchHide = hideCompleted ? !['Completed', 'Cancelled'].includes(o.status) : true;
     const matchVerification = verificationTab === 'All' || o.verificationStatus === 'Pending';
-    return matchSearch && matchStatus && matchPayment && matchMonth && matchEmployee && matchHide && matchVerification;
+    return matchSearch && matchType && matchPayment && matchMonth && matchEmployee && matchHide && matchVerification;
   });
+
+  const handleExportExcel = () => {
+    if (!filteredOrders.length) return alert('No orders to export');
+    const headers = ['Order Number', 'Date', 'Client', 'Order Type', 'Sales Exec', 'Total', 'Paid', 'Pending'];
+    const rows = filteredOrders.map(o => [
+      o.orderNumber || o.id,
+      new Date(o.createdAt || o.date).toLocaleDateString(),
+      (o.clientSnapshot?.company || o.clientSnapshot?.name || o.client || '').replace(/,/g, ' '),
+      o.orderType || 'Retail',
+      (o.salesExec?.name || o.salesExec || 'N/A').replace(/,/g, ' '),
+      o.grandTotal || o.amount || 0,
+      o.totalPaid || 0,
+      (o.grandTotal || o.amount || 0) - (o.totalPaid || 0)
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `orders_export_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrintReport = () => {
+    window.print();
+  };
 
   return (
     <div className="space-y-4">
       {/* Filters and Controls */}
       {!compact && (
-        <div className="rounded-xl border bg-white shadow-sm p-4">
+        <div className="rounded-xl border bg-white shadow-sm p-4 print:hidden">
           <div className="flex gap-4 mb-4">
             <div className="flex flex-col gap-1 w-48">
               <label className="text-sm font-medium text-slate-700">Year:</label>
@@ -128,13 +188,32 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
               </select>
             </div>
             <div className="flex flex-col gap-1 w-48">
-              <label className="text-sm font-medium text-slate-700">Status:</label>
-              <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
-                <option value="All">All Statuses</option>
-                <option value="Confirmed">Confirmed</option>
-                <option value="In Production">In Production</option>
-                <option value="Design Review">Design Review</option>
-                <option value="Completed">Completed</option>
+              <label className="text-sm font-medium text-slate-700">Order Type:</label>
+              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366] capitalize">
+                <option value="All">All Types</option>
+                {clientTypes.length === 0 ? (
+                  [
+                    "retail",
+                    "retail-agent",
+                    "renewal",
+                    "renewal-agent",
+                    "agent",
+                    "corporate",
+                    "corporate-renewal",
+                    "website",
+                    "walk-in",
+                  ].map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))
+                ) : (
+                  clientTypes.map((ct) => (
+                    <option key={ct._id || ct.key} value={ct.key}>
+                      {ct.name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
             <div className="flex flex-col gap-1 w-48">
@@ -168,18 +247,18 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
           </div>
 
           <div className="flex gap-3">
-            <button className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" style={{ background: '#4caf50' }}>
+            <button onClick={handleExportExcel} className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm" style={{ background: '#4caf50' }}>
               <FileText className="h-4 w-4" /> Export to Excel
             </button>
-            <button className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" style={{ background: '#00acc1' }}>
+            <button onClick={handlePrintReport} className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm" style={{ background: '#00acc1' }}>
               <Printer className="h-4 w-4" /> Print Report
             </button>
           </div>
         </div>
       )}
 
-      <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border-b gap-4">
+      <div className="rounded-2xl border bg-white shadow-sm overflow-hidden print:border-none print:shadow-none">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border-b gap-4 print:border-b-2 print:border-black">
           <div>
             <h3 className="font-bold text-base">🧾 My Orders</h3>
             <p className="text-xs text-muted-foreground mt-0.5">{filteredOrders.length} active orders</p>
@@ -221,7 +300,7 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <span className="font-mono font-bold text-sm text-blue-700">{order.orderNumber || order.id}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>{order.status}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 uppercase tracking-wider`}>{order.orderType || 'retail'}</span>
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${paymentColors[order.paymentStatus] || 'bg-gray-100 text-gray-600'}`}>{order.paymentStatus} Payment</span>
                       {/* Payment Verification Pending badge — shown when any paymentRecord is Pending */}
                       {(order.paymentRecords || []).some(p => p.status === 'Pending') && (
@@ -245,6 +324,14 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
                         ? `${order.clientSnapshot.company} (${order.clientSnapshot.name || 'No Contact'})` 
                         : (order.clientSnapshot?.name || order.client)}
                     </p>
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      {order.deliveryDate && (
+                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${calculateDeliveryPriority(order.deliveryDate).color}`}>
+                          <Calendar className="w-3 h-3" />
+                          Delivery: {new Date(order.deliveryDate).toLocaleDateString('en-GB')} - {calculateDeliveryPriority(order.deliveryDate).label}
+                        </div>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3 mt-1 flex-wrap">
                       {order.salesExec && (
                         <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
@@ -264,35 +351,61 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
                         </>
                       )}
                     </div>
-                  </div>
-                  <div className="shrink-0">
-                    <div className={`rounded-xl px-3 py-1.5 text-center ${
-                      order.designStatus === 'Approved' || order.designStatus === 'Completed' 
-                        ? 'bg-green-100 border border-green-200' 
-                        : order.designStatus === 'Not_Required' 
-                          ? 'bg-slate-100 border border-slate-200' 
-                          : 'bg-amber-50 border border-amber-200'
-                    }`}>
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Design</p>
-                      <p className={`text-xs font-bold mt-0.5 ${
-                        order.designStatus === 'Approved' 
-                          ? 'text-green-700' 
-                          : order.designStatus === 'Completed'
-                            ? 'text-emerald-700'
-                            : order.designStatus === 'Not_Required'
-                              ? 'text-slate-600'
-                              : 'text-amber-700'
-                      }`}>
-                        {order.designStatus === 'Approved' 
-                          ? '✅ Ready for Print' 
-                          : order.designStatus === 'Not_Required'
-                            ? 'Not Required'
-                            : '🎨 ' + (order.designStatus?.replace('_', ' ') || 'Pending')}
-                      </p>
-                    </div>
+                    
+                    {order.lineItems && order.lineItems.length > 0 && (
+                      <div className="mt-4 flex flex-col gap-2 w-full max-w-xl">
+                        {order.lineItems.map((item, idx) => {
+                          const designerStatusText = item.designerWorkflow?.currentStatus || item.designerStatus || 'Pending';
+                          return (
+                          <div 
+                            key={idx} 
+                            className="flex flex-wrap md:flex-nowrap items-center gap-3 group p-1.5 -ml-1.5 rounded-lg transition-colors"
+                          >
+                            <span className="border border-[#d1e3ff] text-[#2563eb] bg-[#f8fbff] rounded px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap shadow-sm">
+                                {item.description} {item.quantity > 1 && `(x${item.quantity})`}
+                            </span>
+                            
+                            <div className="flex items-center gap-3 opacity-90 group-hover:opacity-100 bg-slate-50/50 px-2 py-1 rounded-md border border-slate-100">
+                               <div className="flex items-center gap-1.5">
+                                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Design</span>
+                                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border ${getStatusBadgeStyle(designerStatusText)}`}>
+                                   {designerStatusText && designerStatusText !== 'designer update pending' && designerStatusText !== 'Assigned' ? designerStatusText.replace(/_/g, ' ') : 'Pending'}
+                                 </span>
+                               </div>
+
+                               <div className="w-px h-3 bg-slate-200" />
+                               <div className="flex items-center gap-1.5">
+                                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Production</span>
+                                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border ${getStatusBadgeStyle(item.productionWorkflow?.status || 'Pending')}`}>
+                                   {(item.productionWorkflow?.status && item.productionWorkflow?.status !== 'Pending') ? item.productionWorkflow?.status.replace(/_/g, ' ') : 'Pending'}
+                                 </span>
+                               </div>
+                               <div className="w-px h-3 bg-slate-200" />
+                               <div className="flex items-center gap-1.5">
+                                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Service</span>
+                                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border ${getStatusBadgeStyle(item.serviceWorkflow?.status || item.serviceStatus || 'Pending')}`}>
+                                   {(item.serviceWorkflow?.status || item.serviceStatus) && (item.serviceWorkflow?.status || item.serviceStatus) !== 'service update pending' ? (item.serviceWorkflow?.status || item.serviceStatus).replace(/_/g, ' ') : 'Pending'}
+                                 </span>
+                               </div>
+                            </div>
+
+                            {isOpsOrAdmin && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDeleteLineItem(order._id || order.id, idx); }}
+                                className="ml-auto text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-md transition-colors"
+                                title="Delete/Cancel Service"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex gap-2 mt-4 items-center">
+                <div className="flex gap-2 mt-4 items-center print:hidden">
                   <button onClick={() => onUploadPayment?.(order)} className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 transition-colors">
                     <Upload className="h-3 w-3" /> Upload Payment
                   </button>
@@ -421,7 +534,6 @@ export const UpdateLineItemModal = ({ order, itemIndex, item, user, onClose, onS
           )}
           {isOps && (
             <>
-              <button onClick={() => setActiveTab('ops')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider ${activeTab === 'ops' ? 'border-b-2 border-purple-600 text-purple-700' : 'text-slate-500 hover:text-slate-700'}`}>Ops</button>
               <button onClick={() => setActiveTab('service')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider ${activeTab === 'service' ? 'border-b-2 border-purple-600 text-purple-700' : 'text-slate-500 hover:text-slate-700'}`}>Service</button>
             </>
           )}
@@ -448,25 +560,7 @@ export const UpdateLineItemModal = ({ order, itemIndex, item, user, onClose, onS
             </>
           )}
 
-          {activeTab === 'ops' && (
-            <>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Operation Status</label>
-                <select value={operationStatus} onChange={e => setOperationStatus(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-purple-500 bg-white">
-                  {statusesOps.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-                </select>
-              </div>
-              {operationStatus === 'completed' && (
-                <div>
-                  <label className="text-xs font-bold text-slate-800 mb-1 block">Operation Document (completed only)</label>
-                  <input type="file" accept="image/png, image/jpeg, image/webp, application/pdf, .doc, .docx" onChange={e => handleFileChange(e, setOperationFileUrl)} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100" />
-                  {operationFileUrl && (
-                     <div className="mt-2 text-xs font-semibold text-emerald-600 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> File ready</div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+
 
           {activeTab === 'service' && (
             <>
@@ -640,6 +734,27 @@ export const ScheduleAppointmentModal = ({ prospect, onClose, onSaved }) => {
 export const OrderSearchModal = ({ onClose, onSearch }) => {
   const [phone, setPhone] = useState('');
   const [company, setCompany] = useState('');
+  const [error, setError] = useState('');
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!phone) {
+      setError('10-Digit Mobile Number is required');
+      return;
+    }
+    if (phone.length !== 10) {
+      setError('Mobile Number must be exactly 10 digits');
+      return;
+    }
+    if (!company.trim()) {
+      setError('Business Name is required');
+      return;
+    }
+
+    onSearch({ phone, company: (company || '').toLowerCase().trim() });
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}>
@@ -647,13 +762,21 @@ export const OrderSearchModal = ({ onClose, onSearch }) => {
         <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-slate-900">
           <X className="h-5 w-5" />
         </button>
-        <h2 className="text-2xl font-bold text-center mb-8 text-slate-900">Search Client</h2>
-        <div className="space-y-4">
+        <h2 className="text-2xl font-bold text-center mb-6 text-slate-900">Search Client</h2>
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-lg">
+            {error}
+          </div>
+        )}
+        <form onSubmit={handleFormSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-bold text-slate-800 mb-2 block">10-Digit Mobile Number:</label>
             <input 
               value={phone} 
-              onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+              onChange={e => {
+                setError('');
+                setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
+              }} 
               placeholder="Enter mobile number" 
               className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
             />
@@ -662,19 +785,22 @@ export const OrderSearchModal = ({ onClose, onSearch }) => {
             <label className="text-sm font-bold text-slate-800 mb-2 block">Business Name:</label>
             <input 
               value={company} 
-              onChange={e => setCompany(e.target.value)} 
+              onChange={e => {
+                setError('');
+                setCompany(e.target.value);
+              }} 
               placeholder="Enter business name" 
               className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
             />
           </div>
           <button
-            onClick={() => onSearch({ phone, company: (company || '').toLowerCase() })}
+            type="submit"
             className="w-full h-10 rounded text-white font-semibold text-sm transition-colors hover:opacity-90"
             style={{ background: '#003366' }}
           >
             Search
           </button>
-        </div>
+        </form>
       </div>
     </div>
   );
@@ -721,6 +847,12 @@ export const OrderClientDetailsModal = ({ client, onBack, onCreateOrder, onClose
 
 // ─── Create Order Modal ───────────────────────────────────────────────────────
 export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) => {
+  const getDefaultDeliveryDate = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().split('T')[0];
+  };
+
   const [formData, setFormData] = useState({
     executiveName: executiveName || '',
     orderDate: new Date().toISOString().split('T')[0],
@@ -735,11 +867,34 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     birthDate: '',
     anniversaryDate: '',
     designStatus: 'Design Provided',
+    deliveryDate: getDefaultDeliveryDate(),
   });
+
+  const [lockedOrderType, setLockedOrderType] = useState(null);
+
+  React.useEffect(() => {
+    if (client && (client.createdAt || client.registrationDate)) {
+      const regDate = client.createdAt || client.registrationDate;
+      const baseType = client.clientType || 'retail';
+      const createdTime = new Date(regDate).getTime();
+      const now = new Date().getTime();
+      const hoursSince = (now - createdTime) / (1000 * 60 * 60);
+
+      let targetType = baseType.toLowerCase();
+      if (hoursSince > 360) {
+        targetType = targetType.includes('renewal') 
+          ? targetType 
+          : (targetType === 'retail' || targetType === 'corporate' ? `${targetType}-renewal` : 'renewal');
+      }
+      setLockedOrderType(targetType);
+      setFormData(prev => ({ ...prev, orderType: targetType }));
+    }
+  }, [client]);
 
   const { user } = useAuth();
   const [availableProducts, setAvailableProducts] = useState([]);
   const [clientTypes, setClientTypes] = useState([]);
+  const [categories, setCategories] = useState([]);
   
   React.useEffect(() => {
     Promise.all([
@@ -747,13 +902,29 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
       productApi.getClientTypes(user?.token).catch(() => ({ data: [] }))
     ])
       .then(([pRes, ctRes]) => {
-        if (pRes.success) setAvailableProducts(pRes.data.filter(p => p.status === 'Active'));
+        if (pRes.success) {
+          const prods = pRes.data || [];
+          setAvailableProducts(prods);
+          
+          // Dynamically extract unique categories
+          const uniqueCats = new Map();
+          prods.forEach(p => {
+            if (p.category) {
+              const catId = typeof p.category === 'object' ? p.category._id : p.category;
+              const catName = typeof p.category === 'object' ? p.category.name : p.category;
+              if (catId && catName) {
+                uniqueCats.set(String(catId), catName);
+              }
+            }
+          });
+          setCategories(Array.from(uniqueCats.entries()).map(([id, name]) => ({ _id: id, name })));
+        }
         if (ctRes.data) setClientTypes(ctRes.data);
       })
       .catch(console.error);
   }, [user]);
 
-  const [items, setItems] = useState([{ productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, deliveryDate: '' }]);
+  const [items, setItems] = useState([{ categoryId: '', productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, baseCost: 0, deliveryDate: getDefaultDeliveryDate() }]);
   const [isCatalogueOpen, setIsCatalogueOpen] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState(null);
   const [advance, setAdvance] = useState('');
@@ -794,6 +965,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
             productId: product._id,
             desc: desc,
             cost: price,
+            baseCost: price,
             qty: Math.max(item.qty, moq),
             isCustom: false
           };
@@ -808,7 +980,8 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
         customDesc: '',
         qty: moq,
         cost: price,
-        deliveryDate: ''
+        baseCost: price,
+        deliveryDate: getDefaultDeliveryDate()
       };
       if (items.length === 1 && !items[0].productId && !items[0].desc && items[0].cost === 0) {
         setItems([newItem]);
@@ -821,6 +994,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
   const validate = () => {
     const newErrors = {};
     if (!formData.orderType) newErrors.orderType = 'Required';
+    if (!formData.deliveryDate) newErrors.deliveryDate = 'Required';
     if (!formData.company) newErrors.company = 'Required';
     if (!formData.name) newErrors.name = 'Required';
     if (!formData.phone) newErrors.phone = 'Required';
@@ -847,7 +1021,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 
   const states = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Other"];
 
-  const addItem = () => setItems(prev => [...prev, { productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, deliveryDate: '' }]);
+  const addItem = () => setItems(prev => [...prev, { categoryId: '', productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, baseCost: 0, deliveryDate: getDefaultDeliveryDate() }]);
   const removeItem = i => setItems(prev => prev.filter((_, idx) => idx !== i));
   const updateItem = (i, k, v) => setItems(prev => prev.map((item, idx) => idx === i ? { ...item, [k]: v } : item));
 
@@ -861,6 +1035,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
           productId,
           desc: product.productName || product.name,
           cost: getProductPriceForOrderType(product, formData.orderType),
+          baseCost: getProductPriceForOrderType(product, formData.orderType),
           qty: Math.max(item.qty, product.minimumOrderQuantity || 1),
           isCustom: false
         };
@@ -890,7 +1065,9 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     if (name === 'phone' || name === 'pincode') {
       finalValue = value.replace(/\D/g, '').slice(0, name === 'phone' ? 10 : 6);
     } else if (name === 'name') {
-      finalValue = value.replace(/[^a-zA-Z\s]/g, '');
+      finalValue = toTitleCase(value.replace(/[^a-zA-Z\s]/g, ''));
+    } else if (name === 'company' || name === 'location') {
+      finalValue = toTitleCase(value);
     }
 
     setFormData(prev => ({ ...prev, [name]: finalValue }));
@@ -901,9 +1078,11 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
         if (!item.productId || item.isCustom) return item;
         const product = availableProducts.find(p => p._id === item.productId);
         if (!product) return item;
+        const newCost = getProductPriceForOrderType(product, finalValue);
         return {
           ...item,
-          cost: getProductPriceForOrderType(product, finalValue)
+          cost: newCost,
+          baseCost: newCost
         };
       }));
     }
@@ -950,12 +1129,14 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
       quantity: Number(it.qty),
       unitPrice: Number(it.cost),
       discount: 0,
-      gstRate: applyGst ? 18 : 0
+      gstRate: applyGst ? 18 : 0,
+      deliveryDate: it.deliveryDate // optional item level fallback
     }));
 
     onSubmit({
       ...formData,
       lineItems,
+      deliveryDate: formData.deliveryDate,
       designFileUrl: designFile,
       clientSnapshot: {
         name: formData.name,
@@ -1008,14 +1189,30 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                 <input type="date" name="orderDate" value={formData.orderDate} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-green-500" />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Order Type *</label>
-                <select name="orderType" value={formData.orderType} onChange={handleChange} className={`h-9 w-full rounded border ${errors.orderType ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`}>
+                <label className="text-xs font-bold text-slate-800 mb-1 block">Master Delivery Date *</label>
+                <input type="date" name="deliveryDate" value={formData.deliveryDate} onChange={handleChange} className={`h-9 w-full rounded border ${errors.deliveryDate ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} />
+                {errors.deliveryDate && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.deliveryDate}</p>}
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-800 mb-1 block">
+                  Order Type * {lockedOrderType && <span className="text-blue-600 text-[10px] ml-1">(Auto-Locked)</span>}
+                </label>
+                <select 
+                  name="orderType" 
+                  value={formData.orderType} 
+                  onChange={handleChange} 
+                  disabled={!!lockedOrderType}
+                  className={`h-9 w-full rounded border ${errors.orderType ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500 ${lockedOrderType ? 'bg-slate-100 cursor-not-allowed opacity-80' : ''}`}
+                >
                   <option value="">Select Type...</option>
                   {clientTypes.length === 0 ? (
                     ['renewal', 'renewal-agent', 'retail', 'retail-agent', 'agent', 'corporate', 'corporate-renewal', 'website', 'walk-in'].map(t => <option key={t} value={t}>{t}</option>)
                   ) : clientTypes.map(ct => (
                     <option key={ct._id} value={ct.key}>{ct.name}</option>
                   ))}
+                  {lockedOrderType && clientTypes.length > 0 && !clientTypes.find(ct => ct.key === lockedOrderType) && (
+                    <option value={lockedOrderType}>{lockedOrderType}</option>
+                  )}
                 </select>
                 {errors.orderType && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.orderType}</p>}
               </div>
@@ -1157,7 +1354,34 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 
                     <div>
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Cost (₹)</label>
-                      <input type="number" value={item.cost} onChange={e => updateItem(i, 'cost', +e.target.value)} disabled={!item.isCustom} className={`h-9 w-full rounded border px-3 text-sm outline-none ${!item.isCustom ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-white border-slate-300'}`} placeholder={item.isCustom ? "Enter cost" : "Fixed cost"} />
+                      <div className="relative">
+                        <input 
+                          type="number" 
+                          value={item.cost} 
+                          onChange={e => {
+                            const val = +e.target.value;
+                            if (item.isCustom) {
+                              updateItem(i, 'cost', val);
+                            } else if (val >= (item.baseCost || 0)) {
+                              updateItem(i, 'cost', val);
+                            }
+                          }} 
+                          min={!item.isCustom ? (item.baseCost || 0) : 0}
+                          className={`h-9 w-full rounded border px-3 pr-8 text-sm outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!item.isCustom && item.cost <= (item.baseCost || 0) ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-300'}`} 
+                          placeholder={item.isCustom ? "Enter cost" : "Fixed cost"} 
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const currentCost = Number(item.cost) || 0;
+                            updateItem(i, 'cost', currentCost + 1);
+                          }}
+                          title="Increase Cost"
+                          className="absolute right-1 top-1 bottom-1 w-6 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 flex items-center justify-center transition-colors border border-slate-200 shadow-sm"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                        </button>
+                      </div>
                     </div>
 
                     <div>
@@ -1498,7 +1722,9 @@ export const CreateProspectModal = ({ phone, company, executiveName, onBack, onS
     if (name === 'phone') {
       finalValue = value.replace(/\D/g, '').slice(0, 10);
     } else if (name === 'name') {
-      finalValue = value.replace(/[^a-zA-Z\s]/g, '');
+      finalValue = toTitleCase(value.replace(/[^a-zA-Z\s]/g, ''));
+    } else if (name === 'company' || name === 'location') {
+      finalValue = toTitleCase(value);
     }
 
     setFormData(prev => ({ ...prev, [name]: finalValue }));
@@ -2109,6 +2335,7 @@ export const UpdateStatusModal = ({ prospect, newStatus, onClose, onSubmit }) =>
 
 // ─── View Quotation Modal (Premium Preview) ───────────────────────────────────
 export const ViewQuotationModal = ({ quotation, onClose }) => {
+  const { user } = useAuth();
   if (!quotation) return null;
   const { prospect, items, subtotal, discount, tax, totalAmount, createdAt, quotationId } = quotation;
 
@@ -2241,12 +2468,12 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
 
         <div className="bg-white border-t p-6 flex justify-between shrink-0">
           <div>
-            {quotation.requiresApproval && quotation.status === 'Draft' && ['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(useAuth().user?.role) && (
+            {quotation.requiresApproval && quotation.status === 'Draft' && ['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user?.role) && (
               <div className="flex gap-3">
                 <button 
                   onClick={async () => {
                     if (window.confirm('Approve this quotation?')) {
-                      await quotationApi.updateStatus(quotation._id || quotation.id, { status: 'Approved' }, useAuth().user?.token);
+                      await quotationApi.updateStatus(quotation._id || quotation.id, { status: 'Approved' }, user?.token);
                       onClose(true);
                     }
                   }}
@@ -2258,7 +2485,7 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
                   onClick={async () => {
                     const reason = window.prompt('Reason for rejection:');
                     if (reason !== null) {
-                      await quotationApi.update(quotation._id || quotation.id, { status: 'Rejected', notes: reason }, useAuth().user?.token);
+                      await quotationApi.update(quotation._id || quotation.id, { status: 'Rejected', notes: reason }, user?.token);
                       onClose(true);
                     }
                   }}
@@ -2268,7 +2495,7 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
                 </button>
               </div>
             )}
-            {quotation.requiresApproval && quotation.status === 'Draft' && !['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(useAuth().user?.role) && (
+            {quotation.requiresApproval && quotation.status === 'Draft' && !['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user?.role) && (
               <p className="text-xs font-bold text-amber-600 mt-3 flex items-center gap-1.5"><AlertCircle className="h-4 w-4"/> Pending Manager Approval</p>
             )}
           </div>
@@ -2320,11 +2547,13 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
       status: ['Approved', 'Completed', 'Not_Required'].includes(order.designStatus) ? 'done' : (order.status.startsWith('Design_') ? 'current' : 'waiting') 
     },
     { 
-      label: 'Ops Mgr', 
+      label: 'PROD MGR', 
       status: ['Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : (order.status === 'In_Production' ? 'current' : 'waiting') 
     },
     { 
       label: 'Services', 
+      user: order.serviceManager?.name || order.serviceManager,
+      role: 'SERVICE MGR',
       status: order.status === 'Completed' ? 'done' : (order.status === 'Ready_To_Deliver' || order.status === 'Delivered' ? 'current' : 'waiting') 
     },
   ];

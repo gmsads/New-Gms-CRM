@@ -4,6 +4,20 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import api from '../../../../services/api';
 import { useAuth } from '../../../../context/AuthContext';
 
+const StatCard = ({ icon: Icon, title, value, subtext, color, bg }) => (
+  <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-lg transition-all">
+    <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 transition-transform group-hover:scale-150 ${bg}`} />
+    <div className="flex justify-between items-start mb-4 relative z-10">
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${bg} ${color}`}>
+        <Icon className="h-6 w-6" />
+      </div>
+    </div>
+    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 relative z-10">{title}</p>
+    <h3 className="text-3xl font-black text-slate-900 tracking-tight relative z-10">{value}</h3>
+    {subtext && <p className="text-xs font-bold text-slate-500 mt-2 relative z-10">{subtext}</p>}
+  </div>
+);
+
 const VendorDashboard = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({
@@ -62,19 +76,7 @@ const VendorDashboard = () => {
     fetchStats();
   }, [user.token]);
 
-  const StatCard = ({ icon: Icon, title, value, subtext, color, bg }) => (
-    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-lg transition-all">
-      <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10 transition-transform group-hover:scale-150 ${bg}`} />
-      <div className="flex justify-between items-start mb-4 relative z-10">
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${bg} ${color}`}>
-          <Icon className="h-6 w-6" />
-        </div>
-      </div>
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1 relative z-10">{title}</p>
-      <h3 className="text-3xl font-black text-slate-900 tracking-tight relative z-10">{value}</h3>
-      {subtext && <p className="text-xs font-bold text-slate-500 mt-2 relative z-10">{subtext}</p>}
-    </div>
-  );
+
 
   return (
     <div className="space-y-6">

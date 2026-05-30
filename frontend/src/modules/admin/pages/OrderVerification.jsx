@@ -36,8 +36,9 @@ const OrderVerification = () => {
     }
   };
 
-  if (!user) return null;
+  
 
+  
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -117,6 +118,11 @@ const OrderVerification = () => {
                     <p className="font-bold text-slate-900">{selected.clientSnapshot?.name}</p>
                     <p className="text-sm text-slate-500">{selected.clientSnapshot?.company}</p>
                     <p className="text-sm text-slate-500 mt-1">{selected.clientSnapshot?.phone}</p>
+                    {selected.deliveryDate && (
+                      <p className="text-sm text-blue-600 mt-2 font-bold flex items-center gap-1">
+                        Delivery: {new Date(selected.deliveryDate).toLocaleDateString('en-GB')}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div>

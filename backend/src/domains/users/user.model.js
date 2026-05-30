@@ -3,6 +3,9 @@ const bcrypt = require('bcryptjs');
 
 const ROLES = [
   'MD_CEO',
+  'CEO',
+  'COO',
+  'BRANCH_HEAD',
   'ADMIN',
   'HR',
   'SR_SALES_MANAGER',
@@ -12,6 +15,10 @@ const ROLES = [
   'FIELD_EXEC',
   'OPERATION_MANAGER',
   'OPERATION_EXEC',
+  'PRODUCTION_MANAGER',
+  'PRODUCTION_EXEC',
+  'SERVICE_MANAGER',
+  'SERVICE_EXEC',
   'DESIGNER',
   'AGENT',
   'VENDOR',
@@ -23,9 +30,11 @@ const DEPARTMENTS = [
   'Management',
   'Sales',
   'Operations',
+  'Production',
   'Human Resources',
   'Design & Creative',
   'Field',
+  'SERVICE_OPERATIONS',
   'IT',
   'Accounts',
   'Vendor Management',
@@ -120,8 +129,20 @@ userSchema.index({ department: 1 });
 // Mongoose 9: async hooks use the returned Promise — do NOT call next()
 userSchema.pre('validate', async function () {
   if (this.isNew && !this.username) {
-    const count = await mongoose.model('User').countDocuments();
-    this.username = `emp-${String(count + 1).padStart(4, '0')}`;
+    const User = mongoose.model('User');
+    // Find the highest existing emp-XXXX username
+    const lastUser = await User.findOne({ username: /^emp-\d{4}$/i }).sort({ username: -1 });
+    let nextId = 1;
+    if (lastUser && lastUser.username) {
+      const match = lastUser.username.match(/emp-(\d+)/i);
+      if (match) {
+        nextId = parseInt(match[1], 10) + 1;
+      }
+    } else {
+      const count = await User.countDocuments();
+      nextId = count + 1;
+    }
+    this.username = `emp-${String(nextId).padStart(4, '0')}`;
   }
 });
 

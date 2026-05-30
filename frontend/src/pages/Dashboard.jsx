@@ -13,7 +13,7 @@ import OperationsDashboard from '../modules/operations/pages/OperationsDashboard
 
 const Dashboard = () => {
   const { user } = useAuth();
-  if (!user) return null;
+  
 
   const role = user.role || '';
 
@@ -50,6 +50,8 @@ const Dashboard = () => {
     }
   };
 
+  
+  
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col gap-2">

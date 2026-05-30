@@ -68,6 +68,7 @@ export const employeeApi = {
     api.post(`/employees/${id}/reset-password`, {}, token),
   updateTarget:   (id, data, token) =>
     api.patch(`/employees/${id}/target`, data, token),
+  masterProfile:  (id, token)       => api.get(`/employees/${id}/master-profile`, token),
   delete:         (id, token)       => api.delete(`/employees/${id}`, token),
 };
 
@@ -111,6 +112,7 @@ export const orderApi = {
   approveAdvance: (id, token)       => api.post(`/orders/${id}/approve-advance`, {}, token),
   addPayment:     (id, data, token) => api.post(`/orders/${id}/payments`, data, token),
   updateLineItem: (id, itemIndex, data, token) => api.patch(`/orders/${id}/line-items/${itemIndex}`, data, token),
+  deleteLineItem: (id, itemIndex, token) => api.delete(`/orders/${id}/line-items/${itemIndex}`, token),
   verify:         (id, token)       => api.post(`/orders/${id}/verify`, {}, token),
 };
 

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Target = require('../../domains/targets/target.model');
 const User = require('../../domains/users/user.model');
+const Order = require('../../domains/orders/order.model');
 
 // Create a new target
 exports.assignTarget = async (req, res) => {
@@ -123,7 +124,16 @@ exports.listTargets = async (req, res) => {
 
     // Apply URL filters
     if (branch) filter.branch = branch;
-    if (employee) filter.employee = employee;
+    if (employee && !['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'TELE_EXEC'].includes(req.user.role)) {
+      if (req.user.role === 'SALES_MANAGER') {
+        // If they provided an employee filter, ensure it's within their team (mocking this as a simple overwrite, but could add strict validation)
+        // Let's just use $and to ensure both conditions are met.
+        filter.$and = [{ employee: { $in: filter.employee.$in } }, { employee }];
+        delete filter.employee;
+      } else {
+        filter.employee = employee;
+      }
+    }
     if (department) filter.department = department;
     if (role) filter.role = role;
     if (period) filter.period = period;
@@ -143,13 +153,27 @@ exports.listTargets = async (req, res) => {
         .populate('assignedBy', 'name role')
         .sort({ endDate: 1, createdAt: -1 })
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(Number(limit))
+        .lean(),
       Target.countDocuments(filter)
     ]);
 
+    const targetsWithProgress = await Promise.all(targets.map(async (target) => {
+      if (target.targetType === 'Revenue Target' && target.employee) {
+        const orders = await Order.find({
+          salesExec: target.employee._id,
+          createdAt: { $gte: target.startDate, $lte: target.endDate },
+          status: { $nin: ['Cancelled'] }
+        });
+        const actualRevenue = orders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+        target.achievedValue = Math.max(target.achievedValue || 0, actualRevenue);
+      }
+      return target;
+    }));
+
     res.json({
       success: true,
-      data: targets,
+      data: targetsWithProgress,
       pagination: {
         total,
         page: Number(page),

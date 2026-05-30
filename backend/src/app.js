@@ -26,8 +26,20 @@ app.use(cors({
 // Handle preflight for all routes
 app.options('/{*splat}', cors());
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
+
+// Security Middlewares
+try {
+  const helmet = require('helmet');
+  const mongoSanitize = require('express-mongo-sanitize');
+  const xss = require('xss-clean');
+  app.use(helmet());
+  // app.use(mongoSanitize());
+  // app.use(xss()); // Disabled: Causes "Cannot set property query" crash on newer Express versions
+} catch (e) {
+  console.error('[SECURITY] Missing security packages. Run npm install helmet express-mongo-sanitize xss-clean');
+}
 
 
 const { globalLimiter } = require('./api/middlewares/rateLimiter');
@@ -76,15 +88,30 @@ for (const [path, mod] of coreRoutes) {
 }
 
 // ── HR Module ────────────────────────────────────────────────────────────────
-const hrRoutes = [
+// (Unused route requires removed to prevent crashes)
+
+// Queue Monitoring Dashboard (Admin Only)
+const { serverAdapter } = require('./services/queues/queueManager');
+if (serverAdapter) {
+  const { protect, authorize } = require('./guards/auth.guard');
+  app.use('/api/admin/queues', protect, authorize('ADMIN'), serverAdapter.getRouter());
+}
+
+const hrRoutesList = [
   ['/api/employees',  './api/routes/employee.routes'],
   ['/api/approvals',  './api/routes/approval.routes'],
   ['/api/attendance', './api/routes/attendance.routes'],
   ['/api/leaves',     './api/routes/leave.routes'],
   ['/api/audit-logs', './api/routes/audit.routes'],
   ['/api/activities', './api/routes/activity.routes'],
+  ['/api/hr-recruitment', './api/routes/hrRecruitment.routes'],
+  ['/api/hr-compensation', './api/routes/hrCompensation.routes'],
+  ['/api/hr-documents', './api/routes/hrDocument.routes'],
+  ['/api/hr-dashboard', './api/routes/hrDashboard.routes'],
+  ['/api/hr-training', './api/routes/hrTraining.routes'],
+  ['/api/hr-exit', './api/routes/hrExit.routes'],
 ];
-for (const [path, mod] of hrRoutes) {
+for (const [path, mod] of hrRoutesList) {
   try { app.use(path, require(mod)); console.log(`[ROUTES] ✅ ${path}`); }
   catch (e) { console.error(`[ROUTES] ❌ ${path}:`, e.message); }
 }
@@ -120,6 +147,22 @@ catch (e) { console.error('[ROUTES] ❌ /api/analytics:', e.message); }
 // ── Operations Module ─────────────────────────────────────────────────────────
 try { app.use('/api/vendors', require('./api/routes/vendor.routes')); console.log('[ROUTES] ✅ /api/vendors'); }
 catch (e) { console.error('[ROUTES] ❌ /api/vendors:', e.message); }
+
+try { app.use('/api/design', require('./api/routes/design.routes')); console.log('[ROUTES] ✅ /api/design'); }
+catch (e) { console.error('[ROUTES] ❌ /api/design:', e.message); }
+
+try { app.use('/api/production', require('./api/routes/production.routes')); console.log('[ROUTES] ✅ /api/production'); }
+catch (e) { console.error('[ROUTES] ❌ /api/production:', e.message); }
+
+// ── Service / Field Operations Module ──────────────────────────────────────────
+try { app.use('/api/service', require('./api/routes/service.routes')); console.log('[ROUTES] ✅ /api/service'); }
+catch (e) { console.error('[ROUTES] ❌ /api/service:', e.message); }
+
+try { app.use('/api/labour', require('./api/routes/labour.routes')); console.log('[ROUTES] ✅ /api/labour'); }
+catch (e) { console.error('[ROUTES] ❌ /api/labour:', e.message); }
+
+try { app.use('/api/vehicles', require('./api/routes/vehicle.routes')); console.log('[ROUTES] ✅ /api/vehicles'); }
+catch (e) { console.error('[ROUTES] ❌ /api/vehicles:', e.message); }
 
 // ── 404 catch ────────────────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ message: `Route ${req.method} ${req.path} not found` }));

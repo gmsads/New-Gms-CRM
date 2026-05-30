@@ -97,7 +97,11 @@ const confirmOrder = async (orderId, user) => {
     throw Object.assign(new Error('Order has no line items or zero value.'), { statusCode: 422 });
   }
 
-  const advancePct = order.grandTotal > 0 ? (order.advancePaid / order.grandTotal) * 100 : 0;
+  const totalAdvanceProvided = order.paymentRecords
+    .filter(p => p.status === 'Verified' || p.status === 'Pending')
+    .reduce((s, p) => s + p.amount, 0);
+
+  const advancePct = order.grandTotal > 0 ? (totalAdvanceProvided / order.grandTotal) * 100 : 0;
   const meetsThreshold = advancePct >= 50 || order.advanceApproved;
 
   if (!meetsThreshold) {
@@ -118,7 +122,7 @@ const confirmOrder = async (orderId, user) => {
         requestedBy: order.salesExec || user._id,
         clientName: order.clientSnapshot?.name || 'Unknown',
         grandTotal: order.grandTotal,
-        advancePaid: order.advancePaid,
+        advancePaid: totalAdvanceProvided,
         advancePct: parseFloat(advancePct.toFixed(2)),
         status: 'Pending',
         escalationRole: user.role === 'SALES_MANAGER' ? 'BRANCH_HEAD' : 'SALES_MANAGER'
@@ -237,6 +241,21 @@ const updateOrderStatus = async (orderId, targetStatus, user, extraData = {}) =>
 
     case 'Ready_To_Deliver':
       order.addTimelineEvent('Ready for Delivery', 'Order ready to be delivered to client.', user);
+      if (!order.serviceManager) {
+        try {
+          const assignment = await assignRoundRobin('SERVICE_MANAGER', order._id, null, user._id);
+          order.serviceManager = assignment.assignedTo;
+          order.addTimelineEvent('Service Manager Assigned', 'Automatically assigned service manager via Round Robin', user);
+          
+          order.lineItems.forEach(item => {
+            if (!item.serviceWorkflow) item.serviceWorkflow = {};
+            item.serviceWorkflow.serviceManagerId = assignment.assignedTo;
+            if (!item.serviceWorkflow.status) item.serviceWorkflow.status = 'Pending Service';
+          });
+        } catch (err) {
+          console.error('Failed to assign service manager automatically:', err);
+        }
+      }
       break;
 
     case 'Delivered':

@@ -9,7 +9,7 @@ const ApprovalsTerminal = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  if (!user) return null;
+  
 
   const isAccountant = user.role === 'ACCOUNTS';
   
@@ -108,6 +108,7 @@ const ApprovalsTerminal = () => {
     ? ['Payments']
     : ['Orders', 'Payments', 'Leaves'];
 
+  
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

@@ -9,7 +9,7 @@ const paymentSchema = new mongoose.Schema({
   // ── Payment details
   paymentNumber: { type: String, unique: true }, // PAY-2026-0001
   amount:   { type: Number, required: true, min: 1 },
-  method:   { type: String, enum: ['Cash', 'UPI', 'Bank Transfer', 'Cheque'], required: true },
+  method:   { type: String, enum: ['Cash', 'UPI', 'PhonePe', 'GPay', 'Bank Transfer', 'Cheque', 'Other'], required: true },
   reference:{ type: String }, // UPI txn ID / cheque number / bank ref
 
   // ── Proof (mandatory)

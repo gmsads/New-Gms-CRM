@@ -3,8 +3,9 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Megaphone, CheckSquare, Settings,
   PieChart, Briefcase, FileText, Palette, Truck, Server, X, ShieldCheck,
-  Clock, ShoppingCart, Calendar, IndianRupee, BarChart2, Search,
-  ChevronDown, ChevronRight, UserPlus, Quote, Package, Target, Bell, Eye
+  Clock, ShoppingCart, Calendar, IndianRupee, BarChart2, Search, AlertCircle, CheckCircle,
+  ChevronDown, ChevronRight, UserPlus, Quote, Package, Target, Bell, Eye,
+  Image as ImageIcon, MapPin, Activity
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { prospectApi, orderApi, appointmentApi, approvalApi, paymentApi } from '../../services/api';
@@ -25,9 +26,14 @@ const menuConfig = [
       { title: 'Dashboard',   path: '/hr/dashboard',   icon: LayoutDashboard },
       { title: 'Employees',   path: '/hr/employees',   icon: Users },
       { title: 'Recruitment', path: '/hr/recruitment', icon: UserPlus },
+      { title: 'Documents',   path: '/hr/documents',   icon: FileText },
+      { title: 'Compensation',path: '/hr/compensation',icon: IndianRupee },
       { title: 'Attendance',  path: '/hr/attendance',  icon: Calendar },
-      { title: 'Payroll',     path: '/hr/payroll',     icon: IndianRupee },
-      { title: 'Performance', path: '/hr/performance', icon: BarChart2 }
+      { title: 'Leave',       path: '/hr/leave',       icon: Calendar },
+      { title: 'Performance', path: '/hr/performance', icon: BarChart2 },
+      { title: 'Training',    path: '/hr/training',    icon: CheckSquare },
+      { title: 'Exit Mgmt',   path: '/hr/exit',        icon: Users },
+      { title: 'Reports',     path: '/hr/reports',     icon: PieChart }
     ]
   },
   { title: 'Orders',           icon: ShoppingCart,    path: '/orders',    roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','ACCOUNTS'] },
@@ -115,9 +121,15 @@ const adminMenuConfig = [
     path: '/hr',
     subItems: [
       { title: 'Employees', path: '/hr/employees', icon: Users },
+      { title: 'Recruitment', path: '/hr/recruitment', icon: UserPlus },
+      { title: 'Documents', path: '/hr/documents', icon: FileText },
+      { title: 'Compensation', path: '/hr/compensation', icon: IndianRupee },
       { title: 'Attendance', path: '/hr/attendance', icon: Calendar },
-      { title: 'Leave Management', path: '/admin-hr', icon: Calendar },
-      { title: 'Inactive Employees', path: '/hr/inactive', icon: UserPlus }
+      { title: 'Leave Management', path: '/hr/leave', icon: Calendar },
+      { title: 'Performance', path: '/hr/performance', icon: BarChart2 },
+      { title: 'Training', path: '/hr/training', icon: CheckSquare },
+      { title: 'Exit Mgmt', path: '/hr/exit', icon: Users },
+      { title: 'Reports', path: '/hr/reports', icon: PieChart }
     ]
   },
   {
@@ -286,7 +298,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     return () => clearInterval(interval);
   }, [user]);
 
-  if (!user) return null;
+  
 
   const isSalesOrFieldExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(user.role);
   const isAccountant = user.role === 'ACCOUNTS';
@@ -322,6 +334,201 @@ const Sidebar = ({ isOpen, setOpen }) => {
     { title: 'Payments',      icon: IndianRupee,     path: '/approvals',  badge: paymentPendingCount > 0 ? paymentPendingCount.toString() : null },
     { title: 'Tasks',         icon: CheckSquare,     path: '/tasks',      badge: null },
     { title: 'Settings',      icon: Settings,        path: '/settings',   badge: null },
+  ];
+
+  const dynamicDesignerMenu = [
+    { title: 'Dashboard', icon: LayoutDashboard, path: '/design' },
+    { 
+      title: 'My Work', 
+      icon: CheckSquare, 
+      path: '/design/work',
+      subItems: [
+        { title: 'Assigned Services', path: '/design/work?tab=assigned', icon: FileText },
+        { title: 'In Progress', path: '/design/work?tab=progress', icon: Clock },
+        { title: 'Waiting Client Response', path: '/design/work?tab=waiting', icon: Clock },
+        { title: 'Revisions', path: '/design/work?tab=revisions', icon: FileText },
+        { title: 'Completed Services', path: '/design/work?tab=completed', icon: CheckSquare }
+      ]
+    },
+    { 
+      title: 'Service Workflow', 
+      icon: Target, 
+      path: '/design/workflow'
+    },
+    { 
+      title: 'Design Assets', 
+      icon: Palette, 
+      path: '/design/assets',
+      subItems: [
+        { title: 'Logos', path: '/design/assets?category=Logos', icon: ImageIcon },
+        { title: 'Templates', path: '/design/assets?category=Templates', icon: FileText },
+        { title: 'Fonts', path: '/design/assets?category=Fonts', icon: FileText },
+        { title: 'Brand Kits', path: '/design/assets?category=Brand+Kits', icon: Palette },
+        { title: 'Approved Designs Archive', path: '/design/work?tab=completed', icon: Package }
+      ]
+    },
+    { 
+      title: 'Communication', 
+      icon: Megaphone, 
+      path: '/design/communications',
+      subItems: [
+        { title: 'Client Interactions', path: '/design/communications/client', icon: Users },
+        { title: 'Approval Proofs', path: '/design/communications/proofs', icon: ShieldCheck }
+      ]
+    },
+    { 
+      title: 'Reports', 
+      icon: BarChart2, 
+      path: '/design/reports',
+      subItems: [
+        { title: 'My Performance', path: '/design/reports/performance', icon: Target },
+        { title: 'Productivity', path: '/design/reports/productivity', icon: BarChart2 }
+      ]
+    },
+    { title: 'Notifications', icon: Bell, path: '/design/notifications' },
+    { title: 'Profile', icon: Settings, path: '/settings' }
+  ];
+
+  const dynamicProductionManagerMenu = [
+    { title: 'Dashboard', icon: LayoutDashboard, path: '/production/manager' },
+    { 
+      title: 'Production Management', 
+      icon: Target, 
+      path: '/production/manager/management',
+      subItems: [
+        { title: 'Production Queue', path: '/production/manager/queue', icon: Target },
+        { title: 'Active (Printing)', path: '/production/manager/printing', icon: Clock },
+        { title: 'Quality Control', path: '/production/manager/qc', icon: ShieldCheck },
+        { title: 'Issues & Delayed', path: '/production/manager/issues', icon: AlertCircle }
+      ]
+    },
+    { title: 'Completed Jobs', path: '/production/manager/completed', icon: Briefcase },
+    { 
+      title: 'Design & Files', 
+      icon: Palette, 
+      path: '/production/manager/designs',
+      subItems: [
+        { title: 'Approved Designs', path: '/production/manager/designs/approved', icon: FileText },
+        { title: 'Production Assets', path: '/production/manager/assets', icon: Package }
+      ]
+    },
+    { title: 'Service Handover', icon: Truck, path: '/production/manager/handover' },
+    { title: 'Reports', icon: BarChart2, path: '/production/manager/reports' },
+    { title: 'Notifications', icon: Bell, path: '/production/manager/notifications' },
+    { title: 'Profile', icon: Settings, path: '/settings' }
+  ];
+
+  const dynamicProductionExecMenu = [
+    { title: 'Dashboard', icon: LayoutDashboard, path: '/production/executive' },
+    { 
+      title: 'My Production Work', 
+      icon: CheckSquare, 
+      path: '/production/executive/work',
+      subItems: [
+        { title: 'Assigned Jobs', path: '/production/executive/assigned', icon: FileText },
+        { title: 'Active Production', path: '/production/executive/active', icon: Clock },
+        { title: 'Completed Tasks', path: '/production/executive/completed', icon: CheckSquare }
+      ]
+    },
+    { title: 'Design & Files', icon: Palette, path: '/production/executive/designs' },
+    { title: 'Issue Reporting', icon: Megaphone, path: '/production/executive/issues' },
+    { title: 'Quantity Tracking', icon: BarChart2, path: '/production/executive/quantity' },
+    { title: 'Notifications', icon: Bell, path: '/production/executive/notifications' },
+    { title: 'Profile', icon: Settings, path: '/settings' }
+  ];
+
+  const dynamicServiceManagerMenu = [
+    { 
+      title: 'Dashboard', 
+      icon: LayoutDashboard, 
+      path: '/service/manager',
+      subItems: [
+        { title: 'Service Overview', path: '/service/manager/overview', icon: LayoutDashboard },
+        { title: 'Due Today', path: '/service/manager/due-today', icon: Clock },
+        { title: 'Overdue Services', path: '/service/manager/overdue', icon: AlertCircle },
+        { title: 'Delivery Risk Alerts', path: '/service/manager/risks', icon: ShieldCheck }
+      ]
+    },
+    { 
+      title: 'Service Management', 
+      icon: Target, 
+      path: '/service/manager/management',
+      subItems: [
+        { title: 'Service Queue', path: '/service/manager/queue', icon: Target },
+        { title: 'Scheduled Services', path: '/service/manager/scheduled', icon: Calendar },
+        { title: 'Active Services', path: '/service/manager/active', icon: Clock },
+        { title: 'Delayed Services', path: '/service/manager/delayed', icon: AlertCircle },
+        { title: 'Completed Services', path: '/service/manager/completed', icon: CheckSquare }
+      ]
+    },
+    { 
+      title: 'Resource Management', 
+      icon: Users, 
+      path: '/service/manager/resources',
+      subItems: [
+        { title: 'Labour Management', path: '/service/manager/labour', icon: Users },
+        { title: 'Vendor Management', path: '/service/manager/vendors', icon: Truck },
+        { title: 'Vehicle Management', path: '/service/manager/vehicles', icon: Truck }
+      ]
+    },
+    { 
+      title: 'Field Operations', 
+      icon: MapPin, 
+      path: '/service/manager/field',
+      subItems: [
+        { title: 'Site Visits', path: '/service/manager/site-visits', icon: MapPin },
+        { title: 'Installation Tracking', path: '/service/manager/tracking', icon: Activity || FileText },
+        { title: 'Client Confirmations', path: '/service/manager/confirmations', icon: CheckCircle },
+        { title: 'Service Proofs', path: '/service/manager/proofs', icon: ImageIcon }
+      ]
+    },
+    { 
+      title: 'Reports & Analytics', 
+      icon: BarChart2, 
+      path: '/service/manager/reports',
+      subItems: [
+        { title: 'Service Performance', path: '/service/manager/reports/service', icon: BarChart2 },
+        { title: 'Labour Performance', path: '/service/manager/reports/labour', icon: Users },
+        { title: 'Vendor Performance', path: '/service/manager/reports/vendor', icon: Truck },
+        { title: 'Delivery Compliance', path: '/service/manager/reports/compliance', icon: CheckCircle },
+        { title: 'Delay Analysis', path: '/service/manager/reports/delays', icon: AlertCircle }
+      ]
+    },
+    { 
+      title: 'Notifications', 
+      icon: Bell, 
+      path: '/service/manager/notifications',
+      subItems: [
+        { title: 'Alerts', path: '/service/manager/alerts', icon: Bell },
+        { title: 'Escalations', path: '/service/manager/escalations', icon: AlertCircle }
+      ]
+    }
+  ];
+
+  const dynamicServiceExecMenu = [
+    { title: 'Dashboard', icon: LayoutDashboard, path: '/service/executive' },
+    { title: 'My Tasks', icon: CheckSquare, path: '/service/executive/tasks' },
+    { title: 'Active Services', icon: Clock, path: '/service/executive/active' },
+    { title: 'Completed Services', icon: CheckCircle, path: '/service/executive/completed' },
+    { title: 'Upload Proofs', icon: ImageIcon, path: '/service/executive/proofs' },
+    { title: 'Client Confirmation', icon: CheckCircle, path: '/service/executive/confirmation' },
+    { title: 'Notifications', icon: Bell, path: '/service/executive/notifications' },
+    { title: 'Profile', icon: Settings, path: '/settings' }
+  ];
+
+  const dynamicHRMenu = [
+    { title: 'Dashboard', path: '/hr/dashboard', icon: LayoutDashboard },
+    { title: 'Employees', path: '/hr/employees', icon: Users },
+    { title: 'Recruitment', path: '/hr/recruitment', icon: UserPlus },
+    { title: 'Documents', path: '/hr/documents', icon: FileText },
+    { title: 'Compensation', path: '/hr/compensation', icon: IndianRupee },
+    { title: 'Attendance', path: '/hr/attendance', icon: Calendar },
+    { title: 'Leave Management', path: '/hr/leave', icon: Calendar },
+    { title: 'Performance', path: '/hr/performance', icon: BarChart2 },
+    { title: 'Training', path: '/hr/training', icon: CheckSquare },
+    { title: 'Exit Mgmt', path: '/hr/exit', icon: Users },
+    { title: 'Reports', path: '/hr/reports', icon: PieChart },
+    { title: 'Settings', icon: Settings, path: '/settings' }
   ];
 
   const isSalesManager = user.role === 'SALES_MANAGER' || user.role === 'SR_SALES_MANAGER';
@@ -443,6 +650,18 @@ const Sidebar = ({ isOpen, setOpen }) => {
     ? dynamicExecMenu
     : isAccountant
     ? dynamicAccountantMenu
+    : user.role === 'DESIGNER'
+    ? dynamicDesignerMenu
+    : user.role === 'PRODUCTION_MANAGER'
+    ? dynamicProductionManagerMenu
+    : user.role === 'PRODUCTION_EXEC'
+    ? dynamicProductionExecMenu
+    : user.role === 'SERVICE_MANAGER'
+    ? dynamicServiceManagerMenu
+    : user.role === 'SERVICE_EXEC'
+    ? dynamicServiceExecMenu
+    : user.role === 'HR'
+    ? dynamicHRMenu
     : menuConfig
         .filter(item => item.roles.includes('ALL') || item.roles.includes(user.role))
         .map(item => {
@@ -452,6 +671,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
           return item;
         });
 
+  
   return (
     <>
       {isOpen && (

@@ -155,6 +155,7 @@ export const useOrderFlow = (user, onSaved) => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentOrder, setPaymentOrder] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleOrderSearch = async (searchParams) => {
     setShowOrderSearch(false);
@@ -171,6 +172,8 @@ export const useOrderFlow = (user, onSaved) => {
   };
 
   const handleOrderSubmit = async (formData) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await orderApi.create(formData, user?.token);
       setToastMsg('Order created successfully!');
@@ -181,10 +184,14 @@ export const useOrderFlow = (user, onSaved) => {
       console.error('[ORDER_SUBMIT_ERROR]', err);
       setToastMsg(err.message || 'Failed to create order');
       setTimeout(() => setToastMsg(null), 4000);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handlePaymentSubmit = async (paymentData) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await paymentApi.create({
         orderId: paymentOrder._id || paymentOrder.id,
@@ -197,6 +204,8 @@ export const useOrderFlow = (user, onSaved) => {
     } catch (err) {
       setToastMsg(err.message || 'Payment submission failed');
       setTimeout(() => setToastMsg(null), 4000);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -207,6 +216,7 @@ export const useOrderFlow = (user, onSaved) => {
     selectedOrder, setSelectedOrder, 
     paymentOrder, setPaymentOrder, 
     toastMsg, setToastMsg,
+    isSubmitting,
     handleOrderSearch, handleOrderSubmit, handlePaymentSubmit
   };
 };

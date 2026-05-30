@@ -5,6 +5,9 @@ import { useNavigate } from 'react-router-dom';
 
 const ROLE_COLORS = {
   MD_CEO:           '#7c3aed',
+  CEO:              '#7c3aed',
+  COO:              '#6366f1',
+  BRANCH_HEAD:      '#3b82f6',
   ADMIN:            '#dc2626',
   SALES_EXEC:       '#1d4ed8',
   SALES_MANAGER:    '#0369a1',
@@ -13,6 +16,8 @@ const ROLE_COLORS = {
   DESIGNER:         '#db2777',
   OPERATION_EXEC:   '#0f766e',
   OPERATION_MANAGER:'#0e7490',
+  PRODUCTION_EXEC:  '#ea580c',
+  PRODUCTION_MANAGER:'#c2410c',
   AGENT:            '#6d28d9',
   VENDOR:           '#92400e',
   IT:               '#374151',
@@ -22,13 +27,14 @@ const ROLE_COLORS = {
 const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  if (!user) return null;
+  
 
   const initials = user.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
   const roleColor = ROLE_COLORS[user.role] || '#1d4ed8';
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
+  
   return (
     <header style={{
       display: 'flex', height: 64, flexShrink: 0,

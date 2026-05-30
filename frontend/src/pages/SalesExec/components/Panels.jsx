@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toTitleCase } from "../../../utils/stringUtils";
 import {
   Calendar,
   CheckCircle,
@@ -1062,7 +1063,9 @@ export const CreateOrderModal = ({
     if (name === "phone" || name === "pincode") {
       finalValue = value.replace(/\D/g, "").slice(0, name === "phone" ? 10 : 6);
     } else if (name === "name") {
-      finalValue = value.replace(/[^a-zA-Z\s]/g, "");
+      finalValue = toTitleCase(value.replace(/[^a-zA-Z\s]/g, ""));
+    } else if (name === 'company' || name === 'location') {
+      finalValue = toTitleCase(value);
     }
 
     setFormData((prev) => ({ ...prev, [name]: finalValue }));
@@ -2055,7 +2058,9 @@ export const CreateProspectModal = ({
     if (name === "phone") {
       finalValue = value.replace(/\D/g, "").slice(0, 10);
     } else if (name === "name") {
-      finalValue = value.replace(/[^a-zA-Z\s]/g, "");
+      finalValue = toTitleCase(value.replace(/[^a-zA-Z\s]/g, ""));
+    } else if (name === 'company' || name === 'location') {
+      finalValue = toTitleCase(value);
     }
 
     setFormData((prev) => ({ ...prev, [name]: finalValue }));
@@ -2877,7 +2882,7 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
   const hasPendingPayment = (order.paymentRecords || []).some(p => p.status === 'Pending');
   const steps = [
     { 
-      label: 'Pay Verify', 
+      label: 'Adv Pay Verify', 
       status: hasPendingPayment ? 'current' : (['Confirmed', 'Design_Pending', 'Design_InProgress', 'Design_Review', 'Design_Approved', 'In_Production', 'Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : 'waiting') 
     },
     { 
@@ -2889,7 +2894,7 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
       status: ['Approved', 'Completed', 'Not_Required'].includes(order.designStatus) ? 'done' : (order.status.startsWith('Design_') ? 'current' : 'waiting') 
     },
     { 
-      label: 'Ops Mgr', 
+      label: 'PROD MGR', 
       status: ['Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : (order.status === 'In_Production' ? 'current' : 'waiting') 
     },
     { 
@@ -3030,7 +3035,7 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
                     Design Workflow
                   </h3>
                   <span
-                    className={`px-2 py-1 rounded-lg text-[10px] font-bold ${order.designStatus === "Approved" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-purple-50 text-purple-700 border border-purple-100"}`}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-bold ${['Approved', 'Completed'].includes(order.designStatus) ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-purple-50 text-purple-700 border border-purple-100"}`}
                   >
                     {order.designStatus?.replace("_", " ") || "Pending"}
                   </span>
@@ -3083,13 +3088,25 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
                         ₹{item.unitPrice.toLocaleString("en-IN")}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex flex-col items-end gap-1">
                       <p className="text-sm font-black text-slate-900">
                         ₹{item.amount?.toLocaleString("en-IN")}
                       </p>
-                      <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">
-                        Verified ✓
-                      </span>
+                      {item.designerWorkflow?.currentStatus ? (
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
+                          ['Completed', 'Client-Design Approved'].includes(item.designerWorkflow.currentStatus) 
+                            ? 'bg-emerald-100 text-emerald-700' 
+                            : ['Revision Requested', 'Client-Design Rejected'].includes(item.designerWorkflow.currentStatus)
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {item.designerWorkflow.currentStatus}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter">
+                          Verified ✓
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}

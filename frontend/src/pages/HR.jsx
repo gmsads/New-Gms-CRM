@@ -8,7 +8,14 @@ import {
   HRRecruitment, 
   HRPerformance, 
   HRAttendance, 
-  HRPayroll 
+  HRPayroll,
+  HRDocuments,
+  HRCompensation,
+  HRLeave,
+  HRTraining,
+  HRExitManagement,
+  HRReports,
+  EmployeeProfile
 } from '../modules/hr';
 
 const HR = () => {
@@ -23,10 +30,17 @@ const HR = () => {
       <Routes>
         <Route path="dashboard"   element={<HRDashboard employees={employees} />} />
         <Route path="employees"   element={<HREmployees employees={employees} onRefresh={refetch} />} />
+        <Route path="employees/:id" element={<EmployeeProfile employees={employees} />} />
         <Route path="recruitment" element={<HRRecruitment />} />
+        <Route path="documents"   element={<HRDocuments />} />
+        <Route path="compensation" element={<HRCompensation employees={employees} />} />
         <Route path="attendance"  element={<HRAttendance />} />
+        <Route path="leave"       element={<HRLeave />} />
         <Route path="payroll"     element={<HRPayroll />} />
         <Route path="performance" element={<HRPerformance />} />
+        <Route path="training"    element={<HRTraining />} />
+        <Route path="exit"        element={<HRExitManagement />} />
+        <Route path="reports"     element={<HRReports />} />
         
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />

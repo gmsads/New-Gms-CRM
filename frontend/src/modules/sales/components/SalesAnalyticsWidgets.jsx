@@ -1,11 +1,23 @@
 import React, { useState, useMemo } from 'react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, ComposedChart, Line } from 'recharts';
 import { Calendar as CalendarIcon, Users } from 'lucide-react';
 
 const COLORS = ['#22c55e', '#ef4444']; // Paid (Green), Unpaid (Red)
 const PIE_COLORS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#10b981', '#f43f5e'];
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-slate-900/90 backdrop-blur-md p-3 rounded-xl border border-slate-700 shadow-xl">
+        <p className="text-white font-bold mb-1">{label || payload[0].name}</p>
+        <p className="text-slate-300 font-medium">Value: <span className="text-white font-bold">{payload[0].value}</span></p>
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [], user }) {
   const currentYear = new Date().getFullYear();
@@ -62,18 +74,24 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
       }
 
       // Try to find client category
-      let cat = 'Retail'; // default
-      if (o.prospect && typeof o.prospect === 'object' && o.prospect.clientType) {
-        cat = o.prospect.clientType;
-      } else if (o.prospect) { // prospect is ID, search in rawProspects
+      let cat = o.orderType || (o.prospect && typeof o.prospect === 'object' ? o.prospect.clientType : null);
+      if (!cat && o.prospect) {
         const p = rawProspects.find(rp => rp._id === o.prospect);
         if (p && p.clientType) cat = p.clientType;
       }
+      cat = cat || 'Retail';
       
-      if (categoryMap[cat] !== undefined) {
-        categoryMap[cat] += (o.grandTotal || 0);
-        categoryOrderCountMap[cat] += 1;
+      let formattedCat = cat.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('-');
+      
+      // Mappings to match exactly the 6 categories
+      if (formattedCat === 'Renewal-Agent') formattedCat = 'Agent-Renewal';
+      if (formattedCat === 'Retail-Agent') formattedCat = 'Agent';
+      if (!['Retail', 'Renewal', 'Corporate', 'Corporate-Renewal', 'Agent', 'Agent-Renewal'].includes(formattedCat)) {
+        formattedCat = 'Retail';
       }
+
+      categoryMap[formattedCat] += (o.grandTotal || 0);
+      categoryOrderCountMap[formattedCat] += 1;
     });
 
     const paidAmount = totalOrderAmount - pendingAmount;
@@ -106,18 +124,6 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
 
   const monthName = months[selectedMonth];
   const formatMoney = (val) => `₹${(val || 0).toLocaleString('en-IN')}`;
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-slate-900/90 backdrop-blur-md p-3 rounded-xl border border-slate-700 shadow-xl">
-          <p className="text-white font-bold mb-1">{label || payload[0].name}</p>
-          <p className="text-slate-300 font-medium">Value: <span className="text-white font-bold">{payload[0].value}</span></p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="space-y-6 col-span-full w-full animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -167,9 +173,9 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
           <h3 className="font-bold text-slate-800 text-base mb-6 flex items-center gap-2">
             💳 Payment Status - {monthName} {selectedYear}
           </h3>
-          <div className="h-48 relative">
+          <div className="h-48 relative w-full min-w-0 min-h-0">
             {filteredData.totalOrderAmount > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
                     data={[
@@ -201,9 +207,9 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
           <h3 className="font-bold text-slate-800 text-base mb-6 flex items-center gap-2">
             📦 Order Fulfillment - {monthName} {selectedYear}
           </h3>
-          <div className="h-48 relative">
+          <div className="h-48 relative w-full min-w-0 min-h-0">
             {filteredData.totalOrdersCount > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
                     data={[
@@ -234,9 +240,9 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
           <h3 className="font-bold text-slate-800 text-base mb-6 flex items-center gap-2">
             🎯 Prospect Conversion - {monthName} {selectedYear}
           </h3>
-          <div className="h-48 relative">
+          <div className="h-48 relative w-full min-w-0 min-h-0">
             {filteredData.totalProspects > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
                 <PieChart>
                   <Pie
                     data={[
@@ -270,15 +276,24 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
           📊 Client Overview - {monthName} {selectedYear}
         </h3>
         
-        <div className="h-64 mb-8">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={filteredData.categoryChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-              <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12, fontWeight: 600}} />
-              <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12, fontWeight: 600}} allowDecimals={false} />
-              <RechartsTooltip cursor={{fill: '#f8fafc'}} content={<CustomTooltip />} />
-              <Legend verticalAlign="bottom" height={20} wrapperStyle={{fontSize: '12px', fontWeight: 'bold'}} />
-              <Bar dataKey="Orders" fill="#0ea5e9" radius={[4, 4, 0, 0]} maxBarSize={60} />
+        <div className="h-80 mb-8 bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden w-full min-w-0 min-h-0">
+          <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
+            <BarChart data={filteredData.categoryChartData} margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12, fontWeight: 700}} dy={10} />
+              <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{fill: '#3b82f6', fontSize: 11, fontWeight: 700}} tickFormatter={(val) => `₹${val/1000}k`} />
+              <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fill: '#10b981', fontSize: 11, fontWeight: 700}} />
+              <RechartsTooltip 
+                cursor={{fill: '#f8fafc'}} 
+                contentStyle={{ borderRadius: '1rem', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', color: '#0f172a' }}
+                itemStyle={{ fontWeight: 'bold' }}
+                formatter={(value, name) => [name === 'amount' ? formatMoney(value) : value, name === 'amount' ? 'Total Amount' : 'Orders']}
+                labelStyle={{ color: '#64748b', fontWeight: 'bold', marginBottom: '8px' }}
+              />
+              <Legend verticalAlign="top" height={36} wrapperStyle={{fontSize: '12px', fontWeight: 'bold', color: '#475569'}} />
+              
+              <Bar yAxisId="left" dataKey="amount" name="Total Amount" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} />
+              <Bar yAxisId="right" dataKey="Orders" name="Orders" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
             </BarChart>
           </ResponsiveContainer>
         </div>

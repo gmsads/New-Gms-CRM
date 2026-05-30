@@ -286,15 +286,22 @@ const ExecDashboard = () => {
       ];
 
       // Order Type Analysis (Bar Chart)
-      const types = ['retail', 'renewal', 'corporate', 'corporate-renewal', 'agent', 'agent-renewal'];
-      const orderTypeAnalysis = types.map(type => {
-        const typeOrders = ords.filter(o => (o.orderType || '').toLowerCase() === type);
-        return {
-          name: type.charAt(0).toUpperCase() + type.slice(1),
-          amount: typeOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0),
-          orders: typeOrders.length
-        };
+      const typeMap = {};
+      ords.forEach(o => {
+        let oType = (o.orderType || o.clientSnapshot?.clientType || o.prospect?.clientType || 'retail').toLowerCase();
+        // standardize common strings if needed
+        if (oType === 'agent extra') oType = 'agent';
+        
+        if (!typeMap[oType]) typeMap[oType] = { amount: 0, count: 0 };
+        typeMap[oType].amount += (o.grandTotal || o.amount || 0);
+        typeMap[oType].count += 1;
       });
+
+      const orderTypeAnalysis = Object.keys(typeMap).map(type => ({
+        name: type.charAt(0).toUpperCase() + type.slice(1),
+        amount: typeMap[type].amount,
+        orders: typeMap[type].count
+      })).sort((a, b) => b.amount - a.amount);
 
       const todayStr = new Date().toISOString().split('T')[0];
       const todayAppts = (appointments.data || []).filter(a => a.date && a.date.startsWith(todayStr) && a.status !== 'Completed').length;
@@ -333,13 +340,15 @@ const ExecDashboard = () => {
   useEffect(() => { if (user?.token) fetchDashboardData(); }, [user?.token]);
 
   const progressPercent = stats.realTarget 
-    ? (stats.realTarget.progressPercent || 0)
+    ? (stats.realTarget.targetValue > 0 ? Math.min(100, Math.round((stats.realTarget.achievedValue / stats.realTarget.targetValue) * 100)) : 0)
     : (stats.target.assigned > 0 ? Math.min(100, Math.round((stats.target.completed / stats.target.assigned) * 100)) : 0);
   
   const getProgressBarColor = (pct) => {
-    if (pct < 40) return 'bg-rose-500';
-    if (pct < 75) return 'bg-amber-500';
-    return 'bg-emerald-500';
+    if (pct >= 100) return "bg-gradient-to-r from-emerald-400 to-green-500 shadow-[0_0_20px_rgba(16,185,129,0.7)]";
+    if (pct >= 75) return "bg-gradient-to-r from-teal-400 to-emerald-500 shadow-[0_0_20px_rgba(45,212,191,0.6)]";
+    if (pct >= 40) return "bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_0_20px_rgba(245,158,11,0.6)]";
+    if (pct >= 10) return "bg-gradient-to-r from-rose-500 to-red-500 shadow-[0_0_20px_rgba(225,29,72,0.6)]";
+    return "bg-gradient-to-r from-red-600 to-rose-700 shadow-[0_0_20px_rgba(159,18,57,0.7)]";
   };
 
   const getRoleBasedQuote = (role) => {
@@ -486,7 +495,7 @@ const ExecDashboard = () => {
             <div className="space-y-4 mt-8 relative z-10">
               <div className="h-4 w-full bg-slate-950 rounded-full overflow-hidden p-1 shadow-inner border border-slate-800">
                 <div 
-                  className={`h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(59,130,246,0.5)] ${getProgressBarColor(progressPercent)}`} 
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${getProgressBarColor(progressPercent)}`} 
                   style={{ width: `${progressPercent}%` }} 
                 />
               </div>
@@ -733,9 +742,10 @@ export const SalesProspects = ({ isTeamMode = false, globalFilters = {} }) => {
   const pFlow = useProspectFlow(user, fetch);
   const oFlow = useOrderFlow(user, fetch);
 
-  if (!user) return null;
+  
   if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -791,9 +801,10 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
   useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
   const oFlow = useOrderFlow(user, fetch);
 
-  if (!user) return null;
+  
   if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -824,7 +835,7 @@ export const SalesPayments = () => {
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  if (!user) return null;
+  
 
   useEffect(() => { 
     leaveApi.list({}, user.token).then(res => {
@@ -835,6 +846,7 @@ export const SalesPayments = () => {
 
   if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
+  
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-black text-slate-900">Leave Requests</h1>
@@ -889,7 +901,7 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
   const [loading, setLoading] = useState(true);
   const [showRemark, setShowRemark] = useState(null);
 
-  if (!user) return null;
+  
 
   const fetch = async () => { 
     setLoading(true);
@@ -927,6 +939,7 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
 
   if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
+  
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col gap-1">
@@ -1126,9 +1139,10 @@ export const SalesAppointments = ({ isTeamMode = false, globalFilters = {} }) =>
 
   useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
 
-  if (!user) return null;
+  
   if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
+  
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-black text-slate-900">Upcoming Appointments</h1>
@@ -1233,7 +1247,7 @@ export const SalesBrochures = () => {
     // For better UX, let's keep the details and let user pick which brochure.
   }, [initialPhone, initialName]);
 
-  if (!user) return null;
+  
   const isAdmin = ['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user.role);
 
   const fetchData = async () => {
@@ -1258,6 +1272,7 @@ export const SalesBrochures = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
+  
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700">
       {toast && (
@@ -1399,7 +1414,7 @@ export const SalesQuotations = ({ isTeamMode = false, globalFilters = {} }) => {
 
   useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
 
-  if (!user) return null;
+  
 
   const uniqueEmployees = Array.from(new Set(
     quotations.map(q => q.executive?.name)
@@ -1415,6 +1430,7 @@ export const SalesQuotations = ({ isTeamMode = false, globalFilters = {} }) => {
     return matchesSearch && matchesStatus && matchesDate && matchesEmployee;
   });
 
+  
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-700">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">

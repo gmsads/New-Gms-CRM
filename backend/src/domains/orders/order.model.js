@@ -9,12 +9,183 @@ const lineItemSchema = new mongoose.Schema({
   discount:    { type: Number, default: 0, min: 0, max: 100 }, // %
   gstRate:     { type: Number, default: 18, min: 0 },           // %
   amount:      { type: Number },                                 // computed
-  designerStatus: {
-    type: String,
-    enum: ['Pending', 'In Progress', 'Demo Shared to Client', 'Client Approved Design', 'Design Completed', 'Design Provided - Approved', 'Design Provided - Not Clear'],
-    default: 'Pending'
-  },
+  deliveryDate:{ type: Date },                                   // line item level fallback
+  installedQuantity: { type: Number, default: 0 },
+  remainingQuantity: { type: Number, default: function() { return this.quantity; } },
+  // Legacy fields (deprecated)
+  designerStatus: { type: String },
   designFileUrl: { type: String },
+
+  // New Service-Level Designer Workflow
+  designerWorkflow: {
+    workflowType: { 
+      type: String, 
+      enum: ['DESIGN_CREATED', 'CLIENT_UPLOADED'],
+      default: 'DESIGN_CREATED'
+    },
+    currentStatus: { 
+      type: String,
+      default: 'Assigned'
+    },
+    statusHistory: [{
+      status: String,
+      changedAt: { type: Date, default: Date.now },
+      changedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      note: String
+    }],
+    assignedDesigners: [{
+      userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      assignedAt: { type: Date, default: Date.now },
+      role: { type: String, default: 'PRIMARY' }
+    }],
+    startedAt: Date,
+    completedAt: Date,
+    approvalUploadedAt: Date,
+    revisionCount: { type: Number, default: 0 },
+    waitingClientSince: Date,
+    priority: { type: String, enum: ['Low', 'Normal', 'High', 'Urgent'], default: 'Normal' },
+    deadline: Date,
+    requirements: String
+  },
+
+  serviceFiles: [{
+    type: { 
+      type: String, 
+      enum: ['DEMO', 'FINAL', 'SOURCE', 'APPROVAL_PROOF', 'CLIENT_REFERENCE', 'CLIENT_UPLOAD'] 
+    },
+    fileUrl: String,
+    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    uploadedAt: { type: Date, default: Date.now },
+    version: { type: Number, default: 1 },
+    notes: String
+  }],
+  // New Service-Level Production Workflow
+  productionWorkflow: {
+    status: {
+      type: String,
+      enum: [
+        'Pending Production',
+        'Scheduled',
+        'Printing Started',
+        'Printing',
+        'Fabrication In Progress',
+        'Production In Progress',
+        'QC Pending',
+        'Pending QC',
+        'QC Check',
+        'Rework In Progress',
+        'Production Completed',
+        'Completed',
+        'Issues/Delayed',
+        'Ready For Service'
+      ],
+      default: 'Pending Production'
+    },
+    productionManagerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    productionExecutiveId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    assignedMachine: { type: String },
+    estimatedCompletion: { type: Date },
+    startedAt: { type: Date },
+    actualCompletion: { type: Date },
+    qcCompletedAt: { type: Date },
+
+    producedQuantity: { type: Number, default: 0 },
+    damagedQuantity: { type: Number, default: 0 },
+
+    qcStatus: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
+    qcRemarks: { type: String },
+
+    reworkRequired: { type: Boolean, default: false },
+    reworkCount: { type: Number, default: 0 },
+    reworkHistory: [{
+      reason: String,
+      requestedAt: { type: Date, default: Date.now },
+      requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    }],
+
+    isDelayed: { type: Boolean, default: false },
+    delayedAt: { type: Date },
+    delayReason: {
+      type: String,
+      enum: ['Busy Schedule', 'Machine Failure', 'Labour Issue', 'Material Shortage', 'Vendor Delay']
+    },
+
+    handoverStatus: {
+      type: String,
+      enum: ['Pending', 'Ready For Service', 'Handed Over'],
+      default: 'Pending'
+    },
+
+    proofs: [{
+      url: String,
+      type: { type: String },
+      uploadedAt: { type: Date, default: Date.now },
+      uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    }],
+    issues: [{
+      description: String,
+      type: { type: String },
+      reportedAt: { type: Date, default: Date.now },
+      reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      resolved: { type: Boolean, default: false }
+    }],
+    auditLogs: [{
+      action: String,
+      previousStatus: String,
+      newStatus: String,
+      updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      role: String,
+      remarks: String,
+      timestamp: { type: Date, default: Date.now }
+    }]
+  },
+
+  // New Service-Level Field Operations Workflow
+  serviceWorkflow: {
+    status: {
+      type: String,
+      enum: [
+        'Pending Service',
+        'Scheduled',
+        'Labour Assigned',
+        'Vendor Assigned',
+        'In Transit',
+        'Installation Started',
+        'Installation In Progress',
+        'Installation Completed',
+        'Client Confirmation Pending',
+        'Service Completed'
+      ],
+      default: 'Pending Service'
+    },
+    serviceManagerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    serviceExecutiveId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
+    labourIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Labour' }],
+    vehicleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle' },
+    
+    scheduleDate: { type: Date },
+    startedAt: { type: Date },
+    completedAt: { type: Date },
+    
+    proofs: [{
+      type: { type: String, enum: ['BEFORE', 'DURING', 'AFTER', 'SIGNATURE'] },
+      url: String,
+      uploadedAt: { type: Date, default: Date.now },
+      uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    }],
+    
+    auditLogs: [{
+      action: String,
+      previousStatus: String,
+      newStatus: String,
+      updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      role: String,
+      remarks: String,
+      timestamp: { type: Date, default: Date.now }
+    }]
+  },
+
   operationStatus: {
     type: String,
     enum: ['operation update pending', 'reached to operation', 'work-in progress', 'completed'],
@@ -61,6 +232,8 @@ const orderSchema = new mongoose.Schema({
     company: String,
     email:   String,
   },
+
+  orderType: { type: String }, // retail, renewal, agent, etc.
 
   // ── Line Items & Financials
   lineItems:     [lineItemSchema],
@@ -131,6 +304,7 @@ const orderSchema = new mongoose.Schema({
   verifiedAt:     { type: Date },
 
   // ── Delivery
+  deliveryDate:     { type: Date }, // Master commitment date
   deliveryTimeline: { type: String },
   deliveryAddress:  { type: String },
   deliveredAt:      { type: Date },
@@ -140,6 +314,7 @@ const orderSchema = new mongoose.Schema({
   salesExec:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   salesManager:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   operationsManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  serviceManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   operationsExec:{ type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
   // ── WhatsApp notifications sent
@@ -217,6 +392,13 @@ orderSchema.pre('save', async function () {
   if (this.totalPaid >= this.grandTotal)        this.paymentStatus = 'Paid';
   else if (this.totalPaid > 0)                  this.paymentStatus = 'Partial';
   else                                          this.paymentStatus = 'Unpaid';
+
+  // Check if all service items are completed
+  const allItemsCompleted = this.lineItems.length > 0 && this.lineItems.every(item => item.serviceWorkflow && item.serviceWorkflow.status === 'Service Completed');
+  if (allItemsCompleted && this.status !== 'Completed') {
+    this.status = 'Completed';
+    this.addTimelineEvent('Order Completed', 'All service items completed automatically', null);
+  }
 });
 
 // ─── Instance method: push timeline event ────────────────────────────────────

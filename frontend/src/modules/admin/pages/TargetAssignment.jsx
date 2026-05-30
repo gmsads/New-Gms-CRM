@@ -131,6 +131,14 @@ const TargetAssignment = () => {
 
   const isManagerOrAdmin = ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'BRANCH_HEAD'].includes(user?.role);
 
+  const getPremiumProgressStyle = (pct) => {
+    if (pct >= 100) return "bg-gradient-to-r from-emerald-400 to-green-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]";
+    if (pct >= 75) return "bg-gradient-to-r from-teal-400 to-emerald-500 shadow-[0_0_10px_rgba(45,212,191,0.5)]";
+    if (pct >= 40) return "bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]";
+    if (pct >= 10) return "bg-gradient-to-r from-rose-500 to-red-500 shadow-[0_0_10px_rgba(225,29,72,0.5)]";
+    return "bg-gradient-to-r from-red-600 to-rose-700 shadow-[0_0_10px_rgba(159,18,57,0.5)]";
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -355,7 +363,11 @@ const TargetAssignment = () => {
                 <tbody className="divide-y divide-slate-100">
                   {targets.length === 0 ? (
                     <tr><td colSpan="5" className="px-6 py-10 text-center text-slate-500"><Target className="h-8 w-8 mx-auto text-slate-300 mb-2" /><p className="font-medium">No targets found.</p></td></tr>
-                  ) : targets.map(target => (
+                  ) : targets.map(target => {
+                    const currentTargetProgress = target.targetValue > 0 
+                      ? Math.min(100, Math.round((target.achievedValue / target.targetValue) * 100)) 
+                      : 0;
+                    return (
                     <tr key={target._id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4">
                         <p className="font-bold text-slate-900">{target.title}</p>
@@ -373,10 +385,10 @@ const TargetAssignment = () => {
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-between text-xs font-bold mb-1">
                           <span className="text-slate-700">{target.achievedValue} / {target.targetValue}</span>
-                          <span className={target.progressPercent >= 100 ? 'text-green-600' : 'text-indigo-600'}>{target.progressPercent}%</span>
+                          <span className={currentTargetProgress >= 100 ? 'text-green-600' : 'text-indigo-600'}>{currentTargetProgress}%</span>
                         </div>
                         <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                          <div className={`h-full rounded-full transition-all duration-500 ${target.progressPercent >= 100 ? 'bg-green-500' : 'bg-indigo-500'}`} style={{ width: `${target.progressPercent}%` }}></div>
+                          <div className={`h-full rounded-full transition-all duration-500 ${getPremiumProgressStyle(currentTargetProgress)}`} style={{ width: `${currentTargetProgress}%` }}></div>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -390,7 +402,7 @@ const TargetAssignment = () => {
                         )}
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>

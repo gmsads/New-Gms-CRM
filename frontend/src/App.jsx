@@ -13,7 +13,11 @@ import Clients from './modules/sales/pages/ClientPortfolio';
 import Campaigns from './modules/operations/pages/CampaignManager';
 import Tasks from './modules/operations/pages/TaskTerminal';
 import Field from './modules/operations/pages/OperationsDashboard';
-import Design from './modules/design/pages/DesignDashboard';
+import DesignRoutes from './modules/design/DesignRoutes';
+import ProductionManagerDashboard from './modules/production/manager/ProductionManagerDashboard';
+import ProductionExecutiveDashboard from './modules/production/executive/ProductionExecutiveDashboard';
+import ServiceManagerRoutes from './modules/service/manager/ServiceManagerRoutes';
+import ServiceExecutiveDashboard from './modules/service/executive/ServiceExecutiveDashboard';
 import Analytics from './modules/admin/pages/BusinessIntelligence';
 import VendorLayout from './modules/operations/vendors/layouts/VendorLayout';
 import IT from './modules/it/pages/ITDashboard';
@@ -53,14 +57,14 @@ const ProtectedRoute = ({ children }) => {
 
 const AuthRoleSwitch = ({ sales, admin }) => {
   const { user } = useAuth();
-  if (!user) return null;
+  
   if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'ACCOUNTS'].includes(user.role)) return admin;
   return sales;
 };
 
 const AdminTeamViewSwitch = ({ viewType, salesElement }) => {
   const { user } = useAuth();
-  if (!user) return null;
+  
   if (['ADMIN', 'MD_CEO'].includes(user.role)) {
     return <TeamDataView viewType={viewType} />;
   }
@@ -68,6 +72,8 @@ const AdminTeamViewSwitch = ({ viewType, salesElement }) => {
 };
 
 const AppRoutes = () => {
+  
+  
   return (
     <Router>
       <Routes>
@@ -80,7 +86,11 @@ const AppRoutes = () => {
           <Route path="operations/authority" element={<AuthorityAccess />} />
           <Route path="hr/*"        element={<HR />} />
           <Route path="field"       element={<Field />} />
-          <Route path="design"      element={<Design />} />
+          <Route path="design/*"    element={<DesignRoutes />} />
+          <Route path="production/manager/*" element={<ErrorBoundary><ProductionManagerDashboard /></ErrorBoundary>} />
+          <Route path="production/executive/*" element={<ErrorBoundary><ProductionExecutiveDashboard /></ErrorBoundary>} />
+          <Route path="service/manager/*" element={<ErrorBoundary><ServiceManagerRoutes /></ErrorBoundary>} />
+          <Route path="service/executive/*" element={<ErrorBoundary><ServiceExecutiveDashboard /></ErrorBoundary>} />
           <Route path="analytics"   element={<Analytics />} />
           <Route path="vendors/*"   element={<VendorLayout />} />
           <Route path="it"          element={<IT />} />
@@ -161,6 +171,8 @@ const AppRoutes = () => {
 };
 
 function App() {
+  
+  
   return (
     <AuthProvider>
       <AppRoutes />

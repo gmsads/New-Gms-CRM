@@ -1,0 +1,2093 @@
+{
+  "models": [
+    {
+      "name": "OrderApproval",
+      "collection": "orderapprovals",
+      "indexes": [
+        [
+          {
+            "order": 1
+          },
+          {}
+        ],
+        [
+          {
+            "status": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "order",
+        "orderNumber",
+        "requestedBy",
+        "clientName",
+        "grandTotal",
+        "advancePaid",
+        "advancePct",
+        "status",
+        "escalationRole",
+        "approvedBy",
+        "approvedAt",
+        "rejectionReason",
+        "notes",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "DesignAsset",
+      "collection": "designassets",
+      "indexes": [
+        [
+          {
+            "title": "text",
+            "description": "text",
+            "tags": "text",
+            "brand": "text",
+            "searchableKeywords": "text"
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "title",
+        "description",
+        "category",
+        "fileUrl",
+        "fileType",
+        "fileSize",
+        "tags",
+        "brand",
+        "dimensions",
+        "searchableKeywords",
+        "createdBy",
+        "isGlobal",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "FieldReport",
+      "collection": "fieldreports",
+      "indexes": [
+        [
+          {
+            "submittedBy": 1,
+            "reportDate": -1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "submittedBy",
+        "reportDate",
+        "sitesVisited",
+        "tasksCompleted",
+        "distanceCovered",
+        "visits",
+        "summary",
+        "challenges",
+        "nextDayPlan",
+        "photos",
+        "status",
+        "reviewedBy",
+        "reviewNotes",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Visit",
+      "collection": "visits",
+      "indexes": [
+        [
+          {
+            "assignedTo": 1,
+            "scheduledDate": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "title",
+        "type",
+        "site",
+        "location",
+        "businessName",
+        "clientName",
+        "phone",
+        "purpose",
+        "remark",
+        "followUpDate",
+        "assignedTo",
+        "relatedClient",
+        "scheduledDate",
+        "scheduledTimeSlot",
+        "status",
+        "priority",
+        "checkIn.time",
+        "checkIn.gpsLat",
+        "checkIn.gpsLng",
+        "checkIn.photo",
+        "checkOut.time",
+        "checkOut.gpsLat",
+        "checkOut.gpsLng",
+        "checkOut.photo",
+        "notes",
+        "completionNotes",
+        "mediaUploads",
+        "createdBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Approval",
+      "collection": "approvals",
+      "indexes": [
+        [
+          {
+            "status": 1,
+            "type": 1
+          },
+          {}
+        ],
+        [
+          {
+            "initiatedBy": 1
+          },
+          {}
+        ],
+        [
+          {
+            "targetEmployee": 1
+          },
+          {}
+        ],
+        [
+          {
+            "createdAt": -1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "type",
+        "targetEmployee",
+        "initiatedBy",
+        "reviewedBy",
+        "reviewedAt",
+        "status",
+        "previousValue",
+        "newValue",
+        "hrNotes",
+        "adminNotes",
+        "revisionInstructions",
+        "submissionCount",
+        "parentApproval",
+        "priority",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Assignment",
+      "collection": "assignments",
+      "indexes": [],
+      "fields": [
+        "orderId",
+        "taskId",
+        "assignedTo",
+        "assignedBy",
+        "roleType",
+        "status",
+        "reassignedTo",
+        "reassignedReason",
+        "assignedAt",
+        "completedAt",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Attendance",
+      "collection": "attendances",
+      "indexes": [
+        [
+          {
+            "employee": 1,
+            "date": 1
+          },
+          {
+            "unique": true
+          }
+        ],
+        [
+          {
+            "date": 1,
+            "department": 1
+          },
+          {}
+        ],
+        [
+          {
+            "employee": 1,
+            "date": -1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "employee",
+        "date",
+        "status",
+        "loginTime",
+        "logoutTime",
+        "workHours",
+        "markedBy",
+        "department",
+        "editLog",
+        "editCount",
+        "pendingAdminApproval",
+        "adminApprovalId",
+        "notes",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "AuditLog",
+      "collection": "auditlogs",
+      "indexes": [
+        [
+          {
+            "performedBy": 1,
+            "createdAt": -1
+          },
+          {}
+        ],
+        [
+          {
+            "targetEmployee": 1,
+            "createdAt": -1
+          },
+          {}
+        ],
+        [
+          {
+            "action": 1,
+            "createdAt": -1
+          },
+          {}
+        ],
+        [
+          {
+            "targetModel": 1,
+            "targetId": 1
+          },
+          {}
+        ],
+        [
+          {
+            "createdAt": -1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "action",
+        "performedBy",
+        "performedByRole",
+        "targetEmployee",
+        "targetModel",
+        "targetId",
+        "previousValue",
+        "newValue",
+        "changedFields",
+        "ipAddress",
+        "userAgent",
+        "device",
+        "notes",
+        "relatedApproval",
+        "_id",
+        "createdAt",
+        "updatedAt"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Candidate",
+      "collection": "candidates",
+      "indexes": [],
+      "fields": [
+        "name",
+        "phone",
+        "email",
+        "resumeUrl",
+        "experience",
+        "appliedPosition",
+        "source",
+        "status",
+        "notes",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Compensation",
+      "collection": "compensations",
+      "indexes": [],
+      "fields": [
+        "employee",
+        "type",
+        "subType",
+        "amount",
+        "reason",
+        "date",
+        "status",
+        "target",
+        "achievement",
+        "managerApprovedBy",
+        "hrApprovedBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Document",
+      "collection": "documents",
+      "indexes": [
+        [
+          {
+            "employee": 1,
+            "documentType": 1
+          },
+          {}
+        ],
+        [
+          {
+            "verificationStatus": 1
+          },
+          {}
+        ],
+        [
+          {
+            "isDeleted": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "employee",
+        "documentType",
+        "documentLabel",
+        "fileName",
+        "filePath",
+        "fileSize",
+        "mimeType",
+        "isPublic",
+        "uploadedBy",
+        "verificationStatus",
+        "verifiedBy",
+        "verifiedAt",
+        "verificationNotes",
+        "isDeleted",
+        "deletedBy",
+        "deletedAt",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "ExitProcess",
+      "collection": "exitprocesses",
+      "indexes": [
+        [
+          {
+            "employee": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "employee",
+        "resignationDate",
+        "proposedLastDay",
+        "reason",
+        "status",
+        "managerNotes",
+        "exitInterviewNotes",
+        "fullAndFinalStatus",
+        "clearedBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "HRDocument",
+      "collection": "hrdocuments",
+      "indexes": [],
+      "fields": [
+        "employee",
+        "candidate",
+        "documentType",
+        "fileUrl",
+        "contentData",
+        "generatedBy",
+        "sentViaEmail",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "HRPolicy",
+      "collection": "hrpolicies",
+      "indexes": [
+        [
+          {
+            "employee": 1,
+            "policyType": 1
+          },
+          {}
+        ],
+        [
+          {
+            "status": 1,
+            "policyType": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "employee",
+        "policyType",
+        "probationDetails.startDate",
+        "probationDetails.endDate",
+        "probationDetails.reviewDate",
+        "probationDetails.outcome",
+        "probationDetails.reviewNotes",
+        "exitDetails.resignationDate",
+        "exitDetails.lastWorkingDate",
+        "exitDetails.exitType",
+        "exitDetails.reason",
+        "exitDetails.exitInterviewCompleted",
+        "exitDetails.noticePeriodWaived",
+        "exitDetails.settlementStatus",
+        "salaryDetails.currentSalary",
+        "salaryDetails.proposedSalary",
+        "salaryDetails.changeReason",
+        "salaryDetails.effectiveDate",
+        "leaveBalanceDetails.year",
+        "leaveBalanceDetails.balances.CASUAL",
+        "leaveBalanceDetails.balances.SICK",
+        "leaveBalanceDetails.balances.ANNUAL",
+        "leaveBalanceDetails.balances.UNPAID",
+        "status",
+        "initiatedBy",
+        "approvedBy",
+        "approvedAt",
+        "notes",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Interview",
+      "collection": "interviews",
+      "indexes": [],
+      "fields": [
+        "candidate",
+        "interviewer",
+        "department",
+        "date",
+        "time",
+        "meetingLink",
+        "remarks",
+        "status",
+        "feedback",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "JobOpening",
+      "collection": "jobopenings",
+      "indexes": [],
+      "fields": [
+        "title",
+        "department",
+        "role",
+        "vacancies",
+        "experience",
+        "salaryRange",
+        "location",
+        "status",
+        "assignedRecruiter",
+        "createdBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Leave",
+      "collection": "leaves",
+      "indexes": [
+        [
+          {
+            "employee": 1,
+            "status": 1
+          },
+          {}
+        ],
+        [
+          {
+            "fromDate": 1,
+            "toDate": 1
+          },
+          {}
+        ],
+        [
+          {
+            "status": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "employee",
+        "leaveType",
+        "fromDate",
+        "toDate",
+        "totalDays",
+        "reason",
+        "status",
+        "hrReviewedBy",
+        "hrReviewedAt",
+        "hrNotes",
+        "adminReviewedBy",
+        "adminReviewedAt",
+        "adminNotes",
+        "attachmentUrl",
+        "leaveBalanceAtRequest",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Notification",
+      "collection": "notifications",
+      "indexes": [
+        [
+          {
+            "recipient": 1,
+            "isRead": 1,
+            "createdAt": -1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "recipient",
+        "sender",
+        "type",
+        "title",
+        "message",
+        "link",
+        "isRead",
+        "readAt",
+        "relatedEntity.entityType",
+        "relatedEntity.entityId",
+        "priority",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Payslip",
+      "collection": "payslips",
+      "indexes": [],
+      "fields": [
+        "employee",
+        "month",
+        "year",
+        "basicSalary",
+        "allowances",
+        "incentives",
+        "salesCommission",
+        "bonus",
+        "deductions",
+        "grossEarnings",
+        "netPay",
+        "status",
+        "generatedBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Promotion",
+      "collection": "promotions",
+      "indexes": [],
+      "fields": [
+        "employee",
+        "promotedBy",
+        "previousRole",
+        "newRole",
+        "previousHierarchyLevel",
+        "newHierarchyLevel",
+        "previousReportingManager",
+        "newReportingManager",
+        "previousDepartment",
+        "newDepartment",
+        "previousTeam",
+        "newTeam",
+        "reason",
+        "effectiveDate",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Team",
+      "collection": "teams",
+      "indexes": [],
+      "fields": [
+        "name",
+        "department",
+        "manager",
+        "parentTeam",
+        "description",
+        "isActive",
+        "createdBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Training",
+      "collection": "trainings",
+      "indexes": [],
+      "fields": [
+        "title",
+        "description",
+        "startDate",
+        "endDate",
+        "assignedTo",
+        "createdBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Notification",
+      "collection": "notifications",
+      "indexes": [
+        [
+          {
+            "recipient": 1,
+            "isRead": 1,
+            "createdAt": -1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "recipient",
+        "sender",
+        "type",
+        "title",
+        "message",
+        "link",
+        "isRead",
+        "readAt",
+        "relatedEntity.entityType",
+        "relatedEntity.entityId",
+        "priority",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Order",
+      "collection": "orders",
+      "indexes": [
+        [
+          {
+            "orderNumber": 1
+          },
+          {
+            "unique": true
+          }
+        ],
+        [
+          {
+            "salesExec": 1,
+            "status": 1
+          },
+          {}
+        ],
+        [
+          {
+            "clientSnapshot.phone": 1
+          },
+          {}
+        ],
+        [
+          {
+            "createdAt": -1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "orderNumber",
+        "prospect",
+        "client",
+        "quotation",
+        "clientSnapshot.name",
+        "clientSnapshot.phone",
+        "clientSnapshot.company",
+        "clientSnapshot.email",
+        "orderType",
+        "lineItems",
+        "subtotal",
+        "totalDiscount",
+        "totalGST",
+        "grandTotal",
+        "totalPaid",
+        "balanceDue",
+        "paymentRecords",
+        "paymentStatus",
+        "advanceRequired",
+        "advancePaid",
+        "advanceApproved",
+        "advanceApprovedBy",
+        "status",
+        "designRequired",
+        "designStatus",
+        "designFileUrl",
+        "designRequestedAt",
+        "designAssignedTo",
+        "designApprovedAt",
+        "designNotes",
+        "verificationStatus",
+        "verifiedBy",
+        "verifiedByName",
+        "verifiedByRole",
+        "verifiedAt",
+        "deliveryDate",
+        "deliveryTimeline",
+        "deliveryAddress",
+        "deliveredAt",
+        "deliveryProofUrl",
+        "salesExec",
+        "salesManager",
+        "operationsManager",
+        "serviceManager",
+        "operationsExec",
+        "notificationsSent",
+        "clientReview",
+        "clientRating",
+        "reviewedAt",
+        "timeline",
+        "notes",
+        "cancelledAt",
+        "cancelReason",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Payment",
+      "collection": "payments",
+      "indexes": [
+        [
+          {
+            "paymentNumber": 1
+          },
+          {
+            "unique": true
+          }
+        ],
+        [
+          {
+            "order": 1
+          },
+          {}
+        ],
+        [
+          {
+            "collectedBy": 1,
+            "status": 1
+          },
+          {}
+        ],
+        [
+          {
+            "createdAt": -1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "order",
+        "prospect",
+        "client",
+        "paymentNumber",
+        "amount",
+        "method",
+        "reference",
+        "proofUrl",
+        "proofType",
+        "collectedBy",
+        "collectedAt",
+        "status",
+        "verifiedBy",
+        "verifiedAt",
+        "rejectionNote",
+        "paymentType",
+        "notes",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "ClientType",
+      "collection": "clienttypes",
+      "indexes": [
+        [
+          {
+            "name": 1
+          },
+          {
+            "unique": true
+          }
+        ],
+        [
+          {
+            "key": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "name",
+        "key",
+        "multiplier",
+        "status",
+        "createdBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "InventoryMovement",
+      "collection": "inventorymovements",
+      "indexes": [
+        [
+          {
+            "product": 1,
+            "createdAt": -1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "product",
+        "type",
+        "quantity",
+        "previousStock",
+        "newStock",
+        "referenceType",
+        "referenceId",
+        "notes",
+        "performedBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "PriceApproval",
+      "collection": "priceapprovals",
+      "indexes": [
+        [
+          {
+            "status": 1
+          },
+          {}
+        ],
+        [
+          {
+            "requestedBy": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "quotation",
+        "order",
+        "product",
+        "requestedBy",
+        "baseCost",
+        "minimumSellingPrice",
+        "requestedPrice",
+        "marginPercentage",
+        "reason",
+        "status",
+        "approvedBy",
+        "approvedAt",
+        "rejectionReason",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Product",
+      "collection": "products",
+      "indexes": [
+        [
+          {
+            "productCode": 1
+          },
+          {
+            "unique": true
+          }
+        ],
+        [
+          {
+            "sku": 1
+          },
+          {
+            "unique": true,
+            "sparse": true
+          }
+        ],
+        [
+          {
+            "productCode": 1
+          },
+          {}
+        ],
+        [
+          {
+            "productName": "text",
+            "sku": "text"
+          },
+          {}
+        ],
+        [
+          {
+            "category": 1
+          },
+          {}
+        ],
+        [
+          {
+            "pricingRules.type": 1
+          },
+          {}
+        ],
+        [
+          {
+            "status": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "productCode",
+        "productName",
+        "category",
+        "subCategory",
+        "sku",
+        "description",
+        "unit",
+        "tags",
+        "status",
+        "thumbnail",
+        "galleryImages",
+        "specifications",
+        "specifications.$*",
+        "isRental",
+        "requiresInstallation",
+        "pricingRules",
+        "clientTypePricing",
+        "clientTypePricing.$*",
+        "costBreakdown",
+        "costBreakdown.$*",
+        "totalBaseCost",
+        "minimumOrderQuantity",
+        "stockQuantity",
+        "reservedQuantity",
+        "lowStockAlert",
+        "createdBy",
+        "updatedBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "ProductCategory",
+      "collection": "productcategories",
+      "indexes": [
+        [
+          {
+            "name": 1
+          },
+          {}
+        ],
+        [
+          {
+            "parentCategory": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "name",
+        "description",
+        "parentCategory",
+        "status",
+        "createdBy",
+        "updatedBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Appointment",
+      "collection": "appointments",
+      "indexes": [],
+      "fields": [
+        "prospect",
+        "createdBy",
+        "assignedTo",
+        "managerId",
+        "businessName",
+        "contactPerson",
+        "phone",
+        "date",
+        "time",
+        "meetingType",
+        "venue",
+        "priority",
+        "status",
+        "remark",
+        "executiveRemark",
+        "assigneeRemark",
+        "nextFollowUpDate",
+        "assignedAt",
+        "isOverdue",
+        "escalationLevel",
+        "lastEscalatedAt",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "AppointmentRemark",
+      "collection": "appointmentremarks",
+      "indexes": [],
+      "fields": [
+        "appointmentId",
+        "addedBy",
+        "outcomeType",
+        "notes",
+        "nextActionDate",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "AppointmentTimeline",
+      "collection": "appointmenttimelines",
+      "indexes": [],
+      "fields": [
+        "appointmentId",
+        "actor",
+        "action",
+        "previousState",
+        "newState",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Brochure",
+      "collection": "brochures",
+      "indexes": [
+        [
+          {
+            "brochureId": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "brochureId",
+        "title",
+        "description",
+        "category",
+        "thumbnailUrl",
+        "fileUrl",
+        "language",
+        "version",
+        "uploadedBy",
+        "status",
+        "sendCount",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "BrochureHistory",
+      "collection": "brochurehistories",
+      "indexes": [],
+      "fields": [
+        "brochure",
+        "sentBy",
+        "clientPhone",
+        "clientName",
+        "sentAt",
+        "status",
+        "platform",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "BrochureCategory",
+      "collection": "brochurecategories",
+      "indexes": [
+        [
+          {
+            "name": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "name",
+        "description",
+        "active",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Campaign",
+      "collection": "campaigns",
+      "indexes": [],
+      "fields": [
+        "name",
+        "client",
+        "platform",
+        "status",
+        "budget",
+        "spent",
+        "startDate",
+        "endDate",
+        "assignedTo",
+        "notes",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Client",
+      "collection": "clients",
+      "indexes": [
+        [
+          {
+            "email": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "name",
+        "contactPerson",
+        "email",
+        "phone",
+        "status",
+        "totalSpend",
+        "assignedTo",
+        "notes",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Followup",
+      "collection": "followups",
+      "indexes": [
+        [
+          {
+            "prospect": 1,
+            "scheduledAt": -1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "prospect",
+        "client",
+        "type",
+        "status",
+        "scheduledAt",
+        "completedAt",
+        "outcome",
+        "notes",
+        "nextFollowUpDate",
+        "nextAction",
+        "stageUpdated",
+        "performedBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Category",
+      "collection": "categories",
+      "indexes": [
+        [
+          {
+            "name": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "name",
+        "description",
+        "isActive",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "PriceHistory",
+      "collection": "pricehistories",
+      "indexes": [],
+      "fields": [
+        "variant",
+        "pricingSnapshot.retail",
+        "pricingSnapshot.renewal",
+        "pricingSnapshot.corporate",
+        "pricingSnapshot.agent",
+        "pricingSnapshot.corporateRenewal",
+        "pricingSnapshot.agentRenewal",
+        "updatedBy",
+        "reason",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "ProductVariant",
+      "collection": "productvariants",
+      "indexes": [],
+      "fields": [
+        "product",
+        "name",
+        "unit",
+        "pricing.retail",
+        "pricing.renewal",
+        "pricing.corporate",
+        "pricing.agent",
+        "pricing.corporateRenewal",
+        "pricing.agentRenewal",
+        "baseCost",
+        "minSellingPrice",
+        "maxDiscount",
+        "status",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Prospect",
+      "collection": "prospects",
+      "indexes": [
+        [
+          {
+            "phone": 1
+          },
+          {
+            "unique": true
+          }
+        ],
+        [
+          {
+            "assignedTo": 1,
+            "stage": 1
+          },
+          {}
+        ],
+        [
+          {
+            "assignedTo": 1,
+            "createdDate": -1
+          },
+          {}
+        ],
+        [
+          {
+            "client": 1
+          },
+          {}
+        ],
+        [
+          {
+            "isDeleted": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "name",
+        "phone",
+        "email",
+        "company",
+        "source",
+        "stage",
+        "priority",
+        "status",
+        "cancelReason",
+        "clientType",
+        "requirement.service",
+        "requirement.type",
+        "requirement.quantity",
+        "requirement.location",
+        "requirement.timeline",
+        "requirement.budget",
+        "requirement.hasDesign",
+        "requirement.notes",
+        "lastInteraction",
+        "lastInteractionNote",
+        "interactions",
+        "nextFollowUpDate",
+        "nextAction",
+        "assignedTo",
+        "whatsappActions",
+        "relatedClient",
+        "linkedOrderId",
+        "tags",
+        "probability",
+        "alternateMobile",
+        "address",
+        "geoLocation.lat",
+        "geoLocation.lng",
+        "createdDate",
+        "estimatedBudget",
+        "currentStatus",
+        "remarks",
+        "createdBy",
+        "updatedBy",
+        "brochureSent",
+        "quotationSent",
+        "appointmentCreated",
+        "gstNumber",
+        "convertedToOrder",
+        "convertedDate",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "QuotationHistory",
+      "collection": "quotationhistories",
+      "indexes": [],
+      "fields": [
+        "quotation",
+        "action",
+        "previousStatus",
+        "newStatus",
+        "details",
+        "performedBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Quotation",
+      "collection": "quotations",
+      "indexes": [
+        [
+          {
+            "quotationId": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "quotationId",
+        "prospect",
+        "executive",
+        "items",
+        "subtotal",
+        "discount.type",
+        "discount.value",
+        "discount.amount",
+        "tax.enabled",
+        "tax.rate",
+        "tax.cgst",
+        "tax.sgst",
+        "tax.amount",
+        "additionalCharges",
+        "totalAmount",
+        "status",
+        "requiresApproval",
+        "approvedBy",
+        "templateSnapshot",
+        "validUntil",
+        "terms",
+        "notes",
+        "pdfUrl",
+        "whatsappSentAt",
+        "convertedToOrder",
+        "convertedOrderId",
+        "convertedAt",
+        "createdBy",
+        "updatedBy",
+        "sentBy",
+        "sentAt",
+        "lastModifiedAt",
+        "activityLogs",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "QuotationSendLog",
+      "collection": "quotationsendlogs",
+      "indexes": [],
+      "fields": [
+        "quotation",
+        "sentVia",
+        "sentTo",
+        "sentBy",
+        "status",
+        "errorMessage",
+        "messagePreview",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "QuotationTemplate",
+      "collection": "quotationtemplates",
+      "indexes": [],
+      "fields": [
+        "name",
+        "isDefault",
+        "companyName",
+        "logoUrl",
+        "address",
+        "gstNumber",
+        "gstin",
+        "panNumber",
+        "contactEmail",
+        "contactPhone",
+        "email",
+        "mobile",
+        "website",
+        "bankDetails.accountName",
+        "bankDetails.bankName",
+        "bankDetails.accountNumber",
+        "bankDetails.ifscCode",
+        "bankDetails.branch",
+        "qrCode.enabled",
+        "qrCode.upiId",
+        "defaultValidityDays",
+        "termsAndConditions",
+        "footerText",
+        "footerNotes",
+        "authorizedSignatureUrl",
+        "updatedBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Task",
+      "collection": "tasks",
+      "indexes": [],
+      "fields": [
+        "title",
+        "description",
+        "status",
+        "priority",
+        "category",
+        "assignedTo",
+        "createdBy",
+        "dueDate",
+        "relatedClient",
+        "relatedCampaign",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Labour",
+      "collection": "labour",
+      "indexes": [],
+      "fields": [
+        "name",
+        "mobile",
+        "skill",
+        "availability",
+        "attendance",
+        "assignedJobs",
+        "createdBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Vehicle",
+      "collection": "vehicles",
+      "indexes": [
+        [
+          {
+            "vehicleNumber": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "vehicleNumber",
+        "driverName",
+        "status",
+        "assignedService",
+        "createdBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Target",
+      "collection": "targets",
+      "indexes": [],
+      "fields": [
+        "title",
+        "branch",
+        "department",
+        "employee",
+        "role",
+        "targetType",
+        "category",
+        "difficultyLevel",
+        "period",
+        "startDate",
+        "endDate",
+        "targetValue",
+        "achievedValue",
+        "weightage",
+        "notes",
+        "status",
+        "assignedBy",
+        "history",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Permission",
+      "collection": "permissions",
+      "indexes": [
+        [
+          {
+            "permission_key": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "permission_key",
+        "permission_name",
+        "module_name",
+        "description",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "User",
+      "collection": "users",
+      "indexes": [
+        [
+          {
+            "username": 1
+          },
+          {
+            "unique": true,
+            "sparse": true
+          }
+        ],
+        [
+          {
+            "email": 1
+          },
+          {
+            "unique": true
+          }
+        ],
+        [
+          {
+            "phone": 1
+          },
+          {
+            "unique": true
+          }
+        ],
+        [
+          {
+            "role": 1,
+            "status": 1
+          },
+          {}
+        ],
+        [
+          {
+            "department": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "name",
+        "username",
+        "email",
+        "phone",
+        "password",
+        "role",
+        "department",
+        "reportingManager",
+        "hierarchyLevel",
+        "teamId",
+        "status",
+        "dateOfJoining",
+        "employmentType",
+        "experience",
+        "profileImage",
+        "aadhaarNumber",
+        "currentSalary",
+        "probationEndDate",
+        "isPermanent",
+        "resignationDate",
+        "exitDate",
+        "exitReason",
+        "exitType",
+        "createdBy",
+        "approvedBy",
+        "approvedAt",
+        "lastModifiedBy",
+        "notificationsEnabled",
+        "mustChangePassword",
+        "passwordChangedAt",
+        "passwordResetToken",
+        "passwordResetExpires",
+        "monthlyTarget",
+        "targetMonth",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "UserPermission",
+      "collection": "userpermissions",
+      "indexes": [
+        [
+          {
+            "user_id": 1,
+            "permission_key": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "user_id",
+        "permission_key",
+        "scope",
+        "assigned_by",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "Vendor",
+      "collection": "vendors",
+      "indexes": [],
+      "fields": [
+        "name",
+        "contactNumber",
+        "alternateNumber",
+        "email",
+        "category",
+        "branch",
+        "status",
+        "baseLocation",
+        "city",
+        "workingAreas",
+        "address",
+        "pincode",
+        "servicesOffered",
+        "teamSize",
+        "vehicleCount",
+        "workingCapacity",
+        "availabilityStatus",
+        "baseCost",
+        "costType",
+        "gstNumber",
+        "paymentTerms",
+        "availabilityDate",
+        "availableDays",
+        "availableTimeSlots",
+        "averageRating",
+        "performanceScore",
+        "notes",
+        "createdBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "VendorAssignment",
+      "collection": "vendorassignments",
+      "indexes": [
+        [
+          {
+            "vendor": 1,
+            "startDate": 1,
+            "endDate": 1
+          },
+          {}
+        ]
+      ],
+      "fields": [
+        "order",
+        "clientName",
+        "campaignName",
+        "vendor",
+        "vendorCategory",
+        "area",
+        "startDate",
+        "endDate",
+        "workType",
+        "priority",
+        "budget",
+        "status",
+        "proofUrls",
+        "notes",
+        "assignedBy",
+        "completedAt",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "VendorCategory",
+      "collection": "vendorcategories",
+      "indexes": [
+        [
+          {
+            "name": 1
+          },
+          {
+            "unique": true
+          }
+        ]
+      ],
+      "fields": [
+        "name",
+        "description",
+        "isSystemDefault",
+        "status",
+        "createdBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    },
+    {
+      "name": "VendorPayment",
+      "collection": "vendorpayments",
+      "indexes": [],
+      "fields": [
+        "vendor",
+        "assignment",
+        "amount",
+        "paymentType",
+        "status",
+        "paymentMethod",
+        "transactionId",
+        "paymentProofUrl",
+        "dueDate",
+        "paidDate",
+        "notes",
+        "recordedBy",
+        "_id",
+        "createdAt",
+        "updatedAt",
+        "isDeleted",
+        "deletedAt",
+        "deletedBy",
+        "restoredAt",
+        "restoredBy",
+        "__v"
+      ],
+      "potentiallyMissingIndexes": []
+    }
+  ],
+  "missingIndexes": [],
+  "totalCollections": 58
+}

@@ -123,7 +123,6 @@ import { useAuth } from '../context/AuthContext';
 // ── Employee List Tab ─────────────────────────────────────────────────────────
 const EmployeeList = () => {
   const { user: currentUser } = useAuth();
-  if (!currentUser) return null;
   const { data, loading, error, refetch } = useApi('/employees');
   const employees = data?.employees || [];
   const [updatingId, setUpdatingId] = useState(null);
@@ -142,6 +141,7 @@ const EmployeeList = () => {
     }
   };
 
+  if (!currentUser) return null;
   if (loading) return <Spinner />;
   if (error)   return <div className="text-sm text-red-500 p-4">{error}</div>;
   if (employees.length === 0) return <EmptyState icon={Users} title="No employees yet" description="Employees created by HR will appear here." />;

@@ -272,7 +272,7 @@ const KpiCard = ({ title, value, subtext, icon: Icon, color, onClick }) => (
 // ── Main Dashboard View ────────────────────────────────────────────────────────
 const SalesExecDashboard = () => {
   const { user } = useAuth();
-  if (!user) return null;
+  
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     target: { assigned: 0, completed: 0 },
@@ -386,12 +386,22 @@ const SalesExecDashboard = () => {
   const progressPercent = stats.target.assigned > 0 ? Math.min(100, Math.round((stats.target.completed / stats.target.assigned) * 100)) : 0;
   const remainingTarget = Math.max(0, stats.target.assigned - stats.target.completed);
 
+  const getPremiumProgressStyle = (pct) => {
+    if (pct >= 100) return "bg-gradient-to-r from-emerald-400 to-green-500 shadow-[0_0_20px_rgba(16,185,129,0.7)]";
+    if (pct >= 75) return "bg-gradient-to-r from-teal-400 to-emerald-500 shadow-[0_0_20px_rgba(45,212,191,0.6)]";
+    if (pct >= 40) return "bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_0_20px_rgba(245,158,11,0.6)]";
+    if (pct >= 10) return "bg-gradient-to-r from-rose-500 to-red-500 shadow-[0_0_20px_rgba(225,29,72,0.6)]";
+    return "bg-gradient-to-r from-red-600 to-rose-700 shadow-[0_0_20px_rgba(159,18,57,0.7)]";
+  };
+
   if (loading) return (
     <div className="flex h-[400px] items-center justify-center">
       <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
     </div>
   );
 
+  
+  
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700">
       
@@ -450,7 +460,7 @@ const SalesExecDashboard = () => {
               </div>
               <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden border border-white/5">
                 <div 
-                  className="h-full bg-gradient-to-r from-blue-600 to-indigo-400 rounded-full transition-all duration-1000 shadow-[0_0_20px_rgba(37,99,235,0.5)]" 
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${getPremiumProgressStyle(progressPercent)}`} 
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -813,6 +823,7 @@ const MetricCard = ({ title, value, total, subtext, icon: Icon, color, trend, on
     indigo:  "bg-indigo-50 text-indigo-600 border-indigo-100",
   };
 
+  
   return (
     <div 
       onClick={onClick}
@@ -853,7 +864,7 @@ export { SalesExecDashboard };
 
 export const SalesProspects = () => {
   const { user } = useAuth();
-  if (!user) return null;
+  
   const [prospects, setProspects] = useState([]);
   
   const fetchProspects = async () => {
@@ -922,6 +933,8 @@ export const SalesProspects = () => {
 
   const { renderOrderModals, setShowOrderSearch, setShowCreateOrder } = useOrderFlow(user, fetchProspects);
 
+  
+  
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -958,7 +971,7 @@ export const SalesProspects = () => {
 
 export const SalesOrders = () => {
   const { user } = useAuth();
-  if (!user) return null;
+  
   const [orders, setOrders] = useState([]);
   
   const fetchOrders = async () => {
@@ -974,6 +987,8 @@ export const SalesOrders = () => {
 
   const { setShowOrderSearch, setSelectedOrder, setPaymentOrder, renderOrderModals } = useOrderFlow(user, fetchOrders);
 
+  
+  
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1003,7 +1018,7 @@ export const SalesOrders = () => {
 
 export const SalesPayments = () => {
   const { user } = useAuth();
-  if (!user) return null;
+  
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -1021,6 +1036,8 @@ export const SalesPayments = () => {
 
   React.useEffect(() => { fetchLeaves(); }, []);
 
+  
+  
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1097,7 +1114,7 @@ export const SalesPayments = () => {
 // ── Follow-ups View ────────────────────────────────────────────────────────
 export const SalesFollowups = () => {
   const { user } = useAuth();
-  if (!user) return null;
+  
   const location = useLocation();
   const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
@@ -1181,6 +1198,8 @@ export const SalesFollowups = () => {
     setShowUpdateStatus({ prospect, newStatus: prospect.status || 'In-progress' });
   };
 
+  
+  
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1231,7 +1250,7 @@ export const SalesFollowups = () => {
 // ── Appointments View ────────────────────────────────────────────────────────
 export const SalesAppointments = () => {
   const { user } = useAuth();
-  if (!user) return null;
+  
   const [appointments, setAppointments] = useState([]);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showRemarkModal, setShowRemarkModal] = useState(null);
@@ -1254,6 +1273,8 @@ export const SalesAppointments = () => {
 
   const pendingCount = appointments.filter(a => !a.remark).length;
 
+  
+  
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4">

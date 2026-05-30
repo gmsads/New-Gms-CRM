@@ -21,7 +21,7 @@ const AdminDashboard = () => {
   const { data: rawData, loading, refetch } = useApi('/analytics/ceo-report', { params: filters });
   const { data: qData, loading: qLoading } = useApi('/quotations');
 
-  if (!user) return null;
+  
   
   const stats = {
     financials: rawData?.financials || {},
@@ -45,6 +45,7 @@ const AdminDashboard = () => {
   const financials = stats.financials || {};
   const quotesCount = qData?.data?.length || 0;
 
+  
   return (
     <div className="space-y-8 pb-10">
       {/* CEO Filter Command Bar */}

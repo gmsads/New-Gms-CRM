@@ -42,8 +42,9 @@ const PaymentVerification = () => {
     } catch (err) { alert(err.message || 'Rejection failed'); }
   };
 
-  if (!user) return null;
+  
 
+  
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

@@ -14,6 +14,7 @@ router.post('/:id/reset-password', authorize('ADMIN', 'MD_CEO', 'HR'), c.resetEm
 router.patch('/:id/target', authorize('ADMIN', 'MD_CEO', 'SALES_MANAGER'), c.updateTarget);
 router.post('/:id/promote', hrOnly, promotionController.promoteEmployee);
 router.get('/:id/promotions', hrOnly, promotionController.getPromotionHistory);
+router.get('/:id/master-profile', hrOnly, c.getMasterProfile);
 router.delete('/:id', adminOnly, c.deleteEmployee);
 
 module.exports = router;

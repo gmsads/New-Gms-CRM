@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../domains/users/user.model');
 const UserPermission = require('../domains/users/user_permission.model');
+const { getCache, setCache } = require('../services/cache/redis.service');
 
 /**
  * protect — Verifies JWT and loads user.
@@ -41,9 +42,16 @@ const protect = async (req, res, next) => {
     }
 
     // ── ATTACH DYNAMIC PERMISSIONS ─────────────────────────
-    const perms = await UserPermission.find({ user_id: user._id }).select('permission_key scope');
-    user.permissions = perms.map(p => ({ key: p.permission_key, scope: p.scope }));
+    const cacheKey = `user:perms:${user._id}`;
+    let userPerms = await getCache(cacheKey);
 
+    if (!userPerms) {
+      const perms = await UserPermission.find({ user_id: user._id }).select('permission_key scope');
+      userPerms = perms.map(p => ({ key: p.permission_key, scope: p.scope }));
+      await setCache(cacheKey, userPerms, 3600); // 1-hour cache
+    }
+
+    user.permissions = userPerms;
     req.user = user;
     next();
   } catch (err) {

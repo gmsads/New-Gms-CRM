@@ -1,11 +1,22 @@
 let Queue, Worker, Redis;
 let connection = null;
+let serverAdapter = null;
 
 try {
   const bullmq = require('bullmq');
   Queue = bullmq.Queue;
   Worker = bullmq.Worker;
+  const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
+  const { createBullBoard } = require('@bull-board/api');
+  const { ExpressAdapter } = require('@bull-board/express');
+
+  // Re-use our centralized redis service
+  const { redisClient } = require('../cache/redis.service');
+  connection = redisClient;
   Redis = require('ioredis');
+
+  serverAdapter = new ExpressAdapter();
+  serverAdapter.setBasePath('/api/admin/queues');
 } catch (err) {
   console.warn('[QueueManager] bullmq or ioredis not installed. Queue features disabled.');
 }
@@ -16,10 +27,6 @@ const redisOptions = {
   port: process.env.REDIS_PORT || 6379,
   maxRetriesPerRequest: null,
 };
-
-if (Redis) {
-  connection = new Redis(redisOptions);
-}
 
 // Define Default Job Options for Queue Reliability
 const defaultJobOptions = {
@@ -38,13 +45,15 @@ const defaultJobOptions = {
 };
 
 // Define Queues
-let notificationQueue, escalationQueue, reminderQueue, exportQueue;
+let notificationQueue, escalationQueue, reminderQueue, exportQueue, cacheWarmingQueue, archiveQueue;
 
 if (Queue && Worker) {
   notificationQueue = new Queue('notificationQueue', { connection, defaultJobOptions });
   escalationQueue = new Queue('escalationQueue', { connection, defaultJobOptions });
   reminderQueue = new Queue('reminderQueue', { connection, defaultJobOptions });
   exportQueue = new Queue('exportQueue', { connection, defaultJobOptions });
+  cacheWarmingQueue = require('./cacheWarming.job').cacheWarmingQueue;
+  archiveQueue = require('./archive.job').archiveQueue;
 
   // Initialize Workers
   const notificationWorker = new Worker('notificationQueue', async job => {
@@ -85,6 +94,21 @@ if (Queue && Worker) {
     worker.on('completed', job => console.log(`[Queue] Job ${job.id} completed.`));
     worker.on('failed', (job, err) => console.error(`[Queue] Job ${job.id} failed:`, err));
   });
+
+  const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
+  const { createBullBoard } = require('@bull-board/api');
+
+  createBullBoard({
+    queues: [
+      new BullMQAdapter(notificationQueue),
+      new BullMQAdapter(escalationQueue),
+      new BullMQAdapter(reminderQueue),
+      new BullMQAdapter(exportQueue),
+      new BullMQAdapter(cacheWarmingQueue),
+      new BullMQAdapter(archiveQueue)
+    ],
+    serverAdapter: serverAdapter,
+  });
 }
 
 module.exports = {
@@ -92,5 +116,8 @@ module.exports = {
   escalationQueue,
   reminderQueue,
   exportQueue,
-  connection
+  cacheWarmingQueue,
+  archiveQueue,
+  connection,
+  serverAdapter
 };

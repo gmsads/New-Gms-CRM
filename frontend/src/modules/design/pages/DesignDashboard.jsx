@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, RefreshCw, ChevronDown, ChevronUp, Image, FileText, CheckCircle2, Link as LinkIcon, UploadCloud, XCircle, Send } from 'lucide-react';
+import { Palette, RefreshCw, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, Link as LinkIcon, UploadCloud, XCircle, Send } from 'lucide-react';
 import { orderApi } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -76,8 +76,9 @@ const DesignDashboard = () => {
     setExpandedOrder(expandedOrder === id ? null : id);
   };
 
-  if (!user) return null;
+  
 
+  
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -184,7 +185,7 @@ const DesignDashboard = () => {
                                 <div className="flex items-center gap-2">
                                   <a href={item.designFileUrl} target="_blank" rel="noreferrer" 
                                     className="h-11 px-4 flex items-center gap-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-colors">
-                                    <Image className="h-4 w-4" /> View Proof
+                                    <ImageIcon className="h-4 w-4" /> View Proof
                                   </a>
                                   {/* Quick replace button */}
                                   <label className="h-11 w-11 flex items-center justify-center rounded-xl border border-dashed border-slate-300 text-slate-400 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer transition-all">

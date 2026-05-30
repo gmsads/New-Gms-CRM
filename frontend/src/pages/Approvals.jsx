@@ -6,7 +6,7 @@ import Badge from '../components/ui/Badge';
 
 const Approvals = () => {
   const { user } = useAuth();
-  if (!user) return null;
+  
   const [activeTab, setActiveTab] = useState('Orders');
   const [approvals, setApprovals] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -94,6 +94,8 @@ const Approvals = () => {
 
   if (loading) return <div className="p-20 text-center text-muted-foreground">Loading approval queue...</div>;
 
+  
+  
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

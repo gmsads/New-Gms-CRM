@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { prospectApi, orderApi, appointmentApi, analyticsApi, paymentApi, targetApi } from '../services/api';
 import { 
@@ -32,9 +33,23 @@ const tooltipItemStyle = {
   fontWeight: 600
 };
 
+const Widget = ({ title, value, icon: Icon, colorClass, delay }) => (
+  <div className={`animate-in fade-in slide-in-from-bottom-4 duration-700 bg-white border border-slate-100 shadow-sm rounded-3xl p-6 hover:-translate-y-1 hover:shadow-xl transition-all delay-${delay}`}>
+    <div className="flex items-center justify-between mb-4">
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${colorClass}`}>
+        <Icon className="h-6 w-6" />
+      </div>
+    </div>
+    <div>
+      <h3 className="text-4xl font-black text-slate-900 tracking-tighter">{value}</h3>
+      <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">{title}</p>
+    </div>
+  </div>
+);
+
 const UnifiedDashboard = () => {
   const { user } = useAuth();
-  if (!user) return null;
+  
 
   const [rawProspects, setRawProspects] = useState([]);
   const [rawOrders, setRawOrders] = useState([]);
@@ -68,7 +83,7 @@ const UnifiedDashboard = () => {
         isAccountant || ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user.role)
           ? paymentApi.pending(user.token).catch(() => ({ data: [] }))
           : Promise.resolve({ data: [] }),
-        targetApi.list({ limit: 10 }, user.token).catch(() => ({ data: [] }))
+        targetApi.list({ limit: 10, employee: user._id }, user.token).catch(() => ({ data: [] }))
       ]);
 
       const pData = prospects.data || [];
@@ -139,21 +154,37 @@ const UnifiedDashboard = () => {
     return quotes[role] || "Success is the sum of small efforts, repeated day-in and day-out.";
   };
 
-  const Widget = ({ title, value, icon: Icon, colorClass, delay }) => (
-    <div className={`animate-in fade-in slide-in-from-bottom-4 duration-700 bg-white border border-slate-100 shadow-sm rounded-3xl p-6 hover:-translate-y-1 hover:shadow-xl transition-all delay-${delay}`}>
-      <div className="flex items-center justify-between mb-4">
-        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${colorClass}`}>
-          <Icon className="h-6 w-6" />
-        </div>
-      </div>
-      <div>
-        <h3 className="text-4xl font-black text-slate-900 tracking-tighter">{value}</h3>
-        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">{title}</p>
-      </div>
-    </div>
-  );
+  const getPremiumProgressStyle = (pct) => {
+    if (pct >= 100) return "bg-gradient-to-r from-emerald-400 to-green-500 shadow-[0_0_20px_rgba(16,185,129,0.7)]";
+    if (pct >= 75) return "bg-gradient-to-r from-teal-400 to-emerald-500 shadow-[0_0_20px_rgba(45,212,191,0.6)]";
+    if (pct >= 40) return "bg-gradient-to-r from-amber-400 to-orange-500 shadow-[0_0_20px_rgba(245,158,11,0.6)]";
+    if (pct >= 10) return "bg-gradient-to-r from-rose-500 to-red-500 shadow-[0_0_20px_rgba(225,29,72,0.6)]";
+    return "bg-gradient-to-r from-red-600 to-rose-700 shadow-[0_0_20px_rgba(159,18,57,0.7)]";
+  };
+
+
 
   if (stats.loading) return <div className="text-center p-20 text-slate-400 font-bold">Loading Unified Workspace...</div>;
+
+  if (user?.role === 'DESIGNER') {
+    return <Navigate to="/design" replace />;
+  }
+
+  if (user?.role === 'PRODUCTION_MANAGER') {
+    return <Navigate to="/production/manager" replace />;
+  }
+
+  if (user?.role === 'PRODUCTION_EXEC') {
+    return <Navigate to="/production/executive" replace />;
+  }
+
+  if (user?.role === 'SERVICE_MANAGER') {
+    return <Navigate to="/service/manager" replace />;
+  }
+
+  if (user?.role === 'SERVICE_EXEC') {
+    return <Navigate to="/service/executive" replace />;
+  }
 
   // Chart configuration & Calculations (Only for Administrators/Managers)
   const isAdmin = ['ADMIN', 'MD_CEO'].includes(user.role);
@@ -354,6 +385,12 @@ const UnifiedDashboard = () => {
   const agentOrdersData = isAdmin ? getAgentOrdersData() : [];
   const prospectiveClientsData = isAdmin ? getProspectiveClientsData() : [];
 
+  const currentTargetProgress = stats.realTarget?.targetValue > 0 
+    ? Math.min(100, Math.round((stats.realTarget.achievedValue / stats.realTarget.targetValue) * 100)) 
+    : 0;
+
+  
+  
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-12">
       <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -385,7 +422,7 @@ const UnifiedDashboard = () => {
           
           <div className="flex items-baseline gap-4 mt-8 relative z-10">
             <span className="text-7xl font-black tracking-tighter text-white drop-shadow-lg">
-              {stats.realTarget.progressPercent || 0}<span className="text-4xl text-slate-400">%</span>
+              {currentTargetProgress}<span className="text-4xl text-slate-400">%</span>
             </span>
             <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Achieved</span>
           </div>
@@ -393,10 +430,8 @@ const UnifiedDashboard = () => {
           <div className="space-y-4 mt-8 relative z-10">
             <div className="h-5 w-full bg-slate-950 rounded-full overflow-hidden p-1 shadow-inner border border-slate-800">
               <div 
-                className={`h-full rounded-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(59,130,246,0.5)] ${
-                  (stats.realTarget.progressPercent || 0) < 40 ? 'bg-rose-500' : (stats.realTarget.progressPercent || 0) < 75 ? 'bg-amber-500' : 'bg-emerald-500'
-                }`} 
-                style={{ width: `${stats.realTarget.progressPercent || 0}%` }} 
+                className={`h-full rounded-full transition-all duration-1000 ease-out ${getPremiumProgressStyle(currentTargetProgress)}`} 
+                style={{ width: `${currentTargetProgress}%` }} 
               />
             </div>
             <div className="flex justify-between text-base font-bold text-slate-300">
@@ -439,7 +474,7 @@ const UnifiedDashboard = () => {
         )}
 
         {/* Operations/Designer Execution Scope */}
-        {['OPERATION_EXEC', 'FIELD_EXEC', 'DESIGNER'].includes(user.role) && (
+        {['OPERATION_EXEC', 'DESIGNER'].includes(user.role) && (
           <>
             <Widget title="Assigned Orders" value={stats.assignedOrders} icon={Package} colorClass="bg-cyan-50 text-cyan-600 border border-cyan-100" delay="100" />
           </>

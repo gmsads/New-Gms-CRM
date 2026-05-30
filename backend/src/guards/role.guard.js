@@ -126,5 +126,17 @@ const selfOrManager = (ownerField = 'salesExec') => {
   };
 };
 
+// ─── Middleware: authorize(...roles) ──────────────────────────────────────────
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) return res.status(401).json({ message: 'Not authenticated.' });
+    const allowedRoles = Array.isArray(roles[0]) ? roles[0] : roles;
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: `Access denied. Requires one of: [${allowedRoles.join(', ')}]. Your role: ${req.user.role}.` });
+    }
+    next();
+  };
+};
+
 // ─── Export ───────────────────────────────────────────────────────────────────
-module.exports = { can, selfOrManager, PERMISSIONS };
+module.exports = { can, selfOrManager, authorize, PERMISSIONS };

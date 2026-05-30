@@ -3,56 +3,37 @@ const History = require('../../domains/sales/brochures/brochure_history.model');
 const Category = require('../../domains/sales/brochures/category.model');
 const Prospect = require('../../domains/sales/prospects/prospect.model');
 
+const { paginate, formatPaginatedResponse } = require('../../utils/pagination');
+
 // GET /api/brochures — List active brochures for Executives
 exports.list = async (req, res) => {
   try {
     const { category, search } = req.query;
+    const { page, limit, skip, sort } = paginate(req.query);
     const filter = {};
     
-    // Only Managers can see INACTIVE brochures. Executives only see ACTIVE.
     if (!['ADMIN', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(req.user.role)) {
       filter.status = 'ACTIVE';
     }
-    
-    // Allow explicitly querying by status
     if (req.query.status) filter.status = req.query.status;
-
     if (category) filter.category = category;
-    if (search) filter.title = { $regex: search, $options: 'i' };
+    if (search) {
+      // Use text index for search optimization
+      filter.$text = { $search: search };
+    }
 
-    const brochures = await Brochure.find(filter).sort({ createdAt: -1 });
-    res.json({ success: true, data: brochures });
+    const [brochures, total] = await Promise.all([
+      Brochure.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+      Brochure.countDocuments(filter)
+    ]);
+    
+    res.json(formatPaginatedResponse(brochures, total, page, limit));
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
-const fs = require('fs');
-const path = require('path');
-
-// Helper to save base64 to file
-const saveBase64ToFile = (req, base64String, folder, filename) => {
-  if (!base64String || !base64String.startsWith('data:')) return base64String;
-  
-  const matches = base64String.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-  if (!matches || matches.length !== 3) return base64String;
-  
-  const extension = matches[1].split('/')[1] || 'bin';
-  const fileData = matches[2];
-  const buffer = Buffer.from(fileData, 'base64');
-  
-  const uploadDir = path.join(__dirname, '../../../public/uploads', folder);
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-  
-  const finalFilename = `${filename}.${extension}`;
-  const filePath = path.join(uploadDir, finalFilename);
-  fs.writeFileSync(filePath, buffer);
-  
-  const hostUrl = `${req.protocol}://${req.get('host')}`;
-  return `${hostUrl}/uploads/${folder}/${finalFilename}`;
-};
+// Removed saveBase64ToFile, handled by Multer
 
 // POST /api/brochures — Create new (Admin/Manager)
 exports.create = async (req, res) => {
@@ -65,13 +46,16 @@ exports.create = async (req, res) => {
     
     let { fileUrl, thumbnailUrl, ...restBody } = req.body;
     
-    // Convert Base64 strings to actual files if provided
-    const timestamp = Date.now();
-    if (fileUrl && fileUrl.startsWith('data:')) {
-      fileUrl = saveBase64ToFile(req, fileUrl, 'brochures', `brochure_${brochureId}_${timestamp}`);
-    }
-    if (thumbnailUrl && thumbnailUrl.startsWith('data:')) {
-      thumbnailUrl = saveBase64ToFile(req, thumbnailUrl, 'thumbnails', `thumb_${brochureId}_${timestamp}`);
+    const hostUrl = `${req.protocol}://${req.get('host')}`;
+    
+    // Support Multer uploaded files
+    if (req.files) {
+      if (req.files.brochure && req.files.brochure[0]) {
+        fileUrl = `${hostUrl}/uploads/brochures/${req.files.brochure[0].filename}`;
+      }
+      if (req.files.thumbnail && req.files.thumbnail[0]) {
+        thumbnailUrl = `${hostUrl}/uploads/thumbnails/${req.files.thumbnail[0].filename}`;
+      }
     }
 
     const brochure = new Brochure({
@@ -100,12 +84,15 @@ exports.update = async (req, res) => {
     const existing = await Brochure.findById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: 'Brochure not found' });
     
-    const timestamp = Date.now();
-    if (fileUrl && fileUrl.startsWith('data:')) {
-      fileUrl = saveBase64ToFile(req, fileUrl, 'brochures', `brochure_${existing.brochureId}_${timestamp}`);
-    }
-    if (thumbnailUrl && thumbnailUrl.startsWith('data:')) {
-      thumbnailUrl = saveBase64ToFile(req, thumbnailUrl, 'thumbnails', `thumb_${existing.brochureId}_${timestamp}`);
+    const hostUrl = `${req.protocol}://${req.get('host')}`;
+
+    if (req.files) {
+      if (req.files.brochure && req.files.brochure[0]) {
+        fileUrl = `${hostUrl}/uploads/brochures/${req.files.brochure[0].filename}`;
+      }
+      if (req.files.thumbnail && req.files.thumbnail[0]) {
+        thumbnailUrl = `${hostUrl}/uploads/thumbnails/${req.files.thumbnail[0].filename}`;
+      }
     }
 
     const updateData = { ...restBody };

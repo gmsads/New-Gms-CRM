@@ -2,25 +2,28 @@ const mongoose = require('mongoose');
 
 const visitSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true, trim: true },
-    type: {
-      type: String,
-      enum: ['Installation', 'Survey', 'Maintenance', 'Shoot', 'Client Visit', 'Inspection', 'Delivery'],
-      required: true,
-    },
+    title: { type: String, trim: true },
+    type: { type: String }, // Removed strict enum to allow flexible values
 
-    site: { type: String, required: true },
-    location: { type: String, required: true },
+    site: { type: String },
+    location: { type: String },
+    
+    // New fields from frontend
+    businessName: { type: String },
+    clientName: { type: String },
+    phone: { type: String },
+    purpose: { type: String },
+    remark: { type: String },
+    followUpDate: { type: Date },
 
-    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     relatedClient: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
 
-    scheduledDate: { type: Date, required: true },
-    scheduledTimeSlot: { type: String }, // e.g. "10:00 AM - 12:00 PM"
+    scheduledDate: { type: Date },
+    scheduledTimeSlot: { type: String }, 
 
     status: {
-      type: String,
-      enum: ['Scheduled', 'In Progress', 'Completed', 'Cancelled', 'Rescheduled'],
+      type: String, // Removed strict enum
       default: 'Scheduled',
     },
 

@@ -116,5 +116,7 @@ prospectSchema.index({ assignedTo: 1, createdDate: -1 });
 prospectSchema.index({ client: 1 });
 prospectSchema.index({ isDeleted: 1 });
 
+// Text index for search optimization
+prospectSchema.index({ name: 'text', company: 'text', email: 'text', phone: 'text' });
 
-module.exports = mongoose.model('Prospect', prospectSchema);
+module.exports = mongoose.models.Prospect || mongoose.model('Prospect', prospectSchema);

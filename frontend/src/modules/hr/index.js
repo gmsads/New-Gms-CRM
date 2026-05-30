@@ -1,6 +1,13 @@
 export { default as HRDashboard } from './pages/HRDashboard';
 export { default as HREmployees } from './HREmployees';
-export { default as HRRecruitment } from './HRRecruitment';
+export { default as HRRecruitment } from './pages/HRRecruitment';
 export { default as HRPerformance } from './HRPerformance';
 export { default as HRAttendance } from './HRAttendance';
 export { default as HRPayroll } from './HRPayroll';
+export { default as EmployeeProfile } from './pages/EmployeeProfile';
+export { default as HRDocuments } from './pages/HRDocuments';
+export { default as HRCompensation } from './pages/HRCompensation';
+export { default as HRLeave } from './pages/HRLeave';
+export { default as HRTraining } from './pages/HRTraining';
+export { default as HRExitManagement } from './pages/HRExitManagement';
+export { default as HRReports } from './pages/HRReports';

@@ -50,7 +50,7 @@ const StatCol = ({ label, value, valueClass = '' }) => (
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ApprovalsTerminal = () => {
   const { user } = useAuth();
-  if (!user) return null;
+  
 
   const isAccountant = user.role === 'ACCOUNTS';
 
@@ -135,6 +135,8 @@ const ApprovalsTerminal = () => {
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
+  
+  
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
 

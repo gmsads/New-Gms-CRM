@@ -111,6 +111,8 @@ exports.getOne = async (req, res) => {
       .populate('salesManager', 'name email phone')
       .populate('operationsExec', 'name email')
       .populate('designAssignedTo', 'name email')
+      .populate('operationsManager', 'name email')
+      .populate('serviceManager', 'name email')
       .populate('prospect', 'name phone company stage')
       .populate('quotation', 'quotationId totalAmount status');
 
@@ -181,9 +183,31 @@ exports.create = async (req, res) => {
     if (body.designStatus === 'Need Design') {
       order.designRequired = true;
       order.designStatus   = 'Pending';
+      order.lineItems.forEach(item => {
+        if (!item.designerWorkflow) item.designerWorkflow = {};
+        item.designerWorkflow.workflowType = 'DESIGN_CREATED';
+        item.designerWorkflow.currentStatus = 'Assigned';
+      });
     } else if (body.designStatus === 'Design Provided') {
-      order.designRequired = false; // or true if we still track it
-      order.designStatus   = 'Not_Required';
+      order.designRequired = true; // Still required so it goes to designer for check
+      order.designStatus   = 'Pending';
+      
+      order.lineItems.forEach((item, idx) => {
+        if (!item.designerWorkflow) item.designerWorkflow = {};
+        item.designerWorkflow.workflowType = 'CLIENT_UPLOADED';
+        item.designerWorkflow.currentStatus = 'Assigned';
+        
+        // Attach the uploaded design file to the first line item
+        if (idx === 0 && body.designFileUrl) {
+          if (!item.serviceFiles) item.serviceFiles = [];
+          item.serviceFiles.push({
+            type: 'CLIENT_UPLOAD',
+            fileUrl: body.designFileUrl,
+            uploadedBy: req.user._id,
+            uploadedAt: new Date()
+          });
+        }
+      });
     }
 
     // Snapshot client info
@@ -398,6 +422,83 @@ exports.updateLineItem = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+  // ── DELETE /api/orders/:id/line-items/:itemIndex ────────────────────────
+  exports.deleteLineItem = async (req, res) => {
+    try {
+      const { id, itemIndex } = req.params;
+      
+      // Only Admin or Operations Manager should delete line items
+      if (!['ADMIN', 'OPERATION_MANAGER'].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: 'Not authorized to delete line items.' });
+      }
+
+      const order = await Order.findById(id);
+      if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
+
+      if (!order.lineItems || !order.lineItems[itemIndex]) {
+        return res.status(404).json({ success: false, message: 'Line item not found.' });
+      }
+
+      // Capture details before deletion for history
+      const removedItem = order.lineItems[itemIndex];
+
+      // Remove the item
+      order.lineItems.splice(itemIndex, 1);
+
+      // Re-calculate order totals
+      let newAmount = 0;
+      let totalDiscountAmount = 0;
+      let totalTaxAmount = 0;
+      
+      order.lineItems.forEach(item => {
+        const itemAmount = item.amount || (item.unitPrice * item.quantity);
+        newAmount += itemAmount;
+        
+        const base = item.quantity * item.unitPrice;
+        const discountVal = (base * (item.discount || 0)) / 100;
+        const afterDiscount = base - discountVal;
+        const taxVal = (afterDiscount * (item.gstRate || 0)) / 100;
+        totalDiscountAmount += discountVal;
+        totalTaxAmount += taxVal;
+      });
+
+      order.amount = newAmount;
+      order.subtotal = newAmount;
+      order.totalDiscount = totalDiscountAmount;
+      order.grandTotal = Math.round(newAmount - totalDiscountAmount + totalTaxAmount);
+      order.balanceDue = order.grandTotal - (order.totalPaid || 0);
+
+      order.addTimelineEvent('Service Deleted', `Service "${removedItem.description}" was deleted from the order.`, req.user);
+
+      // Now evaluate if the order should be pushed to In_Production
+      const allCompleted = order.lineItems.every(li => 
+        !li.designerWorkflow || ['Completed', 'Client-Design Approved'].includes(li.designerWorkflow.currentStatus)
+      );
+
+      if (order.lineItems.length > 0 && allCompleted && order.status !== 'In_Production' && order.status !== 'Completed') {
+        order.designStatus = 'Completed';
+        await order.save();
+        
+        const orderWorkflow = require('../../workflows/order.workflow');
+        const getReqContext = (req) => ({ ipAddress: req.ip, userAgent: req.headers['user-agent'], device: req.headers['user-agent'] });
+        const forceAdminUser = { _id: req.user._id, role: 'ADMIN', name: req.user.name };
+        
+        try {
+          await orderWorkflow.updateOrderStatus(order._id, 'In_Production', forceAdminUser, {}, getReqContext(req));
+        } catch (wfErr) {
+          console.error('Failed to auto-transition order to In_Production:', wfErr.message);
+        }
+      } else {
+        await order.save();
+      }
+
+      const updatedOrder = await Order.findById(id);
+      res.json({ success: true, message: 'Line item deleted successfully.', data: updatedOrder });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  };
 
 // ── POST /api/orders/:id/approve-advance ──────────────────────────────────────
 exports.approveAdvance = async (req, res) => {

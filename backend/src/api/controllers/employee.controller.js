@@ -329,3 +329,29 @@ exports.updateTarget = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// ── GET /api/employees/:id/master-profile ────────────────────────
+exports.getMasterProfile = async (req, res) => {
+  try {
+    const employee = await User.findById(req.params.id)
+      .select('-password -passwordResetToken')
+      .populate('createdBy', 'name role')
+      .populate('reportingManager', 'name role');
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+    
+    // In a real implementation, we would aggregate data from:
+    // Compensation, Leaves, Attendance, HRDocuments, Training, etc.
+    const masterProfile = {
+      employee,
+      compensation: null,
+      documents: [],
+      trainings: [],
+      leaves: [],
+      attendance: []
+    };
+    res.json(masterProfile);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+

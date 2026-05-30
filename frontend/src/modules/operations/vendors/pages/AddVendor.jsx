@@ -1,8 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, X, Building2, MapPin, Wrench, IndianRupee, Clock, Star } from 'lucide-react';
+import { toTitleCase } from '../../../../utils/stringUtils';
 import api from '../../../../services/api';
 import { useAuth } from '../../../../context/AuthContext';
+
+const Section = ({ icon: Icon, title, children }) => (
+  <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm mb-6">
+    <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-50">
+      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
+        <Icon className="h-5 w-5" />
+      </div>
+      <h2 className="text-xl font-black text-slate-800">{title}</h2>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {children}
+    </div>
+  </div>
+);
+
+const Input = ({ label, name, type = 'text', required = false, placeholder = '', formData, handleChange }) => (
+  <div>
+    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">{label} {required && '*'}</label>
+    <input type={type} name={name} value={formData[name]} onChange={handleChange} required={required} placeholder={placeholder}
+      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" />
+  </div>
+);
+
+const Select = ({ label, name, options, required = false, formData, handleChange }) => (
+  <div>
+    <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">{label} {required && '*'}</label>
+    <select name={name} value={formData[name]} onChange={handleChange} required={required}
+      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors">
+      <option value="">Select...</option>
+      {options.map(o => <option key={o.value || o} value={o.value || o}>{o.label || o}</option>)}
+    </select>
+  </div>
+);
 
 const AddVendor = () => {
   const navigate = useNavigate();
@@ -34,7 +68,13 @@ const AddVendor = () => {
     fetchCategories();
   }, [user.token]);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    let { name, value } = e.target;
+    if (['name', 'city', 'baseLocation', 'address', 'workingAreas'].includes(name)) {
+      value = toTitleCase(value);
+    }
+    setFormData({ ...formData, [name]: value });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,39 +95,6 @@ const AddVendor = () => {
     }
   };
 
-  const Section = ({ icon: Icon, title, children }) => (
-    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm mb-6">
-      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-50">
-        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-          <Icon className="h-5 w-5" />
-        </div>
-        <h2 className="text-xl font-black text-slate-800">{title}</h2>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {children}
-      </div>
-    </div>
-  );
-
-  const Input = ({ label, name, type = 'text', required = false, placeholder = '' }) => (
-    <div>
-      <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">{label} {required && '*'}</label>
-      <input type={type} name={name} value={formData[name]} onChange={handleChange} required={required} placeholder={placeholder}
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" />
-    </div>
-  );
-
-  const Select = ({ label, name, options, required = false }) => (
-    <div>
-      <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">{label} {required && '*'}</label>
-      <select name={name} value={formData[name]} onChange={handleChange} required={required}
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors">
-        <option value="">Select...</option>
-        {options.map(o => <option key={o.value || o} value={o.value || o}>{o.label || o}</option>)}
-      </select>
-    </div>
-  );
-
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
       <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -107,46 +114,46 @@ const AddVendor = () => {
 
       <form className="space-y-6">
         <Section icon={Building2} title="Basic Details">
-          <Input label="Vendor Name" name="name" required placeholder="Company or Person Name" />
-          <Input label="Contact Number" name="contactNumber" required placeholder="10-digit number" />
-          <Input label="Alternate Number" name="alternateNumber" placeholder="Optional" />
-          <Input label="Email Address" name="email" type="email" placeholder="vendor@example.com" />
-          <Select label="Category" name="category" required options={categories.map(c => ({ label: c.name, value: c._id }))} />
-          <Select label="Status" name="status" options={['Active', 'Inactive', 'Suspended']} />
+          <Input formData={formData} handleChange={handleChange} label="Vendor Name" name="name" required placeholder="Company or Person Name" />
+          <Input formData={formData} handleChange={handleChange} label="Contact Number" name="contactNumber" required placeholder="10-digit number" />
+          <Input formData={formData} handleChange={handleChange} label="Alternate Number" name="alternateNumber" placeholder="Optional" />
+          <Input formData={formData} handleChange={handleChange} label="Email Address" name="email" type="email" placeholder="vendor@example.com" />
+          <Select formData={formData} handleChange={handleChange} label="Category" name="category" required options={categories.map(c => ({ label: c.name, value: c._id }))} />
+          <Select formData={formData} handleChange={handleChange} label="Status" name="status" options={['Active', 'Inactive', 'Suspended']} />
         </Section>
 
         <Section icon={MapPin} title="Location Details">
-          <Input label="Base Location" name="baseLocation" required placeholder="e.g. MG Road, Vijayawada" />
-          <Input label="City" name="city" placeholder="e.g. Vijayawada" />
-          <Input label="PIN Code" name="pincode" />
+          <Input formData={formData} handleChange={handleChange} label="Base Location" name="baseLocation" required placeholder="e.g. MG Road, Vijayawada" />
+          <Input formData={formData} handleChange={handleChange} label="City" name="city" placeholder="e.g. Vijayawada" />
+          <Input formData={formData} handleChange={handleChange} label="PIN Code" name="pincode" />
           <div className="col-span-full">
-            <Input label="Working Areas (Comma Separated)" name="workingAreas" placeholder="e.g. Benz Circle, Patamata, Auto Nagar" />
+            <Input formData={formData} handleChange={handleChange} label="Working Areas (Comma Separated)" name="workingAreas" placeholder="e.g. Benz Circle, Patamata, Auto Nagar" />
           </div>
           <div className="col-span-full">
-            <Input label="Full Address" name="address" placeholder="Complete address for records" />
+            <Input formData={formData} handleChange={handleChange} label="Full Address" name="address" placeholder="Complete address for records" />
           </div>
         </Section>
 
         <Section icon={Wrench} title="Service Capabilities">
           <div className="col-span-full">
-            <Input label="Services Offered (Comma Separated)" name="servicesOffered" placeholder="e.g. Flex Printing, Wall Pasting, Pamphlet Distribution" />
+            <Input formData={formData} handleChange={handleChange} label="Services Offered (Comma Separated)" name="servicesOffered" placeholder="e.g. Flex Printing, Wall Pasting, Pamphlet Distribution" />
           </div>
-          <Input label="Team Size" name="teamSize" type="number" />
-          <Input label="Vehicle Count" name="vehicleCount" type="number" />
-          <Select label="Current Availability" name="availabilityStatus" options={['Available', 'Busy', 'On Leave', 'In Campaign', 'Maintenance']} />
+          <Input formData={formData} handleChange={handleChange} label="Team Size" name="teamSize" type="number" />
+          <Input formData={formData} handleChange={handleChange} label="Vehicle Count" name="vehicleCount" type="number" />
+          <Select formData={formData} handleChange={handleChange} label="Current Availability" name="availabilityStatus" options={['Available', 'Busy', 'On Leave', 'In Campaign', 'Maintenance']} />
         </Section>
 
         <Section icon={IndianRupee} title="Financial Details">
-          <Input label="Base Cost (₹)" name="baseCost" type="number" />
-          <Select label="Cost Type" name="costType" options={['Per Day', 'Per Campaign', 'Per KM', 'Fixed']} />
-          <Input label="GST Number" name="gstNumber" placeholder="If applicable" />
+          <Input formData={formData} handleChange={handleChange} label="Base Cost (₹)" name="baseCost" type="number" />
+          <Select formData={formData} handleChange={handleChange} label="Cost Type" name="costType" options={['Per Day', 'Per Campaign', 'Per KM', 'Fixed']} />
+          <Input formData={formData} handleChange={handleChange} label="GST Number" name="gstNumber" placeholder="If applicable" />
           <div className="col-span-full">
-            <Input label="Payment Terms" name="paymentTerms" placeholder="e.g. 50% Advance, 50% Post-Campaign" />
+            <Input formData={formData} handleChange={handleChange} label="Payment Terms" name="paymentTerms" placeholder="e.g. 50% Advance, 50% Post-Campaign" />
           </div>
         </Section>
         
         <Section icon={Star} title="Quality & Records">
-          <Input label="Initial Rating (0-5)" name="averageRating" type="number" />
+          <Input formData={formData} handleChange={handleChange} label="Initial Rating (0-5)" name="averageRating" type="number" />
           <div className="col-span-full">
             <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2">Internal Notes</label>
             <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 focus:outline-none focus:border-blue-500 focus:bg-white transition-colors"></textarea>

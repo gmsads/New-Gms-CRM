@@ -5,6 +5,9 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export const ROLES = {
   MD_CEO:             'MD_CEO',
+  CEO:                'CEO',
+  COO:                'COO',
+  BRANCH_HEAD:        'BRANCH_HEAD',
   ADMIN:              'ADMIN',
   SALES_EXEC:         'SALES_EXEC',
   SALES_MANAGER:      'SALES_MANAGER',
@@ -13,6 +16,8 @@ export const ROLES = {
   DESIGNER:           'DESIGNER',
   OPERATION_EXEC:     'OPERATION_EXEC',
   OPERATION_MANAGER:  'OPERATION_MANAGER',
+  PRODUCTION_EXEC:    'PRODUCTION_EXEC',
+  PRODUCTION_MANAGER: 'PRODUCTION_MANAGER',
   AGENT:              'AGENT',
   VENDOR:             'VENDOR',
   IT:                 'IT',
