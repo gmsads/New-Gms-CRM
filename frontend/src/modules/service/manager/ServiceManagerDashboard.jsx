@@ -117,18 +117,18 @@ const ServiceManagerDashboard = ({ initialTab = 'queue' }) => {
   });
 
   return (
-    <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
       {activeTab === 'overview' && (
-        <div className="mb-10 flex justify-between items-start">
+        <div className="mb-8 sm:mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-[32px] font-extrabold text-slate-900 tracking-tight">
-              Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{user.name}!</span>
+            <h1 className="text-3xl sm:text-[32px] font-extrabold text-slate-900 tracking-tight">
+              Service Overview
             </h1>
-            <p className="text-slate-500 italic mt-2 text-[15px]">
-              "Ensure every service is completed before the committed Delivery Date."
+            <p className="text-sm sm:text-[15px] text-slate-500 italic mt-1 sm:mt-2">
+              Monitor active services and ensure on-time delivery across all assignments.
             </p>
           </div>
-          <button onClick={fetchJobs} className="p-2 border rounded-lg hover:bg-slate-50 transition-colors">
+          <button onClick={fetchJobs} className="w-full sm:w-auto p-2 border rounded-lg hover:bg-slate-50 transition-colors flex justify-center items-center">
             <RefreshCw className={`w-5 h-5 text-slate-600 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -155,7 +155,7 @@ const ServiceManagerDashboard = ({ initialTab = 'queue' }) => {
               </button>
             ))}
           </div>
-          <button onClick={fetchJobs} className="shrink-0 h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-bold shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2">
+          <button onClick={fetchJobs} className="w-full md:w-auto shrink-0 h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-bold shadow-sm hover:bg-slate-50 transition-all flex justify-center items-center gap-2">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             Sync
           </button>

@@ -271,11 +271,10 @@ const Field = () => {
         </div>
       )}
 
-      {/* --- New Visit Modal --- */}
       {newVisitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6" style={{ background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(8px)" }}>
           <div className="w-full max-w-2xl rounded-2xl border border-white/20 bg-white shadow-2xl overflow-hidden flex flex-col max-h-[95vh] animate-in slide-in-from-bottom-4 duration-300">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50 shrink-0">
               <div>
                 <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 tracking-tight"><Plus className="h-5 w-5 text-blue-600"/> Schedule New Visit</h2>
                 <p className="text-sm text-muted-foreground mt-1">Fill out the details below to log a new field visit.</p>
@@ -285,7 +284,7 @@ const Field = () => {
               </button>
             </div>
 
-            <form onSubmit={handleScheduleVisit} className="p-6 space-y-5 flex-1 overflow-y-auto custom-scrollbar">
+            <form onSubmit={handleScheduleVisit} className="p-4 sm:p-6 space-y-5 flex-1 overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Client Name</label>
@@ -335,12 +334,12 @@ const Field = () => {
 
               <div>
                 <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Location</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <div className="relative flex-1">
                     <MapPin className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                     <input required value={newVisitForm.location} onChange={e => setNewVisitForm({...newVisitForm, location: e.target.value})} placeholder="Address or Coordinates" className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm outline-none focus:border-[#003366] focus:ring-2 focus:ring-[#003366]/20 transition-all shadow-sm" />
                   </div>
-                  <button type="button" onClick={handleGetLocation} className="h-11 px-4 rounded-xl border-2 border-blue-100 bg-blue-50 text-blue-700 font-semibold text-sm hover:bg-blue-100 transition-colors flex items-center gap-2 shrink-0">
+                  <button type="button" onClick={handleGetLocation} className="h-11 w-full sm:w-auto px-4 rounded-xl border-2 border-blue-100 bg-blue-50 text-blue-700 font-semibold text-sm hover:bg-blue-100 transition-colors flex justify-center items-center gap-2 shrink-0">
                     <MapPin className="h-4 w-4" /> Get Location
                   </button>
                 </div>
@@ -348,14 +347,13 @@ const Field = () => {
 
               <div>
                 <label className="text-sm font-semibold text-slate-700 mb-1.5 block">Visit Photo</label>
-                <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer group">
+                <div className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer group relative">
                   <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 mx-auto mb-3 group-hover:scale-110 transition-transform">
                     <Camera className="h-6 w-6" />
                   </div>
                   <p className="text-sm font-medium text-slate-700 mb-1">Click to upload or capture photo</p>
                   <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
-                  <input type="file" accept="image/*" capture="environment" className="hidden" id="visit-photo-upload" />
-                  <label htmlFor="visit-photo-upload" className="absolute inset-0 cursor-pointer"></label>
+                  <input type="file" accept="image/*" capture="environment" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" id="visit-photo-upload" />
                 </div>
               </div>
 
@@ -365,11 +363,11 @@ const Field = () => {
               </div>
             </form>
 
-            <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex gap-3 shrink-0">
-              <button type="button" onClick={() => setNewVisitModalOpen(false)} className="h-12 flex-1 rounded-xl border border-slate-200 bg-white text-slate-700 font-semibold text-sm hover:bg-slate-50 transition-colors shadow-sm">
+            <div className="p-4 sm:p-6 border-t border-slate-100 bg-slate-50/50 flex flex-col-reverse sm:flex-row gap-3 shrink-0">
+              <button type="button" onClick={() => setNewVisitModalOpen(false)} className="h-12 flex-1 w-full rounded-xl border border-slate-200 bg-white text-slate-700 font-semibold text-sm hover:bg-slate-50 transition-colors shadow-sm">
                 Cancel
               </button>
-              <button type="submit" onClick={handleScheduleVisit} className="h-12 flex-1 rounded-xl text-white font-semibold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-md flex justify-center items-center gap-2" style={{ background: "linear-gradient(135deg, #003366 0%, #004080 100%)" }}>
+              <button type="submit" onClick={handleScheduleVisit} className="h-12 flex-1 w-full rounded-xl text-white font-semibold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-md flex justify-center items-center gap-2" style={{ background: "linear-gradient(135deg, #003366 0%, #004080 100%)" }}>
                 <CheckCircle2 className="h-5 w-5" /> Schedule Visit
               </button>
             </div>

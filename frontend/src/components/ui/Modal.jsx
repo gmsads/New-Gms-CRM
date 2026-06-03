@@ -28,24 +28,24 @@ const Modal = ({ open, onClose, title, children, size = 'md' }) => {
       />
       {/* Dialog */}
       <div
-        className={`relative w-full ${sizes[size]} rounded-2xl border bg-card shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200`}
+        className={`relative w-[95vw] md:w-full ${sizes[size]} max-h-[90vh] rounded-2xl border bg-card shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b px-6 py-4">
-          <h2 id="modal-title" className="text-lg font-semibold">{title}</h2>
+        <div className="flex items-center justify-between border-b px-6 py-4 shrink-0">
+          <h2 id="modal-title" className="text-lg font-semibold truncate pr-4">{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="rounded-lg p-1.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-95 cursor-pointer"
             aria-label="Close"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
         {/* Body */}
-        <div className="overflow-y-auto max-h-[80vh]">
+        <div className="overflow-y-auto flex-1 p-4 md:p-6 custom-scrollbar">
           {children}
         </div>
       </div>

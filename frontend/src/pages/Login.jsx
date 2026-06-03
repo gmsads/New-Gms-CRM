@@ -128,10 +128,6 @@ const Login = () => {
               {/* Header */}
               <div className="p-8 pb-6">
                 <div className="flex items-center gap-3 mb-8">
-                  <div className="h-12 w-12 rounded-xl flex items-center justify-center font-black text-xl text-white shadow-lg"
-                    style={{ background: 'linear-gradient(135deg, #1d4ed8, #7c3aed)' }}>
-                    G
-                  </div>
                   <div>
                     <p className="font-black text-lg text-white tracking-tight">GMS</p>
                     <p className="text-xs text-blue-300">Global Marketing Solutions</p>

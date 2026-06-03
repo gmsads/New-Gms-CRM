@@ -48,12 +48,12 @@ const HRDashboard = ({ employees = [] }) => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">
-            Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{user?.name?.split(' ')[0] || 'HR'}!</span>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+            Human Resources
           </h1>
-          <p className="text-lg text-slate-500 font-medium mt-2 italic">
+          <p className="text-sm sm:text-lg text-slate-500 font-medium mt-1 sm:mt-2 italic">
             "People are the heartbeat of our company. Keep the pulse strong."
           </p>
         </div>

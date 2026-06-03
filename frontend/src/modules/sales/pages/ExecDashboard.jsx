@@ -632,34 +632,35 @@ const ExecDashboard = () => {
         </div>
 
         {/* Client Overview - Bar Chart */}
-        <div className="lg:col-span-2 bg-white rounded-[2.5rem] border p-8 shadow-sm space-y-6">
+        <div className="lg:col-span-2 bg-white rounded-[2.5rem] border p-8 shadow-sm space-y-6 overflow-hidden">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-black text-slate-900">Client Overview by Order Type</h3>
             <BarChartIcon className="h-5 w-5 text-blue-500" />
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.orderTypeAnalysis}>
+              <BarChart data={stats.orderTypeAnalysis} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis 
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                  tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                   dy={10}
+                  interval="preserveStartEnd"
+                  height={40}
                 />
                 <YAxis 
                   axisLine={false} 
                   tickLine={false} 
                   tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
-                  tickFormatter={(val) => `₹${val / 1000}k`}
                 />
                 <Tooltip 
                   cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
-                  formatter={(value) => `₹${value.toLocaleString()}`}
+                  formatter={(value) => `${value} orders`}
                 />
-                <Bar dataKey="amount" radius={[6, 6, 0, 0]} barSize={40}>
+                <Bar dataKey="orders" radius={[6, 6, 0, 0]} barSize={30}>
                   {stats.orderTypeAnalysis.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#3b82f6' : '#6366f1'} />
                   ))}
@@ -671,8 +672,7 @@ const ExecDashboard = () => {
             {stats.orderTypeAnalysis.map((type, i) => (
               <div key={i} className="text-center">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{type.name}</p>
-                <p className="text-sm font-black text-slate-900 mt-1">₹{type.amount / 1000}k</p>
-                <p className="text-[9px] font-bold text-blue-500">{type.orders} orders</p>
+                <p className="text-sm font-black text-blue-500 mt-1">{type.orders} orders</p>
               </div>
             ))}
           </div>
@@ -748,13 +748,13 @@ export const SalesProspects = ({ isTeamMode = false, globalFilters = {} }) => {
   
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">Prospective Clients</h1>
+          <h1 className="text-3xl sm:text-2xl font-black text-slate-900 tracking-tight">Prospective Clients</h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Manage your leads and sales pipeline</p>
         </div>
-        {!isTeamMode && (
-          <button onClick={() => pFlow.setShowPhoneSearch(true)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100">
+        {(!isTeamMode || ['ADMIN', 'MD_CEO'].includes(user?.role)) && (
+          <button onClick={() => pFlow.setShowPhoneSearch(true)} className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 sm:py-2.5 rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100">
             <Plus className="h-5 w-5" /> New Prospect
           </button>
         )}
@@ -807,13 +807,13 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
   
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900">My Orders</h1>
+          <h1 className="text-3xl sm:text-2xl font-black text-slate-900 tracking-tight">My Orders</h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Track order status and payments</p>
         </div>
-        {!isTeamMode && (
-          <button onClick={() => oFlow.setShowOrderSearch(true)} className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100">
+        {(!isTeamMode || ['ADMIN', 'MD_CEO'].includes(user?.role)) && (
+          <button onClick={() => oFlow.setShowOrderSearch(true)} className="w-full sm:w-auto bg-emerald-600 text-white px-6 py-3 sm:py-2.5 rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100">
             <Plus className="h-5 w-5" /> New Order
           </button>
         )}
@@ -983,7 +983,8 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
         />
       ) : (
         <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="border-b bg-slate-50">
                 <tr>
@@ -1096,6 +1097,123 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile/Tablet Card View */}
+          <div className="block lg:hidden bg-slate-50/50 border-t border-slate-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+              {appointments.length === 0 ? (
+                <div className="col-span-full py-10 text-center text-muted-foreground text-sm">
+                  No active appointment follow-ups.
+                </div>
+              ) : appointments.map((apt, idx) => {
+                let dotColor = 'bg-blue-500';
+                if (apt.status === 'SALE_CONFIRMED') dotColor = 'bg-emerald-500';
+                else if (apt.status === 'LOST' || apt.status === 'CANCELLED') dotColor = 'bg-red-500';
+
+                return (
+                  <div key={apt._id || idx} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                    <div className="p-4 border-b border-slate-100 flex justify-between items-start gap-3">
+                      <div className="flex gap-3 min-w-0">
+                        <div className="relative h-10 w-10 shrink-0">
+                          <div className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-bold bg-slate-800 shadow-sm" style={{ background: '#1e3a8a' }}>
+                            {(apt.contactPerson || apt.prospect?.name || 'C').charAt(0)}
+                          </div>
+                          <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${dotColor}`} />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-slate-800 text-sm truncate" title={apt.businessName || apt.prospect?.company}>{apt.businessName || apt.prospect?.company || 'N/A'}</h3>
+                          <p className="text-xs text-slate-500 truncate" title={apt.contactPerson || apt.prospect?.name}>{apt.contactPerson || apt.prospect?.name || 'N/A'}</p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Phone className="h-3 w-3 text-slate-400" />
+                            <span className="text-[10px] font-mono text-slate-500">{apt.phone || apt.prospect?.phone || 'N/A'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <span className={`shrink-0 inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold border ${
+                        apt.status === 'SALE_CONFIRMED' ? 'bg-green-100 text-green-700' :
+                        apt.status === 'LOST' || apt.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                        apt.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                        apt.status === 'FOLLOWUP_REQUIRED' ? 'bg-amber-100 text-amber-700' :
+                        'bg-purple-50 text-purple-600'
+                      }`}>
+                        {apt.status === 'SALE_CONFIRMED' ? 'Sale Confirmed' :
+                         apt.status === 'IN_PROGRESS' ? 'In Progress' :
+                         apt.status === 'FOLLOWUP_REQUIRED' ? 'Follow-up Required' :
+                         apt.status === 'CLIENT_NOT_AVAILABLE' ? 'Client N/A' :
+                         apt.status === 'CANCELLED' ? 'Cancelled' :
+                         (apt.status || 'Pending').charAt(0) + (apt.status || 'Pending').slice(1).toLowerCase()}
+                      </span>
+                    </div>
+
+                    <div className="p-4 flex-1 space-y-3 bg-slate-50/50">
+                      <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
+                        <div className="col-span-2">
+                          <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Date & Time</p>
+                          <p className="font-medium text-slate-700">
+                            <span className="font-bold">{new Date(apt.date).toLocaleDateString()}</span> at {apt.time}
+                          </p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Venue & Type</p>
+                          <p className="font-medium text-slate-700 line-clamp-2" title={apt.venue}>{apt.venue}</p>
+                          <span className="inline-block px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded text-[10px] font-semibold mt-1">{apt.meetingType || 'Office Meeting'}</span>
+                        </div>
+                        <div>
+                          <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Assignee</p>
+                          <p className="font-medium text-slate-700 truncate">{apt.assignedTo?.name || <span className="text-amber-600">Pending</span>}</p>
+                        </div>
+                        <div>
+                          <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Next Follow-up</p>
+                          <p className={`font-semibold ${apt.nextFollowUpDate && new Date(apt.nextFollowUpDate) <= new Date() ? 'text-red-600' : 'text-slate-700'}`}>
+                            {apt.nextFollowUpDate ? new Date(apt.nextFollowUpDate).toLocaleDateString() : '-'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {(apt.executiveRemark || apt.remark || apt.assigneeRemark) && (
+                        <div className="mt-2 pt-2 border-t border-slate-100 space-y-2">
+                          {(apt.executiveRemark || apt.remark) && (
+                            <div>
+                              <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Executive Remark</p>
+                              <p className="text-xs text-slate-600 italic line-clamp-1" title={apt.executiveRemark || apt.remark}>{apt.executiveRemark || apt.remark}</p>
+                            </div>
+                          )}
+                          {apt.assigneeRemark && (
+                            <div>
+                              <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Assignee Remark</p>
+                              <p className="text-xs text-slate-600 italic line-clamp-1" title={apt.assigneeRemark}>{apt.assigneeRemark}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-3 border-t border-slate-100 bg-white flex justify-between items-center">
+                      <div className="flex gap-2">
+                        <button onClick={() => window.location.href = `tel:${apt.phone || apt.prospect?.phone}`} className="h-8 w-8 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors">
+                          <Phone className="h-4 w-4 text-blue-700" />
+                        </button>
+                        <button onClick={() => window.open(`https://wa.me/${(apt.phone || apt.prospect?.phone || '').replace(/\D/g, '')}`, '_blank')} className="h-8 w-8 rounded-full bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                          <MessageCircle className="h-4 w-4 text-emerald-600" />
+                        </button>
+                      </div>
+                      
+                      <div className="flex gap-1.5">
+                        {apt.assignedTo?._id === user._id && (
+                          <button 
+                            onClick={() => setShowRemark(apt)} 
+                            className="h-8 px-3 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition-colors shadow-sm"
+                          >
+                            Update Remark
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
       <ModalsRenderer prospectFlow={pFlow} orderFlow={oFlow} user={user} />
@@ -1110,7 +1228,7 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
   );
 };
 
-export const SalesAppointments = ({ isTeamMode = false, globalFilters = {} }) => {
+export const SalesAppointments = ({ isTeamMode = false, globalFilters = {}, isAssignedView = false }) => {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1122,15 +1240,21 @@ export const SalesAppointments = ({ isTeamMode = false, globalFilters = {} }) =>
     setLoading(true);
     try {
       let params = {};
-      if (!isTeamMode && ['SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role)) {
-        params.salesExec = user._id;
-        params.assignedTo = user._id;
-      }
+      
       if (isTeamMode) {
         if (globalFilters.employee) params.salesExec = globalFilters.employee;
         if (globalFilters.search) params.search = globalFilters.search;
+      } else {
+        if (isAssignedView) {
+          // Strictly assigned to the logged-in user
+          params.assignedTo = user._id;
+        } else {
+          // Strictly created by the logged-in user
+          params.createdBy = user._id;
+        }
       }
-      const res = await appointmentApi.list(params, user.token); 
+
+      const res = await appointmentApi.list(params, user.token);  
       if (res.success) setAppointments(res.data || []); 
     } finally {
       setLoading(false);
@@ -1182,6 +1306,12 @@ export const SalesAppointments = ({ isTeamMode = false, globalFilters = {} }) =>
               )}
             </div>
             <div className="pt-4 border-t flex flex-col gap-3">
+               {(isAssignedView || isTeamMode) && (
+                 <div className="flex items-center justify-between">
+                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Created By</span>
+                   <span className="text-xs font-bold text-slate-600">{apt.createdBy?.name || 'Unknown'}</span>
+                 </div>
+               )}
                <div className="flex items-center justify-between">
                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assignee</span>
                  <span className="text-xs font-bold text-blue-600">{apt.assignedTo?.name || 'Pending Allocation'}</span>
@@ -1208,8 +1338,15 @@ export const SalesAppointments = ({ isTeamMode = false, globalFilters = {} }) =>
                )}
 
                <div className="flex gap-2">
-                 {['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user.role) && !apt.assignedTo && (
-                   <button onClick={() => setShowAssign(apt)} className="flex-1 bg-slate-900 text-white py-2 rounded-xl text-xs font-bold hover:bg-blue-600 transition-colors">Assign</button>
+                 {['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user.role) && (
+                   <>
+                     {!apt.assignedTo && (
+                       <button onClick={() => setShowAssign(apt)} className="flex-1 bg-slate-900 text-white py-2 rounded-xl text-xs font-bold hover:bg-blue-600 transition-colors">Assign</button>
+                     )}
+                     {apt.assignedTo && apt.status === 'FOLLOWUP_REQUIRED' && (
+                       <button onClick={() => setShowAssign(apt)} className="flex-1 bg-amber-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-700 transition-colors">Reassign</button>
+                     )}
+                   </>
                  )}
                  {apt.assignedTo?._id === user._id && (
                    <button onClick={() => setShowRemark(apt)} className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors">Update Remark</button>

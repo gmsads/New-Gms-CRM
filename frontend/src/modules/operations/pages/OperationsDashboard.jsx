@@ -246,11 +246,11 @@ const OperationsDashboard = () => {
     <div className="space-y-8 animate-in fade-in duration-700 relative">
       <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">
-            Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{user?.name?.split(' ')[0] || 'Manager'}!</span>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+            Field Operations
           </h1>
-          <p className="text-lg text-slate-500 font-medium mt-2 italic">
-            "Seamless operations are the backbone of success. Keep the gears turning."
+          <p className="text-sm sm:text-lg text-slate-500 font-medium mt-1 sm:mt-2">
+            Manage and track your field visits and operational activities.
           </p>
         </div>
         <div className="flex gap-3">
@@ -484,23 +484,23 @@ const OperationsDashboard = () => {
       {newVisitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6" style={{ background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(8px)" }}>
           <div className="w-full max-w-3xl rounded-[2rem] border border-white/20 bg-white shadow-2xl overflow-hidden flex flex-col max-h-[95vh] animate-in slide-in-from-bottom-4 duration-300">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 shrink-0">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-100 bg-slate-50 shrink-0">
               <div>
-                <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
-                  <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ background: "linear-gradient(135deg, #003366 0%, #004080 100%)" }}>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-3 tracking-tight">
+                  <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm shrink-0" style={{ background: "linear-gradient(135deg, #003366 0%, #004080 100%)" }}>
                     <Plus className="h-5 w-5" />
                   </div>
                   Schedule New Visit
                 </h2>
-                <p className="text-sm font-medium text-slate-500 mt-1 pl-[52px]">Enter the details to schedule a new field visit.</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-500 mt-1 pl-0 sm:pl-[52px]">Enter the details to schedule a new field visit.</p>
               </div>
               <button onClick={() => setNewVisitModalOpen(false)} className="text-slate-400 hover:text-slate-800 transition-colors bg-white hover:bg-slate-100 rounded-full p-2.5 shadow-sm border border-slate-200">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleScheduleVisit} className="p-8 flex-1 overflow-y-auto custom-scrollbar bg-white">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            <form onSubmit={handleScheduleVisit} className="p-4 sm:p-8 flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-8 mb-6 sm:mb-8">
                 <div className="space-y-6">
                   <div>
                     <label className="text-xs font-black text-slate-700 uppercase tracking-widest mb-2 block">Client Name</label>
@@ -545,14 +545,14 @@ const OperationsDashboard = () => {
                   </div>
                   <div>
                     <label className="text-xs font-black text-slate-700 uppercase tracking-widest mb-2 block">Location</label>
-                    <div className="flex gap-3">
-                      <div className={`relative flex-1 rounded-xl border-2 flex items-center px-4 ${newVisitForm.location ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-                        <MapPin className={`absolute left-4 top-3.5 h-4 w-4 ${newVisitForm.location ? 'text-emerald-500' : 'text-slate-400'}`} />
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className={`relative flex-1 rounded-xl border-2 flex items-center px-4 min-h-[48px] ${newVisitForm.location ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+                        <MapPin className={`absolute left-4 top-4 h-4 w-4 ${newVisitForm.location ? 'text-emerald-500' : 'text-slate-400'}`} />
                         <span className={`text-sm font-bold pl-7 truncate ${newVisitForm.location ? 'text-emerald-700' : 'text-slate-500'}`}>
                           {newVisitForm.location || 'Click Get to fetch location'}
                         </span>
                       </div>
-                      <button type="button" onClick={handleGetLocation} className="h-12 px-5 rounded-xl border-2 border-[#003366]/20 bg-[#003366]/5 text-[#003366] font-bold text-sm hover:border-[#003366] hover:text-[#003366] transition-all flex items-center gap-2 shrink-0">
+                      <button type="button" onClick={handleGetLocation} className="h-12 w-full sm:w-auto px-5 rounded-xl border-2 border-[#003366]/20 bg-[#003366]/5 text-[#003366] font-bold text-sm hover:border-[#003366] hover:text-[#003366] transition-all flex justify-center items-center gap-2 shrink-0">
                         <MapPin className="h-4 w-4" /> Get
                       </button>
                     </div>
@@ -611,7 +611,7 @@ const OperationsDashboard = () => {
                     )}
 
                     <div>
-                      <label className="text-xs font-black text-slate-700 uppercase tracking-widest mb-2 block flex items-center gap-2"><FileText className="h-4 w-4 text-slate-400"/> Remark</label>
+                      <label className="text-xs font-black text-slate-700 uppercase tracking-widest mb-2 flex items-center gap-2"><FileText className="h-4 w-4 text-slate-400"/> Remark</label>
                       <textarea rows={newVisitForm.status === 'follow-up' ? 2 : 4} value={newVisitForm.remark} onChange={e => setNewVisitForm({...newVisitForm, remark: e.target.value})} placeholder="Enter remarks..." className="w-full rounded-[1rem] border-2 border-slate-100 bg-white p-5 text-sm font-bold text-slate-800 outline-none focus:border-[#003366] transition-all hover:border-slate-200 resize-none custom-scrollbar" />
                     </div>
                   </div>
@@ -619,11 +619,11 @@ const OperationsDashboard = () => {
               </div>
             </form>
 
-            <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-4 shrink-0 justify-end">
-              <button type="button" onClick={() => setNewVisitModalOpen(false)} className="h-12 px-8 rounded-xl border-2 border-slate-200 bg-white text-slate-600 font-bold text-sm hover:bg-slate-100 transition-colors">
+            <div className="p-4 sm:p-6 border-t border-slate-100 bg-slate-50 flex flex-col-reverse sm:flex-row gap-3 sm:gap-4 shrink-0 sm:justify-end">
+              <button type="button" onClick={() => setNewVisitModalOpen(false)} className="h-12 w-full sm:w-auto px-8 rounded-xl border-2 border-slate-200 bg-white text-slate-600 font-bold text-sm hover:bg-slate-100 transition-colors">
                 Cancel
               </button>
-              <button type="submit" onClick={handleScheduleVisit} className="h-12 px-10 rounded-xl text-white font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-md shadow-blue-900/20 flex items-center gap-2" style={{ background: "linear-gradient(135deg, #003366 0%, #004080 100%)" }}>
+              <button type="submit" onClick={handleScheduleVisit} className="h-12 w-full sm:w-auto px-10 rounded-xl text-white font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-md shadow-blue-900/20 flex justify-center items-center gap-2" style={{ background: "linear-gradient(135deg, #003366 0%, #004080 100%)" }}>
                 <CheckCircle2 className="h-5 w-5" /> Schedule Visit
               </button>
             </div>

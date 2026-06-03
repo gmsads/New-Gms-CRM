@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, ComposedChart, Line } from 'recharts';
 import { Calendar as CalendarIcon, Users } from 'lucide-react';
 
@@ -26,6 +26,14 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [viewMode, setViewMode] = useState('own'); // 'own' or 'team'
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize(); // Initial check
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   const isManager = ['SALES_MANAGER', 'SR_SALES_MANAGER', 'ADMIN', 'MD_CEO', 'BRANCH_HEAD'].includes(user.role);
 
@@ -34,11 +42,13 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
     // 1. Filter by Date
     let fOrders = rawOrders.filter(o => {
       const d = new Date(o.createdAt);
+      if (selectedMonth === -1) return d.getFullYear() === selectedYear;
       return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
     });
     
     let fProspects = rawProspects.filter(p => {
       const d = new Date(p.createdAt);
+      if (selectedMonth === -1) return d.getFullYear() === selectedYear;
       return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
     });
 
@@ -122,7 +132,7 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
     };
   }, [rawOrders, rawProspects, selectedMonth, selectedYear, viewMode, user._id]);
 
-  const monthName = months[selectedMonth];
+  const monthName = selectedMonth === -1 ? 'All Months' : months[selectedMonth];
   const formatMoney = (val) => `₹${(val || 0).toLocaleString('en-IN')}`;
 
   return (
@@ -137,6 +147,7 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
             value={selectedMonth} 
             onChange={(e) => setSelectedMonth(Number(e.target.value))}
           >
+            <option value={-1}>All Months</option>
             {months.map((m, i) => <option key={m} value={i}>{m}</option>)}
           </select>
           <select 
@@ -175,7 +186,7 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
           </h3>
           <div className="h-48 relative w-full min-w-0 min-h-0">
             {filteredData.totalOrderAmount > 0 ? (
-              <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={[
@@ -209,7 +220,7 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
           </h3>
           <div className="h-48 relative w-full min-w-0 min-h-0">
             {filteredData.totalOrdersCount > 0 ? (
-              <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={[
@@ -242,7 +253,7 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
           </h3>
           <div className="h-48 relative w-full min-w-0 min-h-0">
             {filteredData.totalProspects > 0 ? (
-              <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={[
@@ -271,45 +282,77 @@ export default function SalesAnalyticsWidgets({ rawOrders = [], rawProspects = [
       </div>
 
       {/* Client Overview Bar Chart */}
-      <div className="bg-white border border-slate-100 shadow-sm rounded-3xl p-6 hover:shadow-xl transition-all duration-300">
-        <h3 className="font-bold text-slate-800 text-lg mb-6 flex items-center gap-2">
+      <div className="bg-white border border-slate-100 shadow-sm rounded-3xl p-4 md:p-6 hover:shadow-xl transition-all duration-300">
+        <h3 className="font-bold text-slate-800 text-lg mb-6 flex items-center gap-2 px-2">
           📊 Client Overview - {monthName} {selectedYear}
         </h3>
         
-        <div className="h-80 mb-8 bg-white rounded-3xl p-6 shadow-sm border border-slate-100 relative overflow-hidden w-full min-w-0 min-h-0">
-          <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
-            <BarChart data={filteredData.categoryChartData} margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12, fontWeight: 700}} dy={10} />
-              <YAxis yAxisId="left" orientation="left" axisLine={false} tickLine={false} tick={{fill: '#3b82f6', fontSize: 11, fontWeight: 700}} tickFormatter={(val) => `₹${val/1000}k`} />
-              <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{fill: '#10b981', fontSize: 11, fontWeight: 700}} />
-              <RechartsTooltip 
-                cursor={{fill: '#f8fafc'}} 
-                contentStyle={{ borderRadius: '1rem', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', color: '#0f172a' }}
-                itemStyle={{ fontWeight: 'bold' }}
-                formatter={(value, name) => [name === 'amount' ? formatMoney(value) : value, name === 'amount' ? 'Total Amount' : 'Orders']}
-                labelStyle={{ color: '#64748b', fontWeight: 'bold', marginBottom: '8px' }}
-              />
-              <Legend verticalAlign="top" height={36} wrapperStyle={{fontSize: '12px', fontWeight: 'bold', color: '#475569'}} />
-              
-              <Bar yAxisId="left" dataKey="amount" name="Total Amount" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={30} />
-              <Bar yAxisId="right" dataKey="Orders" name="Orders" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="mb-8 bg-white rounded-2xl md:rounded-3xl p-2 md:p-6 shadow-sm border border-slate-100 overflow-hidden">
+          <div className="w-full h-80 relative">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={filteredData.categoryChartData} margin={{ top: 20, right: 20, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="category" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fill: '#64748b', fontSize: 10, fontWeight: 700}} 
+                  dy={10} 
+                  interval="preserveStartEnd" 
+                  height={40} 
+                  tickFormatter={(val) => {
+                    if (!isMobile) return val;
+                    const map = {
+                      'Retail': 'Rt',
+                      'Renewal': 'Re',
+                      'Corporate': 'C',
+                      'Corporate-Renewal': 'CR',
+                      'Agent': 'A',
+                      'Agent-Renewal': 'AR'
+                    };
+                    return map[val] || val;
+                  }}
+                />
+                <YAxis yAxisId="right" orientation="left" axisLine={false} tickLine={false} tick={{fill: '#10b981', fontSize: 11, fontWeight: 700}} />
+                <RechartsTooltip 
+                  cursor={{fill: '#f8fafc'}} 
+                  contentStyle={{ borderRadius: '1rem', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', color: '#0f172a' }}
+                  itemStyle={{ fontWeight: 'bold' }}
+                  formatter={(value) => [value, 'Orders']}
+                  labelStyle={{ color: '#64748b', fontWeight: 'bold', marginBottom: '8px' }}
+                />
+                <Legend verticalAlign="top" height={36} wrapperStyle={{fontSize: '12px', fontWeight: 'bold', color: '#475569'}} />
+                
+                <Bar yAxisId="right" dataKey="Orders" name="Orders" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="border-t border-slate-100 pt-6">
-          <div className="flex justify-between items-center mb-6 px-2">
-            <span className="font-black text-blue-600 text-lg">Total Clients: {filteredData.totalClients}</span>
-            <span className="font-black text-blue-600 text-lg">Total Amount: {formatMoney(filteredData.totalOrderAmount)}</span>
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6 bg-slate-50/80 md:bg-transparent p-4 md:p-2 rounded-2xl md:rounded-none border border-slate-100 md:border-none">
+            <div className="flex flex-col items-center md:items-start text-center md:text-left w-full md:w-auto">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Clients</span>
+              <span className="font-black text-blue-600 text-3xl md:text-xl leading-none">{filteredData.totalClients}</span>
+            </div>
+            <div className="w-12 md:w-px h-1 md:h-8 rounded-full md:rounded-none bg-slate-200" />
+            <div className="flex flex-col items-center md:items-end text-center md:text-right w-full md:w-auto">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Amount</span>
+              <span className="font-black text-emerald-600 text-3xl md:text-xl leading-none">{formatMoney(filteredData.totalOrderAmount)}</span>
+            </div>
           </div>
 
-          <div className="bg-slate-50 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-slate-50 rounded-2xl p-3 md:p-4 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             {filteredData.categoryChartData.map(cat => (
-              <div key={cat.category} className="flex items-center justify-between bg-white p-3 rounded-xl shadow-sm border border-slate-100">
-                <span className="font-bold text-slate-700 w-1/3">{cat.category}:</span>
-                <span className="font-bold text-blue-500 w-1/3 text-center">{cat.Orders} orders</span>
-                <span className="font-black text-emerald-600 w-1/3 text-right">{formatMoney(cat.amount)}</span>
+              <div key={cat.category} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-100 gap-3 hover:-translate-y-0.5 transition-transform text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                  <span className="font-bold text-slate-700 truncate">{cat.category}</span>
+                </div>
+                <div className="flex items-center justify-center sm:justify-end gap-4 w-full sm:w-auto bg-slate-50 sm:bg-transparent p-2 sm:p-0 rounded-lg">
+                  <span className="font-bold text-blue-600 text-sm whitespace-nowrap bg-blue-50/50 px-2 py-0.5 rounded-md">{cat.Orders} orders</span>
+                  <span className="font-black text-emerald-600 text-sm whitespace-nowrap">{formatMoney(cat.amount)}</span>
+                </div>
               </div>
             ))}
           </div>

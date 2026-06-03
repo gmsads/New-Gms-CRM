@@ -121,6 +121,7 @@ export const OrderList = ({
   onLineItemUpdated,
   compact,
   hideCompleted,
+  onBulkImport,
 }) => {
   const { user } = useAuth();
   const [updatingLineItem, setUpdatingLineItem] = useState(null);
@@ -266,11 +267,20 @@ export const OrderList = ({
 
           <div className="flex gap-3">
             <button
-              className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90"
+              className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm"
               style={{ background: "#4caf50" }}
             >
               <FileText className="h-4 w-4" /> Export to Excel
             </button>
+            {onBulkImport && (
+              <button
+                onClick={() => onBulkImport()}
+                className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm"
+                style={{ background: "#1976d2" }}
+              >
+                <FileText className="h-4 w-4" /> Import from Excel
+              </button>
+            )}
             <button
               className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90"
               style={{ background: "#00acc1" }}
@@ -436,6 +446,7 @@ export const OrderList = ({
                             if (res.success) {
                               alert('Order verified successfully!');
                               onLineItemUpdated?.();
+                              window.dispatchEvent(new Event('refreshSidebarStats'));
                             }
                           } catch (err) {
                             alert(err.message || 'Verification failed');

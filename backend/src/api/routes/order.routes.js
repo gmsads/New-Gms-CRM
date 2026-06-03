@@ -22,6 +22,7 @@ router.get('/:id',     can('orders:read'),   ctrl.getOne);
 
 const idempotency = require('../middlewares/idempotency');
 
+router.post('/bulk', can('orders:create'), ctrl.bulkImport);
 router.post('/', idempotency, can('orders:create'), ctrl.create);
 
 router.post('/:id/confirm',

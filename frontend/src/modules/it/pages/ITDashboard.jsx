@@ -27,8 +27,8 @@ const priorityStyle = { High: 'text-red-500', Medium: 'text-yellow-500', Low: 't
 const ITDashboard = () => (
   <div className="space-y-6">
     <div className="flex flex-col gap-1">
-      <h1 className="text-3xl font-black text-slate-900 tracking-tight">IT & Systems</h1>
-      <p className="text-sm font-semibold text-slate-500">Infrastructure pulse and support terminal.</p>
+      <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">IT & Systems</h1>
+      <p className="text-sm sm:text-base font-semibold text-slate-500 mt-1">Infrastructure pulse and support terminal.</p>
     </div>
 
     {/* KPI Row */}
@@ -75,12 +75,12 @@ const ITDashboard = () => (
 
     {/* Support Tickets */}
     <div className="rounded-[2rem] border border-slate-100 bg-white shadow-sm overflow-hidden">
-      <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+      <div className="p-4 sm:p-8 border-b border-slate-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-xl font-black text-slate-900">Support Ticket Terminal</h3>
-          <p className="text-sm font-semibold text-slate-500">Recent internal help requests.</p>
+          <h3 className="text-lg sm:text-xl font-black text-slate-900">Support Ticket Terminal</h3>
+          <p className="text-sm font-semibold text-slate-500 mt-1">Recent internal help requests.</p>
         </div>
-        <button className="h-10 px-6 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-lg shadow-slate-200 hover:opacity-90 transition-opacity">
+        <button className="w-full sm:w-auto h-10 px-6 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-lg shadow-slate-200 hover:opacity-90 transition-opacity">
           + New Ticket
         </button>
       </div>

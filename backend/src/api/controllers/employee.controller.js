@@ -70,6 +70,7 @@ exports.createEmployee = async (req, res) => {
     const {
       name, email, phone, role, department,
       dateOfJoining, experience, employmentType, hrNotes,
+      alternatePhone, parentGuardianName, parentGuardianContact, panNumber, aadhaarNumber,
     } = req.body;
 
     // Validation
@@ -90,6 +91,17 @@ exports.createEmployee = async (req, res) => {
       return res.status(409).json({ message: `An employee with this ${field} already exists.` });
     }
 
+    let documents = [];
+    let profileImage = undefined;
+    if (req.files) {
+      if (req.files.documents) {
+        documents = req.files.documents.map(f => `/uploads/employees/documents/${f.filename}`);
+      }
+      if (req.files.profileImage && req.files.profileImage.length > 0) {
+        profileImage = `/uploads/employees/profiles/${req.files.profileImage[0].filename}`;
+      }
+    }
+
     // Admin / HR / MD_CEO → create directly as ACTIVE (they have authority)
     const DEFAULT_PASSWORD = 'GMS@1234';
     const employee = await User.create({
@@ -97,6 +109,9 @@ exports.createEmployee = async (req, res) => {
       dateOfJoining: dateOfJoining || undefined,
       experience:    experience    || undefined,
       employmentType: employmentType || 'FULL_TIME',
+      alternatePhone, parentGuardianName, parentGuardianContact, panNumber, aadhaarNumber,
+      documents,
+      profileImage,
       status:         'ACTIVE',
       createdBy:      req.user._id,
       password:       DEFAULT_PASSWORD,
@@ -166,7 +181,10 @@ exports.updateEmployee = async (req, res) => {
       }
     }
 
-    const allowedUpdates = ['name', 'phone', 'department', 'experience', 'dateOfJoining', 'employmentType', 'profileImage'];
+    const allowedUpdates = [
+      'name', 'phone', 'department', 'experience', 'dateOfJoining', 'employmentType', 'profileImage',
+      'alternatePhone', 'parentGuardianName', 'parentGuardianContact', 'panNumber', 'aadhaarNumber'
+    ];
     const previousValue = {};
     const changedFields = [];
     allowedUpdates.forEach(field => {
@@ -176,6 +194,18 @@ exports.updateEmployee = async (req, res) => {
         changedFields.push(field);
       }
     });
+
+    if (req.files) {
+      if (req.files.documents && req.files.documents.length > 0) {
+        const newDocs = req.files.documents.map(f => `/uploads/employees/documents/${f.filename}`);
+        employee.documents = [...(employee.documents || []), ...newDocs];
+        changedFields.push('documents');
+      }
+      if (req.files.profileImage && req.files.profileImage.length > 0) {
+        employee.profileImage = `/uploads/employees/profiles/${req.files.profileImage[0].filename}`;
+        changedFields.push('profileImage');
+      }
+    }
 
     employee.lastModifiedBy = req.user._id;
     await employee.save();
@@ -196,7 +226,7 @@ exports.updateEmployee = async (req, res) => {
 // Admin/MD changes status (INACTIVE, SUSPENDED, REACTIVATION)
 exports.changeStatus = async (req, res) => {
   try {
-    const { status, reason } = req.body;
+    const { status, reason, inactiveReason, suspendFrom, suspendTo, resignationDate, inactiveRemark } = req.body;
     const employee = await User.findById(req.params.id);
     if (!employee) return res.status(404).json({ message: 'Employee not found' });
 
@@ -206,6 +236,22 @@ exports.changeStatus = async (req, res) => {
 
     const previousStatus = employee.status;
     employee.status = status;
+    
+    if (status === 'INACTIVE' || status === 'SUSPENDED') {
+      if (inactiveReason) employee.inactiveReason = inactiveReason;
+      if (suspendFrom) employee.suspendFrom = suspendFrom;
+      if (suspendTo) employee.suspendTo = suspendTo;
+      if (resignationDate) employee.resignationDate = resignationDate;
+      if (inactiveRemark) employee.inactiveRemark = inactiveRemark;
+    } else if (status === 'ACTIVE') {
+      // Clear inactivity tracking when reactivated
+      employee.inactiveReason = undefined;
+      employee.suspendFrom = undefined;
+      employee.suspendTo = undefined;
+      employee.resignationDate = undefined;
+      employee.inactiveRemark = undefined;
+    }
+
     employee.lastModifiedBy = req.user._id;
     await employee.save();
 
@@ -213,10 +259,18 @@ exports.changeStatus = async (req, res) => {
       INACTIVE: 'EMPLOYEE_DEACTIVATED', SUSPENDED: 'EMPLOYEE_SUSPENDED',
       ACTIVE: 'EMPLOYEE_REACTIVATED', PROBATION: 'STATUS_CHANGED',
     };
+    
+    // Construct notes for audit log
+    let auditNotes = reason || '';
+    if (status !== 'ACTIVE') {
+      if (inactiveReason) auditNotes += ` [Reason: ${inactiveReason}]`;
+      if (inactiveRemark) auditNotes += ` [Remark: ${inactiveRemark}]`;
+    }
+
     await createAuditLog({
       action: actionMap[status] || 'STATUS_CHANGED', performedBy: req.user,
       targetEmployee: employee, previousValue: { status: previousStatus },
-      newValue: { status }, req, notes: reason,
+      newValue: { status, inactiveReason, suspendFrom, suspendTo, resignationDate, inactiveRemark }, req, notes: auditNotes.trim() || 'N/A',
     });
 
     // Notify HR

@@ -50,8 +50,8 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true, select: false },
 
     // ── Role & Department ──────────────────────────────────
-    role: { type: String, enum: ROLES, default: 'SALES_EXEC' },
-    department: { type: String, enum: DEPARTMENTS },
+    role: { type: String, default: 'SALES_EXEC' },
+    department: { type: String },
 
     // ── Organization Hierarchy ─────────────────────────────
     reportingManager: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -76,8 +76,15 @@ const userSchema = new mongoose.Schema(
     experience: { type: String }, // e.g. "3 years 2 months"
     profileImage: { type: String }, // URL / file path
 
+    // ── Personal Details ───────────────────────────────────
+    alternatePhone: { type: String, trim: true },
+    parentGuardianName: { type: String, trim: true },
+    parentGuardianContact: { type: String, trim: true },
+
     // ── Identity Documents ─────────────────────────────────
     aadhaarNumber: { type: String, select: false }, // sensitive — excluded by default
+    panNumber: { type: String, select: false },
+    documents: [{ type: String }], // URLs or paths to uploaded files
 
     // ── Salary ─────────────────────────────────────────────
     // Salary changes require Admin approval (stored in hrPolicy)
@@ -87,7 +94,11 @@ const userSchema = new mongoose.Schema(
     probationEndDate: { type: Date },
     isPermanent: { type: Boolean, default: false },
 
-    // ── Exit Management ────────────────────────────────────
+    // ── Exit & Inactivity Management ───────────────────────
+    inactiveReason: { type: String, enum: ['RESIGNED', 'SUSPENDED', 'OTHER'] },
+    suspendFrom: { type: Date },
+    suspendTo: { type: Date },
+    inactiveRemark: { type: String },
     resignationDate: { type: Date },
     exitDate: { type: Date },
     exitReason: { type: String },

@@ -67,8 +67,8 @@ export const TeamDataView = ({ viewType = 'orders' }) => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 shadow-sm flex items-center gap-2 hover:bg-slate-50 transition-colors">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button className="w-full sm:w-auto px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 shadow-sm flex justify-center items-center gap-2 hover:bg-slate-50 transition-colors">
             <RefreshCw className="h-4 w-4" /> Sync
           </button>
         </div>
@@ -80,7 +80,7 @@ export const TeamDataView = ({ viewType = 'orders' }) => {
           <span className="text-sm font-bold">{error}</span>
         </div>
       ) : (
-        <div className="mt-8 [&_h1]:hidden [&_p]:hidden">
+        <div className="mt-8">
           {viewType === 'orders' && <SalesOrders isTeamMode={true} globalFilters={filters} />}
           {viewType === 'prospects' && <SalesProspects isTeamMode={true} globalFilters={filters} />}
           {viewType === 'followups' && <SalesFollowups isTeamMode={true} globalFilters={filters} />}

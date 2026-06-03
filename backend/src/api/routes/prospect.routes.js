@@ -8,6 +8,7 @@ router.use(protect);
 router.get('/', ctrl.list);
 router.get('/stats', ctrl.stats);
 router.get('/search', ctrl.searchByPhone);
+router.post('/bulk', ctrl.bulkImport);
 router.post('/', ctrl.create);
 router.patch('/:id', ctrl.update);
 router.patch('/:id/stage', ctrl.updateStage);

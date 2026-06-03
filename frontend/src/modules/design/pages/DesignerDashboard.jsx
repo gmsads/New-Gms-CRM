@@ -64,19 +64,21 @@ const DesignerDashboard = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+      <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">
-            Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">{user?.name?.split(' ')[0] || 'Designer'}!</span>
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+            Designer Overview
           </h1>
-          <p className="text-lg text-slate-500 font-medium mt-2 italic">
-            "Design is silent ambassador of your brand. Keep creating masterpieces."
+          <p className="text-sm sm:text-lg text-slate-500 font-medium mt-1 sm:mt-2">
+            Monitor your design queue and track progress across all projects.
           </p>
         </div>
-        <button onClick={fetchStats} className="shrink-0 h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-bold shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2">
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Sync
-        </button>
+        <div className="w-full md:w-auto">
+          <button onClick={fetchStats} className="w-full md:w-auto shrink-0 h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-bold shadow-sm hover:bg-slate-50 transition-all flex justify-center items-center gap-2">
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Sync
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">

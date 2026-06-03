@@ -15,9 +15,9 @@ const AccountsDashboard = () => {
         <StatCard title="Outstanding" value="₹0" icon={CreditCard} color="rose" />
       </div>
       
-      <div className="rounded-[2rem] border bg-white p-8 text-center shadow-sm">
-        <h3 className="text-xl font-bold">Financial Control Panel</h3>
-        <p className="text-muted-foreground mt-2">Manage all incoming payments and client invoicing here.</p>
+      <div className="rounded-[2rem] border bg-white p-6 sm:p-8 text-center shadow-sm">
+        <h3 className="text-lg sm:text-xl font-bold">Financial Control Panel</h3>
+        <p className="text-sm sm:text-base text-muted-foreground mt-1 sm:mt-2">Manage all incoming payments and client invoicing here.</p>
       </div>
     </div>
   );

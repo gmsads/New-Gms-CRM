@@ -14,12 +14,12 @@ const Layout = () => {
   }, []);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', background: 'hsl(var(--background))' }}>
+    <div className="flex h-screen w-full overflow-hidden bg-background">
       <Sidebar isOpen={sidebarOpen} setOpen={setSidebarOpen} />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <Navbar onMenuClick={() => setSidebarOpen(true)} />
-        <main style={{ flex: 1, overflowY: 'auto', padding: '24px 32px', background: 'hsl(var(--muted) / 0.2)' }}>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-muted/20">
           <Outlet />
         </main>
       </div>

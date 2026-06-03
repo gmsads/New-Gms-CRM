@@ -6,6 +6,7 @@ const AppointmentRemark = require('../../domains/sales/appointments/appointmentR
 const AppointmentTimeline = require('../../domains/sales/appointments/appointmentTimeline.model');
 const auditWorkflow = require('./auditWorkflow.service');
 const eventBus = require('./eventBus'); // Will create this next
+const { getAccessibleUserIds } = require('../../utils/team.helper');
 
 class AppointmentWorkflowService {
   async createAppointment(data, creatorId, reqContext = {}) {
@@ -100,16 +101,16 @@ class AppointmentWorkflowService {
   }
 
   async listAppointments(user, filter = {}) {
-    const userId = user._id;
     const query = { ...filter };
     
-    if (user.role === 'SALES_EXEC') {
-      query.$or = [{ createdBy: userId }, { assignedTo: userId }];
-    } else if (user.role === 'FIELD_EXEC' || user.role === 'AGENT') {
-      query.assignedTo = userId;
-    } else if (user.role === 'SALES_MANAGER') {
-      // Temporary: allow manager to see all appointments until team assignment is built
-      // query.$or = [{ createdBy: userId }, { managerId: userId }];
+    const accessibleIds = await getAccessibleUserIds(user);
+    if (accessibleIds) {
+      if (!filter.createdBy && !filter.assignedTo && !filter.salesExec) {
+        query.$or = [
+          { createdBy: { $in: accessibleIds } }, 
+          { assignedTo: { $in: accessibleIds } }
+        ];
+      }
     }
 
     return await appointmentRepo.findWithDetails(query);
@@ -258,8 +259,18 @@ class AppointmentWorkflowService {
       .sort({ createdAt: 1 });
   }
 
-  async getStats() {
-    const pendingCount = await appointmentRepo.countDocuments({ status: 'PENDING' });
+  async getStats(user) {
+    const query = { status: 'PENDING' };
+    if (user) {
+      const accessibleIds = await getAccessibleUserIds(user);
+      if (accessibleIds) {
+        query.$or = [
+          { createdBy: { $in: accessibleIds } },
+          { assignedTo: { $in: accessibleIds } }
+        ];
+      }
+    }
+    const pendingCount = await appointmentRepo.countDocuments(query);
     return { pendingCount };
   }
 }

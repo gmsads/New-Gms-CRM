@@ -28,6 +28,7 @@ exports.list = async (req, res) => {
     const appointments = await appointmentWorkflow.listAppointments(req.user, req.query);
     res.json({ success: true, data: appointments });
   } catch (err) {
+    require('fs').appendFileSync('error.log', new Date().toISOString() + ' - ' + err.stack + '\n');
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -39,6 +40,7 @@ exports.assign = async (req, res) => {
     const appointment = await appointmentWorkflow.assignAppointment(req.params.id, assignedTo, req.user._id, getReqContext(req));
     res.json({ success: true, data: appointment });
   } catch (err) {
+    require('fs').appendFileSync('error.log', new Date().toISOString() + ' - ASSIGN - ' + err.stack + '\n');
     res.status(err.message === 'Appointment not found' ? 404 : 500).json({ 
       success: false, 
       message: err.message 
@@ -83,12 +85,13 @@ exports.getTimeline = async (req, res) => {
   }
 };
 
-// ── GET /api/appointments/stats ──────────────────────────────────────────────
+// ── GET /api/appointments/stats ───────────────────────────────────────────────
 exports.getStats = async (req, res) => {
   try {
-    const stats = await appointmentWorkflow.getStats();
+    const stats = await appointmentWorkflow.getStats(req.user);
     res.json({ success: true, ...stats });
   } catch (err) {
+    require('fs').appendFileSync('error.log', new Date().toISOString() + ' - STATS - ' + err.stack + '\n');
     res.status(500).json({ success: false, message: err.message });
   }
 };

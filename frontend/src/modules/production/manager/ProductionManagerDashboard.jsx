@@ -176,8 +176,8 @@ const ProductionManagerDashboard = () => {
 
   const headerContent = {
     dashboard: { 
-      title: <>Welcome, <span className="text-blue-600">{user.name?.split(' ')[0]}!</span></>, 
-      desc: '"Seamless operations are the backbone of success. Keep the gears turning."' 
+      title: 'Production Overview', 
+      desc: 'Monitor your active production jobs and installation queue.' 
     },
     queue: { title: 'Production Queue', desc: 'View and manage orders waiting to begin production.' },
     printing: { title: 'Active (Printing)', desc: 'Monitor orders currently in the printing and fabrication phase.' },
@@ -189,18 +189,18 @@ const ProductionManagerDashboard = () => {
   const currentHeader = headerContent[activeTab] || headerContent.dashboard;
 
   return (
-    <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
       {/* Header Section */}
-      <div className="mb-10 flex justify-between items-start">
+      <div className="mb-8 sm:mb-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-[32px] font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-3xl sm:text-[32px] font-extrabold text-slate-900 tracking-tight">
             {currentHeader.title}
           </h1>
-          <p className="text-slate-500 italic mt-2 text-[15px]">
+          <p className="text-sm sm:text-[15px] text-slate-500 italic mt-1 sm:mt-2">
             {currentHeader.desc}
           </p>
         </div>
-        <button onClick={fetchJobs} className="p-2 border rounded-lg hover:bg-slate-50 transition-colors">
+        <button onClick={fetchJobs} className="w-full sm:w-auto p-2 border rounded-lg hover:bg-slate-50 transition-colors flex justify-center items-center">
           <RefreshCw className={`w-5 h-5 text-slate-600 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>

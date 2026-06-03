@@ -228,7 +228,8 @@ export const BrochureManager = ({ user }) => {
       </div>
 
       <div className="bg-white rounded-[2.5rem] border overflow-hidden shadow-sm">
-        <table className="w-full text-left">
+        <div className="overflow-x-auto w-full pb-4">
+<table className="w-full text-left">
           <thead className="bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-400">
             <tr>
               <th className="p-6">Catalog ID</th>
@@ -284,6 +285,7 @@ export const BrochureManager = ({ user }) => {
             ))}
           </tbody>
         </table>
+</div>
       </div>
       
       {showUpload && <BrochureUploadModal user={user} initialData={editingBrochure} onClose={() => { setShowUpload(false); setEditingBrochure(null); }} onSaved={fetch} />}

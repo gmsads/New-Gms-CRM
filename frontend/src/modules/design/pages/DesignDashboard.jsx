@@ -110,38 +110,38 @@ const DesignDashboard = () => {
               {/* Order Header (Always Visible) */}
               <div 
                 onClick={() => toggleExpand(order._id)}
-                className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 transition-colors"
+                className="p-4 sm:p-6 flex flex-wrap sm:flex-nowrap items-start sm:items-center justify-between cursor-pointer hover:bg-slate-50/50 transition-colors gap-4"
               >
-                <div className="flex items-center gap-6">
-                  <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100 shrink-0">
-                    <Palette className="h-5 w-5 text-indigo-500" />
+                <div className="flex items-start sm:items-center gap-3 sm:gap-6 w-full sm:w-auto">
+                  <div className="h-10 sm:h-12 w-10 sm:w-12 rounded-xl sm:rounded-2xl bg-indigo-50 flex items-center justify-center border border-indigo-100 shrink-0 mt-1 sm:mt-0">
+                    <Palette className="h-4 sm:h-5 w-4 sm:w-5 text-indigo-500" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-3 mb-1">
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
                       <span className="font-mono text-[10px] font-black text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-lg uppercase tracking-wider">{order.orderNumber}</span>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">
                         {order.lineItems?.length || 0} Services
                       </span>
                     </div>
-                    <h3 className="text-xl font-black text-slate-900 tracking-tight">{order.clientSnapshot?.name || 'Client'}</h3>
+                    <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight leading-tight">{order.clientSnapshot?.name || 'Client'}</h3>
                     <p className="text-xs font-semibold text-slate-500 mt-0.5">{order.clientSnapshot?.company}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6">
-                  <div className="hidden md:block text-right">
+                <div className="flex items-center gap-4 sm:gap-6 ml-auto sm:ml-0 mt-2 sm:mt-0">
+                  <div className="hidden sm:block text-right">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sales Exec</p>
                     <p className="text-sm font-bold text-slate-700">{order.salesExec?.name || '—'}</p>
                   </div>
-                  <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                    {expandedOrder === order._id ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
+                  <div className="h-8 sm:h-10 w-8 sm:w-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100 shrink-0">
+                    {expandedOrder === order._id ? <ChevronUp className="h-4 sm:h-5 w-4 sm:w-5 text-slate-400" /> : <ChevronDown className="h-4 sm:h-5 w-4 sm:w-5 text-slate-400" />}
                   </div>
                 </div>
               </div>
 
               {/* Order Details & Services (Expanded View) */}
               {expandedOrder === order._id && (
-                <div className="border-t border-slate-50 bg-slate-50/30 p-6 animate-in slide-in-from-top-2 duration-300">
+                <div className="border-t border-slate-50 bg-slate-50/30 p-4 sm:p-6 animate-in slide-in-from-top-2 duration-300">
                   <div className="mb-6">
                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Design Services ({order.lineItems?.length || 0})</h4>
                     <div className="space-y-3">

@@ -110,6 +110,9 @@ const hrRoutesList = [
   ['/api/hr-dashboard', './api/routes/hrDashboard.routes'],
   ['/api/hr-training', './api/routes/hrTraining.routes'],
   ['/api/hr-exit', './api/routes/hrExit.routes'],
+  ['/api/performance', './api/routes/performance.routes'],
+  ['/api/teams', './api/routes/team.routes'],
+  ['/api/settings', './api/routes/settings.routes'],
 ];
 for (const [path, mod] of hrRoutesList) {
   try { app.use(path, require(mod)); console.log(`[ROUTES] ✅ ${path}`); }

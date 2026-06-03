@@ -1,5 +1,5 @@
-import React from 'react';
-import { Bell, Search, Menu, LogOut, KeyRound } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bell, Search, Menu, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,80 +27,102 @@ const ROLE_COLORS = {
 const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const initials = user.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'U';
   const roleColor = ROLE_COLORS[user.role] || '#1d4ed8';
 
-  const handleLogout = () => { logout(); navigate('/login'); };
+  const handleLogout = () => { 
+    logout(); 
+    navigate('/login'); 
+  };
 
-  
   return (
-    <header style={{
-      display: 'flex', height: 64, flexShrink: 0,
-      alignItems: 'center', justifyContent: 'space-between',
-      borderBottom: '1px solid hsl(var(--border))',
-      background: 'hsl(var(--card) / 0.95)',
-      padding: '0 24px', backdropFilter: 'blur(8px)',
-      position: 'sticky', top: 0, zIndex: 10,
-    }}>
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card/95 px-4 md:px-6 backdrop-blur-sm sticky top-0 z-10">
       {/* Left */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={onMenuClick} className="lg:hidden"
-          style={{ padding: 6, borderRadius: 6, color: 'hsl(var(--muted-foreground))', cursor: 'pointer', background: 'transparent', border: 'none' }}>
-          <Menu style={{ width: 20, height: 20 }} />
+      <div className="flex items-center gap-3 flex-1 md:flex-none">
+        <button onClick={onMenuClick} className="md:hidden p-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted/50 transition-colors active:scale-95">
+          <Menu className="w-5 h-5" />
         </button>
-        {/* <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#1d4ed8,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, color: '#fff', fontSize: 14 }}>G</div>
-          <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: '-0.02em' }}>GMS</span>
-        </div> */}
-        {/* <div style={{ width: 1, height: 20, background: 'hsl(var(--border))' }} /> */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-          <Search style={{ position: 'absolute', left: 10, width: 14, height: 14, color: 'hsl(var(--muted-foreground))' }} />
+        <div className="relative hidden sm:flex flex-1 max-w-[200px] items-center">
+          <Search className="absolute left-3 w-3.5 h-3.5 text-muted-foreground" />
           <input type="search" placeholder="Search..."
-            style={{ height: 34, width: 200, paddingLeft: 30, paddingRight: 12, borderRadius: 8, border: '1px solid hsl(var(--border))', background: 'hsl(var(--muted)/0.5)', fontSize: 13, outline: 'none', color: 'hsl(var(--foreground))' }} />
+            className="h-[34px] w-full pl-8 pr-3 rounded-lg border border-border bg-muted/50 text-[13px] outline-none text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary/20" />
         </div>
       </div>
 
       {/* Right */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="flex items-center gap-3 md:gap-4 relative">
         {/* Bell */}
-        <button style={{ position: 'relative', background: 'transparent', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 6, borderRadius: 6 }}>
-          <Bell style={{ width: 18, height: 18 }} />
-          <span style={{ position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderRadius: '50%', background: '#ef4444', border: '1.5px solid white' }} />
+        <button className="relative text-muted-foreground p-1.5 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-full hover:bg-muted/50 transition-colors active:scale-95">
+          <Bell className="w-5 h-5" />
+          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 border-[1.5px] border-white" />
         </button>
 
-        <div style={{ width: 1, height: 20, background: 'hsl(var(--border))' }} />
+        <div className="w-[1px] h-5 bg-border hidden md:block" />
 
-        {/* User info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Desktop Profile Info (hidden on mobile) */}
+        <div className="hidden md:flex items-center gap-2">
           {/* Avatar */}
-          <div style={{
-            width: 34, height: 34, borderRadius: '50%',
-            background: roleColor,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontWeight: 700, fontSize: 12, flexShrink: 0,
-            border: `2px solid ${roleColor}40`,
-          }}>
+          <div className="w-[34px] h-[34px] rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0" style={{ background: roleColor, border: `2px solid ${roleColor}40` }}>
             {initials}
           </div>
           {/* Name + role */}
-          <div style={{ lineHeight: 1.3 }}>
-            <div style={{ fontSize: 13, fontWeight: 600 }}>{user.name}</div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: roleColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div className="leading-tight">
+            <div className="text-[13px] font-semibold">{user.name}</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.05em]" style={{ color: roleColor }}>
               {user.role?.replace(/_/g, ' ')} · {user.username}
             </div>
           </div>
         </div>
 
-        {/* Logout */}
+        {/* Mobile Profile Trigger (hidden on desktop) */}
+        <button 
+          className="md:hidden w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 active:scale-95 transition-transform" 
+          style={{ background: roleColor, border: `2px solid ${roleColor}40` }}
+          onClick={() => setShowProfileMenu(!showProfileMenu)}
+        >
+          {initials}
+        </button>
+
+        {/* Desktop Logout Button (hidden on mobile) */}
         <button
           onClick={handleLogout}
           title="Logout"
-          style={{ padding: '5px 10px', borderRadius: 8, border: '1px solid hsl(var(--border))', fontSize: 12, fontWeight: 500, cursor: 'pointer', background: 'transparent', color: 'hsl(var(--muted-foreground))', display: 'flex', alignItems: 'center', gap: 5 }}
+          className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:bg-muted/50 transition-colors bg-transparent cursor-pointer"
         >
-          <LogOut style={{ width: 13, height: 13 }} /> Logout
+          <LogOut className="w-[13px] h-[13px]" /> Logout
         </button>
+
+        {/* Mobile Dropdown Menu Overlay */}
+        {showProfileMenu && (
+          <>
+            {/* Invisible backdrop to close the menu when clicking outside */}
+            <div className="fixed inset-0 z-40 md:hidden" onClick={() => setShowProfileMenu(false)} />
+            
+            <div className="absolute top-full right-0 mt-2 w-56 bg-white rounded-xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] border border-slate-100 p-4 md:hidden flex flex-col gap-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base shrink-0 shadow-sm" style={{ background: roleColor }}>
+                  {initials}
+                </div>
+                <div className="flex flex-col overflow-hidden">
+                  <span className="text-sm font-bold text-slate-800 truncate">{user.name}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider truncate" style={{ color: roleColor }}>
+                    {user.role?.replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-xs text-slate-500 mt-0.5 font-medium truncate">{user.username}</span>
+                </div>
+              </div>
+              
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-slate-50 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg text-sm font-bold transition-colors active:scale-95"
+              >
+                <LogOut className="w-4 h-4" /> Sign Out
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </header>
   );

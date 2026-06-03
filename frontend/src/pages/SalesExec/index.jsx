@@ -354,6 +354,7 @@ const SalesExecDashboard = () => {
 
       setStats({
         target: { assigned: Number(oStats.monthlyTarget || 0), completed: Number(oStats.totalRevenue || 0) },
+        targetMonth: oStats.targetMonth,
         ordersCompleted: oStats.completed || 0,
         monthlyTotal: oStats.monthlyTotal || 0,
         monthlyCompleted: oStats.monthlyCompleted || 0,
@@ -400,7 +401,8 @@ const SalesExecDashboard = () => {
     </div>
   );
 
-  
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const showTargetCard = stats.targetMonth === currentMonth;
   
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700">
@@ -411,17 +413,19 @@ const SalesExecDashboard = () => {
         <div className="absolute -right-20 -top-20 h-96 w-96 rounded-full bg-blue-600/20 blur-[100px]" />
         <div className="absolute -bottom-20 -left-20 h-96 w-96 rounded-full bg-indigo-600/10 blur-[100px]" />
         
-        <div className="relative z-10 grid gap-8 lg:grid-cols-2 lg:items-center">
+        <div className={`relative z-10 grid gap-8 ${showTargetCard ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} lg:items-center`}>
           <div className="space-y-6">
             <div>
               <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-blue-400">Monthly Performance Pulse</h2>
               <h1 className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">
                 Keep Pushing, <span className="text-blue-400">{user?.name?.split(' ')[0] || 'Sales Exec'}!</span>
               </h1>
-              <p className="mt-4 text-lg text-slate-400 max-w-md">
-                You've achieved <span className="text-white font-bold">{progressPercent}%</span> of your revenue target. 
-                Focus on high-priority follow-ups to close the gap.
-              </p>
+              {showTargetCard && (
+                <p className="mt-4 text-lg text-slate-400 max-w-md">
+                  You've achieved <span className="text-white font-bold">{progressPercent}%</span> of your revenue target. 
+                  Focus on high-priority follow-ups to close the gap.
+                </p>
+              )}
             </div>
             
             <div className="flex flex-wrap gap-4">
@@ -442,6 +446,7 @@ const SalesExecDashboard = () => {
             </div>
           </div>
 
+          {showTargetCard && (
           <div className="rounded-3xl bg-white/5 p-8 backdrop-blur-xl border border-white/10">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -469,6 +474,7 @@ const SalesExecDashboard = () => {
               </p>
             </div>
           </div>
+          )}
         </div>
       </div>
 
@@ -1037,7 +1043,24 @@ export const SalesPayments = () => {
   React.useEffect(() => { fetchLeaves(); }, []);
 
   
-  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({ leaveType: 'SICK', fromDate: '', toDate: '', reason: '' });
+
+  const handleSubmitLeave = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      await leaveApi.create(form, user.token);
+      fetchLeaves();
+      setIsModalOpen(false);
+    } catch (err) {
+      alert(err.message || 'Failed to request leave');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1046,16 +1069,62 @@ export const SalesPayments = () => {
           <p className="text-muted-foreground">Track your requested sick, casual, annual, and unpaid leaves.</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="bg-purple-50 border border-purple-100 rounded-2xl px-5 py-3 flex flex-col items-end shadow-sm">
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <Plus className="h-4 w-4" /> Request Leave
+          </button>
+          <div className="bg-purple-50 border border-purple-100 rounded-2xl px-5 py-3 flex flex-col items-end shadow-sm hidden md:flex">
             <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Total Days Taken</span>
             <span className="text-xl font-black text-purple-600">{leaves.reduce((s,lv) => s + (lv.status.includes('APPROVED') ? lv.totalDays : 0), 0)} Day(s)</span>
           </div>
-          <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex flex-col items-end shadow-sm">
+          <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-3 flex flex-col items-end shadow-sm hidden md:flex">
             <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">Pending Review</span>
             <span className="text-xl font-black text-amber-600">{leaves.reduce((s,lv) => s + (lv.status === 'PENDING' ? 1 : 0), 0)} Request(s)</span>
           </div>
         </div>
       </div>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
+          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl p-6">
+            <div className="flex items-center justify-between border-b pb-4 mb-4 border-slate-100">
+              <h2 className="text-xl font-bold text-slate-800">Request Leave</h2>
+              <button onClick={() => setIsModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 font-bold">X</button>
+            </div>
+            <form onSubmit={handleSubmitLeave} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Leave Type</label>
+                <select required value={form.leaveType} onChange={e => setForm({...form, leaveType: e.target.value})} className="w-full h-11 px-3 rounded-xl border border-slate-200 text-sm focus:border-blue-500 outline-none bg-white">
+                  <option value="SICK">Sick Leave</option>
+                  <option value="CASUAL">Casual Leave</option>
+                  <option value="ANNUAL">Annual Leave</option>
+                  <option value="UNPAID">Unpaid Leave</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">From Date</label>
+                  <input type="date" required value={form.fromDate} onChange={e => setForm({...form, fromDate: e.target.value})} className="w-full h-11 px-3 rounded-xl border border-slate-200 text-sm focus:border-blue-500 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">To Date</label>
+                  <input type="date" required value={form.toDate} onChange={e => setForm({...form, toDate: e.target.value})} className="w-full h-11 px-3 rounded-xl border border-slate-200 text-sm focus:border-blue-500 outline-none" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Reason</label>
+                <textarea required value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} className="w-full p-3 rounded-xl border border-slate-200 text-sm focus:border-blue-500 outline-none min-h-[100px]" placeholder="Briefly describe why you need this leave..."></textarea>
+              </div>
+              <button type="submit" disabled={submitting} className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors disabled:opacity-50">
+                {submitting ? 'Submitting...' : 'Submit Request'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="p-20 text-center text-muted-foreground">Loading leaves history...</div>
@@ -1258,7 +1327,8 @@ export const SalesAppointments = () => {
   
   const fetchAppointments = async () => {
     try {
-      const res = await appointmentApi.list(user?.token);
+      // Strictly created by the user to represent "own appointments"
+      const res = await appointmentApi.list({ createdBy: user?._id }, user?.token);
       if (res.success) {
         setAppointments((res.data || []).filter(a => a.status !== 'SALE_CONFIRMED' && a.status !== 'LOST' && a.status !== 'CANCELLED'));
       }

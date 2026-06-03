@@ -21,7 +21,7 @@ const PRIORITY_BADGE = {
   Cold: 'bg-blue-100 text-blue-700 border border-blue-200',
 };
 
-export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsApp, onInteract, onCreateOrder, onEdit, onDelete, onBrochure, onQuotation, onAppointment, onUpdateStage, onAddRemark }) => {
+export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsApp, onInteract, onCreateOrder, onEdit, onDelete, onBrochure, onQuotation, onAppointment, onUpdateStage, onAddRemark, onBulkImport }) => {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('All');
@@ -76,21 +76,21 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
     <div className="space-y-4">
       {/* Filters and Controls */}
       <div className="rounded-xl border bg-white shadow-sm p-4">
-        <div className="flex gap-4 mb-4">
-          <div className="flex flex-col gap-1 w-48">
+        <div className="grid grid-cols-2 lg:flex lg:flex-row flex-wrap gap-4 mb-4">
+          <div className="flex flex-col gap-1 w-full lg:w-48">
             <label className="text-sm font-medium text-slate-700">Year:</label>
             <select className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
               <option>All Years</option>
               <option>2026</option>
             </select>
           </div>
-          <div className="flex flex-col gap-1 w-48">
+          <div className="flex flex-col gap-1 w-full lg:w-48">
             <label className="text-sm font-medium text-slate-700">Month:</label>
             <select value={monthFilter} onChange={e => setMonthFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
               {months.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
-          <div className="flex flex-col gap-1 w-64">
+          <div className="flex flex-col gap-1 col-span-2 sm:col-span-1 w-full lg:w-64">
             <label className="text-sm font-medium text-slate-700">Lead Source:</label>
             <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
               <option value="All">All Sources</option>
@@ -104,7 +104,7 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
               <option value="Other">Other</option>
             </select>
           </div>
-          <div className="flex flex-col gap-1 w-64">
+          <div className="flex flex-col gap-1 col-span-2 sm:col-span-1 w-full lg:w-64">
             <label className="text-sm font-medium text-slate-700">All Employees:</label>
             <select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
               <option value="All Employees">All Employees</option>
@@ -119,22 +119,26 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by name, business, phone..."
-            className="h-12 w-full rounded-full border border-slate-300 px-6 text-sm outline-none focus:border-[#003366]"
+            className="h-12 w-full rounded-full border border-slate-300 px-6 text-sm outline-none focus:border-[#003366] shadow-inner"
           />
         </div>
 
-        <div className="flex gap-3">
-          <button className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" style={{ background: '#4caf50' }}>
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+          <button className="flex justify-center items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm w-full sm:w-auto" style={{ background: '#4caf50' }}>
             <FileText className="h-4 w-4" /> Export to Excel
           </button>
-          <button className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" style={{ background: '#00acc1' }}>
+          <button onClick={() => onBulkImport && onBulkImport()} className="flex justify-center items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm w-full sm:w-auto" style={{ background: '#1976d2' }}>
+            <FileText className="h-4 w-4" /> Import from Excel
+          </button>
+          <button className="flex justify-center items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm w-full sm:w-auto" style={{ background: '#00acc1' }}>
             <Printer className="h-4 w-4" /> Print Report
           </button>
         </div>
       </div>
 
       <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b bg-slate-50">
               <tr>
@@ -151,7 +155,7 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
                   { name: 'Remark' }, 
                   { name: 'Actions' }
                 ].map(h => (
-                  <th key={h.name} className={`px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide whitespace-nowrap bg-slate-50 border-b border-slate-200 ${h.sticky !== undefined ? 'sticky z-20 shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)]' : ''}`} style={h.sticky !== undefined ? { left: h.sticky, minWidth: h.width, maxWidth: h.width } : {}}>
+                  <th key={h.name} className={`px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide whitespace-nowrap bg-slate-50 border-b border-slate-200 ${h.sticky !== undefined ? 'sm:sticky sm:z-20 sm:shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)]' : ''}`} style={h.sticky !== undefined ? { left: h.sticky, minWidth: h.width, maxWidth: h.width } : {}}>
                     {h.name}
                   </th>
                 ))}
@@ -176,7 +180,7 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
 
               return (
               <tr key={p._id || p.id || idx} className={`${rowColor} transition-colors group`}>
-                  <td className="px-4 py-3 whitespace-nowrap sticky left-0 z-10 bg-inherit shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)]" style={{ minWidth: 220, maxWidth: 220 }}>
+                  <td className="px-4 py-3 whitespace-nowrap sm:sticky sm:left-0 sm:z-10 bg-inherit sm:shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)]" style={{ minWidth: 220, maxWidth: 220 }}>
                     <div className="flex items-center gap-2.5">
                       <div className="relative h-8 w-8 shrink-0">
                         <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold bg-slate-800">
@@ -297,9 +301,159 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between p-4 border-t bg-slate-50 text-xs text-muted-foreground">
+
+        {/* Mobile/Tablet Card View */}
+        <div className="block lg:hidden bg-slate-50/50 border-t border-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+            {filteredAndSorted.length === 0 ? (
+              <div className="col-span-full py-10 text-center text-muted-foreground text-sm">
+                No prospects match your filters.
+              </div>
+            ) : filteredAndSorted.map((p, idx) => {
+              const dotColor = p.status === 'Canceled' ? 'bg-red-500' : p.status === 'Sale Confirmed' ? 'bg-emerald-500' : 'bg-blue-500';
+              
+              return (
+                <div key={p._id || p.id || idx} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                  <div className="p-4 border-b border-slate-100 flex justify-between items-start gap-3">
+                    <div className="flex gap-3 min-w-0">
+                      <div className="relative h-10 w-10 shrink-0">
+                        <div className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-bold bg-slate-800 shadow-sm">
+                          {p.name.charAt(0)}
+                        </div>
+                        <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${dotColor}`} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-slate-800 text-sm truncate" title={p.name}>{p.name}</h3>
+                        <p className="text-xs text-slate-500 truncate" title={p.company}>{p.company}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Phone className="h-3 w-3 text-slate-400" />
+                          <span className="text-[10px] font-mono text-slate-500">{p.phone}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setOpenStatusMenu(openStatusMenu === (p._id || p.id) ? null : (p._id || p.id))}
+                      className={`shrink-0 inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold border transition-colors ${p.status === 'Canceled' ? 'bg-red-50 text-red-700 border-red-200' : p.status === 'Sale Confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
+                    >
+                      {p.status || 'In-progress'}
+                      <ChevronDown className="h-3 w-3 ml-1 opacity-60" />
+                    </button>
+                    
+                    {openStatusMenu === (p._id || p.id) && (
+                      <div className="absolute mt-8 right-4 w-36 bg-white rounded-lg shadow-xl border border-slate-200 z-[99] overflow-hidden py-1">
+                        {['In-progress', 'Canceled', 'Sale Confirmed'].map(s => {
+                          let colorClass = 'text-slate-600 hover:bg-slate-50';
+                          let sDotColor = 'bg-slate-300';
+                          if (s === 'In-progress') { colorClass = 'text-blue-700 hover:bg-blue-50'; sDotColor = 'bg-blue-500'; }
+                          else if (s === 'Canceled') { colorClass = 'text-red-700 hover:bg-red-50'; sDotColor = 'bg-red-500'; }
+                          else if (s === 'Sale Confirmed') { colorClass = 'text-emerald-700 hover:bg-emerald-50'; sDotColor = 'bg-emerald-500'; }
+                          
+                          return (
+                            <div 
+                              key={s}
+                              onClick={() => {
+                                setOpenStatusMenu(null);
+                                onUpdateStage && onUpdateStage(p._id || p.id, s, 'status', p);
+                              }}
+                              className={`px-3 py-2 text-xs font-semibold cursor-pointer transition-colors flex items-center gap-2 ${colorClass}`}
+                            >
+                              <span className={`w-2 h-2 rounded-full shadow-sm ${sDotColor}`}></span>
+                              {s}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 flex-1 space-y-3 bg-slate-50/50">
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
+                      <div className="col-span-2">
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Requirement</p>
+                        <p className="font-medium text-slate-700 line-clamp-2" title={p.requirement?.notes || (typeof p.requirement === 'string' ? p.requirement : '')}>
+                          {p.requirement?.service ? p.requirement.service.split(', ').join(', ') : (p.requirement?.notes || (typeof p.requirement === 'string' ? p.requirement : '-'))}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Employee</p>
+                        <span className="font-semibold text-slate-800">{(typeof p.assignedTo === 'object' ? p.assignedTo?.name : p.assignedTo) || p.executiveName || 'Not Assigned'}</span>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Next Follow-up</p>
+                        <p className={`font-semibold ${p.nextFollowUpDate && new Date(p.nextFollowUpDate) <= new Date() ? 'text-red-600' : 'text-slate-700'}`}>
+                          {p.nextFollowUpDate ? new Date(p.nextFollowUpDate).toLocaleDateString() : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Budget</p>
+                        <p className="font-medium text-slate-700">{p.requirement?.budget || p.budget || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Source</p>
+                        <span className="inline-block rounded-full bg-slate-200 text-slate-700 text-[10px] px-2 py-0.5 font-medium">{p.source}</span>
+                      </div>
+                    </div>
+                    
+                    {(p.lastInteractionNote || p.cancelReason) && (
+                      <div className="mt-2 pt-2 border-t border-slate-100">
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Latest Remark</p>
+                        <p className="text-xs text-slate-600 italic line-clamp-1">{p.lastInteractionNote || p.cancelReason}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 border-t border-slate-100 bg-white flex flex-wrap gap-2 justify-between items-center">
+                    <div className="flex gap-2">
+                      <button onClick={() => window.location.href = `tel:${p.phone}`} className="h-8 w-8 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors">
+                        <Phone className="h-4 w-4 text-blue-700" />
+                      </button>
+                      <button onClick={() => window.open(`https://wa.me/${p.phone?.replace(/\D/g, '')}`, '_blank')} className="h-8 w-8 rounded-full bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                        <MessageCircle className="h-4 w-4 text-emerald-600" />
+                      </button>
+                    </div>
+                    
+                    <div className="flex gap-1.5">
+                      <button 
+                        onClick={() => navigate(`/brochures?phone=${p.phone}&name=${encodeURIComponent(p.name)}&prospectId=${p._id || p.id}`)} 
+                        className={`h-8 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-semibold transition-all ${p.whatsappActions?.some(a => a.action === 'Brochure') ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-700 shadow-sm'}`}
+                      >
+                        {p.whatsappActions?.some(a => a.action === 'Brochure') ? <CheckCircle className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                        Brochure
+                      </button>
+
+                      <button 
+                        onClick={() => onQuotation && onQuotation(p)} 
+                        className={`h-8 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-semibold transition-all ${p.stage === 'Quotation' || p.interactions?.some(i => i.type === 'Quotation' || i.notes?.toLowerCase().includes('quotation')) || p.whatsappActions?.some(a => a.action === 'Quotation') ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-700 shadow-sm'}`}
+                      >
+                        {p.stage === 'Quotation' || p.interactions?.some(i => i.type === 'Quotation' || i.notes?.toLowerCase().includes('quotation')) || p.whatsappActions?.some(a => a.action === 'Quotation') ? <CheckCircle className="h-3 w-3" /> : <IndianRupee className="h-3 w-3" />}
+                        Quote
+                      </button>
+                    </div>
+
+                    <div className="flex gap-1">
+                      <button onClick={() => onAppointment && onAppointment(p)} className="h-8 w-8 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center transition-colors shadow-sm">
+                        <Calendar className="h-3.5 w-3.5 text-purple-700" />
+                      </button>
+                      <button onClick={() => onCreateOrder && onCreateOrder(p)} className="h-8 w-8 rounded-full border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors shadow-sm">
+                        <Plus className="h-3.5 w-3.5 text-emerald-700" />
+                      </button>
+                      <button onClick={() => onEdit && onEdit(p)} className="h-8 w-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
+                        <Edit className="h-3.5 w-3.5 text-slate-500" />
+                      </button>
+                      <button onClick={() => onDelete && onDelete(p._id || p.id)} className="h-8 w-8 rounded-full hover:bg-red-50 flex items-center justify-center transition-colors">
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t bg-slate-50 text-xs text-muted-foreground">
           <span>Showing {filteredAndSorted.length} of {prospects.length} prospects</span>
-          <div className="flex gap-1"><button className="h-7 px-2 rounded border text-xs">← Prev</button><button className="h-7 px-2 rounded bg-blue-600 text-white text-xs">1</button><button className="h-7 px-2 rounded border text-xs">Next →</button></div>
+          <div className="flex gap-1"><button className="h-7 px-2 rounded border text-xs bg-white shadow-sm">← Prev</button><button className="h-7 px-2 rounded bg-blue-600 text-white text-xs shadow-sm">1</button><button className="h-7 px-2 rounded border text-xs bg-white shadow-sm">Next →</button></div>
         </div>
       </div>
     </div>

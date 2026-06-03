@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Activity, Users, Clock, BarChart2, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
+import { ShieldCheck, Activity, Users, Clock, BarChart2, CheckCircle, AlertTriangle, RefreshCw, Trash2, Plus, Settings } from 'lucide-react';
 import useApi from '../../../hooks/useApi';
 import { employeeApi } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
+import Modal from '../../../components/ui/Modal';
 
 // ── Components ────────────────────────────────────────────────────────────────
 const Badge = ({ value, label }) => {
@@ -51,6 +52,8 @@ const AuditTrail = () => {
           </tbody>
         </table>
       </div>
+
+      {settingsModal && <SettingsModal open={true} onClose={() => setSettingsModal(null)} type={settingsModal} />}
     </div>
   );
 };
@@ -114,9 +117,85 @@ const EmployeeList = () => {
   );
 };
 
+const SettingsModal = ({ open, onClose, type }) => {
+  const { data, loading, refetch, request } = useApi('/settings');
+  const [newVal, setNewVal] = useState('');
+  const [adding, setAdding] = useState(false);
+
+  const isRole = type === 'role';
+  const items = isRole ? data?.roles || [] : data?.departments || [];
+  const endpointBase = isRole ? '/settings/roles' : '/settings/departments';
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    if (!newVal.trim()) return;
+    setAdding(true);
+    try {
+      const payload = isRole ? { role: newVal } : { department: newVal };
+      await request('PUT', `${endpointBase}/add`, payload);
+      setNewVal('');
+      refetch();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleRemove = async (val) => {
+    if (!window.confirm(`Remove ${val}?`)) return;
+    try {
+      const payload = isRole ? { role: val } : { department: val };
+      await request('PUT', `${endpointBase}/remove`, payload);
+      refetch();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title={`Manage ${isRole ? 'Roles' : 'Departments'}`} size="md">
+      <div className="p-6 space-y-6">
+        <form onSubmit={handleAdd} className="flex gap-2">
+          <input 
+            type="text" 
+            placeholder={`New ${isRole ? 'Role (e.g. DATA_SCIENTIST)' : 'Department'}...`}
+            value={newVal}
+            onChange={(e) => setNewVal(e.target.value)}
+            className="flex-1 h-11 px-4 rounded-xl border border-slate-200 focus:border-indigo-500 outline-none uppercase text-sm font-semibold"
+          />
+          <button type="submit" disabled={adding} className="h-11 px-5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm font-bold flex items-center gap-2">
+            <Plus className="w-4 h-4" /> {adding ? 'Adding...' : 'Add'}
+          </button>
+        </form>
+
+        <div className="bg-slate-50 border border-slate-100 rounded-2xl overflow-hidden max-h-96 overflow-y-auto">
+          {loading ? (
+            <div className="p-8 flex justify-center"><RefreshCw className="w-6 h-6 animate-spin text-indigo-500" /></div>
+          ) : items.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-sm font-semibold">No entries found.</div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {items.map(item => (
+                <li key={item} className="flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors group">
+                  <span className="text-sm font-bold text-slate-700 tracking-wider uppercase">{item.replace(/_/g, ' ')}</span>
+                  <button onClick={() => handleRemove(item)} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 // ── Main Controller ─────────────────────────────────────────────────────────
 const AdminHRControl = () => {
   const [activeTab, setActiveTab] = useState('Employees');
+  const [settingsModal, setSettingsModal] = useState(null);
   const { data: empData } = useApi('/employees');
   const employees = empData?.employees || [];
 
@@ -127,8 +206,16 @@ const AdminHRControl = () => {
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Governance & HR Console</h1>
           <p className="text-sm font-semibold text-slate-500">Corporate oversight, audit trails, and performance quotas.</p>
         </div>
-        <div className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2 text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] shadow-sm">
-          <ShieldCheck className="h-4 w-4" /> Admin Authority Active
+        <div className="flex items-center gap-4">
+          <button onClick={() => setSettingsModal('role')} className="flex items-center gap-2 rounded-xl border border-indigo-100 bg-white px-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 transition-colors shadow-sm">
+            <Settings className="h-4 w-4" /> Manage Roles
+          </button>
+          <button onClick={() => setSettingsModal('department')} className="flex items-center gap-2 rounded-xl border border-indigo-100 bg-white px-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 transition-colors shadow-sm">
+            <Settings className="h-4 w-4" /> Manage Departments
+          </button>
+          <div className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2 text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] shadow-sm ml-2">
+            <ShieldCheck className="h-4 w-4" /> Admin Authority Active
+          </div>
         </div>
       </div>
 

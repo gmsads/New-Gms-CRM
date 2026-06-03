@@ -60,12 +60,11 @@ leaveSchema.index({ fromDate: 1, toDate: 1 });
 leaveSchema.index({ status: 1 });
 
 // Compute totalDays before save
-leaveSchema.pre('save', function (next) {
+leaveSchema.pre('save', function () {
   if (this.fromDate && this.toDate) {
     const diff = (this.toDate - this.fromDate) / (1000 * 60 * 60 * 24);
     this.totalDays = Math.floor(diff) + 1;
   }
-  next();
 });
 
 leaveSchema.statics.LEAVE_LIMITS = LEAVE_LIMITS;

@@ -421,6 +421,7 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
                             if (res.success) {
                               alert('Order verified successfully!');
                               onLineItemUpdated?.();
+                              window.dispatchEvent(new Event('refreshSidebarStats'));
                             }
                           } catch (err) {
                             alert(err.message || 'Verification failed');
@@ -2726,6 +2727,7 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
                       const updated = await orderApi.get(order._id || order.id, user.token);
                       if (updated.success) setOrder(updated.data);
                       onVerificationSuccess?.();
+                      window.dispatchEvent(new Event('refreshSidebarStats'));
                     }
                   } catch (err) {
                     alert(err.message || 'Verification failed');

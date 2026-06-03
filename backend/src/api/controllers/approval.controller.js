@@ -58,11 +58,9 @@ exports.getStats = async (req, res) => {
       Leave.countDocuments({ ...leaveFilter, status: { $in: ['HR_REJECTED', 'ADMIN_REJECTED'] } })
     ]);
 
-    // For executives, both Pending and Rejected are "Action Required" items
-    const isExec = req.user.role === 'SALES_EXEC' || req.user.role === 'FIELD_EXEC';
-    const totalCount = isExec 
-      ? (orderPending + leavePending + orderRejected + leaveRejected)
-      : (orderPending + leavePending);
+    // For executives, we will only count Pending items for the global badge to avoid confusion
+    // with rejected items unless they explicitly filter for them.
+    const totalCount = orderPending + leavePending;
 
     res.json({ 
       success: true, 

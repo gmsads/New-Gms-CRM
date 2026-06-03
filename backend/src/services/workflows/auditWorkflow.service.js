@@ -31,11 +31,20 @@ class AuditWorkflowService {
     const changes = {};
     const changedFields = [];
     
+    const prevObj = previousDoc && typeof previousDoc.toObject === 'function' ? previousDoc.toObject() : (previousDoc || {});
+    const newObj = newDoc && typeof newDoc.toObject === 'function' ? newDoc.toObject() : (newDoc || {});
+
     // Identify what changed (shallow compare)
-    for (const key in newDoc) {
-      if (key !== 'updatedAt' && key !== 'createdAt' && JSON.stringify(previousDoc[key]) !== JSON.stringify(newDoc[key])) {
-        changes[key] = { old: previousDoc[key], new: newDoc[key] };
-        changedFields.push(key);
+    for (const key in newObj) {
+      if (key !== 'updatedAt' && key !== 'createdAt' && key !== '__v' && key !== '_id') {
+        try {
+          if (JSON.stringify(prevObj[key]) !== JSON.stringify(newObj[key])) {
+            changes[key] = { old: prevObj[key], new: newObj[key] };
+            changedFields.push(key);
+          }
+        } catch (e) {
+          // Ignore if JSON.stringify fails for a specific field
+        }
       }
     }
 

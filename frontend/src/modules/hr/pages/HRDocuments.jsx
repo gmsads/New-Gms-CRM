@@ -128,7 +128,7 @@ const HRDocuments = () => {
     // Net Pay
     doc.setFontSize(12);
     doc.setTextColor(15, 23, 42);
-    doc.text(`Net Pay: $${totals.net.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 20);
+    doc.text(`Net Pay: ₹${totals.net.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 20);
     
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
@@ -221,7 +221,7 @@ const HRDocuments = () => {
           ))}
           <div className="flex items-center justify-between pt-2 border-t">
             <span className="font-bold text-slate-800">Gross Earnings</span>
-            <span className="font-bold text-emerald-600">${payslipTotals.gross.toFixed(2)}</span>
+            <span className="font-bold text-emerald-600">₹{payslipTotals.gross.toFixed(2)}</span>
           </div>
         </div>
 
@@ -233,7 +233,7 @@ const HRDocuments = () => {
           </div>
           <div className="flex items-center justify-between pt-2 border-t mt-auto">
             <span className="font-bold text-slate-800">Total Deductions</span>
-            <span className="font-bold text-red-600">${payslipTotals.totalDeductions.toFixed(2)}</span>
+            <span className="font-bold text-red-600">₹{payslipTotals.totalDeductions.toFixed(2)}</span>
           </div>
         </div>
       </div>
@@ -241,7 +241,7 @@ const HRDocuments = () => {
       <div className="bg-slate-900 rounded-2xl p-6 text-white flex flex-col md:flex-row items-center justify-between shadow-lg">
         <div>
           <p className="text-slate-400 text-sm font-medium uppercase tracking-wider">Net Payable Amount</p>
-          <h2 className="text-4xl font-black">${payslipTotals.net.toFixed(2)}</h2>
+          <h2 className="text-4xl font-black">₹{payslipTotals.net.toFixed(2)}</h2>
         </div>
         <div className="flex gap-3 mt-4 md:mt-0">
           <button onClick={() => handleSimulateAction('Email Payslip')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl font-medium transition-colors flex items-center gap-2">

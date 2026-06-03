@@ -30,7 +30,11 @@ const OrderVerification = () => {
     try {
       // Create verify endpoint logic (we added this previously)
       const res = await orderApi.verify(id, user.token);
-      if (res.success) { setSelected(null); fetchData(); }
+      if (res.success) { 
+        setSelected(null); 
+        fetchData();
+        window.dispatchEvent(new Event('refreshSidebarStats'));
+      }
     } catch (err) {
       alert(err.message || 'Failed to verify');
     }

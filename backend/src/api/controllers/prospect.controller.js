@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Prospect = require('../../domains/sales/prospects/prospect.model');
 const Order = require('../../domains/orders/order.model');
 const prospectWorkflow = require('../../services/workflows/prospectWorkflow.service');
+const { getAccessibleUserIds } = require('../../utils/team.helper');
 
 const getReqContext = (req) => ({
   ipAddress: req.ip,
@@ -17,8 +18,21 @@ exports.list = async (req, res) => {
     if (stage) filter.stage = stage;
     if (priority) filter.priority = priority;
     
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
-      filter.assignedTo = req.user._id;
+    const accessibleIds = await getAccessibleUserIds(req.user);
+    if (accessibleIds) {
+      // If the user requested a specific assignedTo, make sure they are allowed to see it
+      if (assignedTo) {
+        const reqIds = typeof assignedTo === 'string' ? assignedTo.split(',').map(id => id.trim()) : (Array.isArray(assignedTo) ? assignedTo : [assignedTo]);
+        // Intersect requested IDs with accessible IDs
+        const allowedIds = reqIds.filter(id => accessibleIds.includes(id.toString()));
+        if (allowedIds.length === 0) {
+          return res.json({ success: true, data: [] }); // They requested someone they can't see
+        }
+        filter.assignedTo = { $in: allowedIds };
+      } else {
+        // By default, show all they have access to
+        filter.assignedTo = { $in: accessibleIds };
+      }
     } else if (assignedTo) {
       if (typeof assignedTo === 'string' && assignedTo.includes(',')) {
         filter.assignedTo = { $in: assignedTo.split(',').map(id => id.trim()) };
@@ -115,6 +129,40 @@ exports.create = async (req, res) => {
   }
 };
 
+// POST /api/prospects/bulk
+exports.bulkImport = async (req, res) => {
+  try {
+    const records = req.body; // Expecting an array
+    if (!Array.isArray(records)) {
+      return res.status(400).json({ success: false, message: 'Expected an array of prospects' });
+    }
+
+    let successCount = 0;
+    let failedCount = 0;
+    const errors = [];
+
+    // Process one by one to use the workflow & handle individual failures
+    for (const record of records) {
+      try {
+        const data = { ...record };
+        if (!data.assignedTo) {
+          data.assignedTo = req.user._id;
+        }
+        await prospectWorkflow.createProspect(data, req.user._id, getReqContext(req));
+        successCount++;
+      } catch (err) {
+        failedCount++;
+        errors.push({ name: record.name, phone: record.phone, error: err.message });
+      }
+    }
+
+    res.status(201).json({ success: true, successCount, failedCount, errors });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
 // PATCH /api/prospects/:id
 exports.update = async (req, res) => {
   try {
@@ -159,8 +207,10 @@ exports.remove = async (req, res) => {
 exports.stats = async (req, res) => {
   try {
     const filter = { 'softDelete.isDeleted': { $ne: true } };
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
-      filter.assignedTo = new mongoose.Types.ObjectId(req.user._id);
+    
+    const accessibleIds = await getAccessibleUserIds(req.user);
+    if (accessibleIds) {
+      filter.assignedTo = { $in: accessibleIds };
     }
 
     const [total, inProgress, won, lost, hot, followUps, appointmentStage] = await Promise.all([

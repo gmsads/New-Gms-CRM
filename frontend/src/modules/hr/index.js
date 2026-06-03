@@ -1,7 +1,7 @@
 export { default as HRDashboard } from './pages/HRDashboard';
 export { default as HREmployees } from './HREmployees';
 export { default as HRRecruitment } from './pages/HRRecruitment';
-export { default as HRPerformance } from './HRPerformance';
+export { default as HRPerformance } from './pages/HRPerformance';
 export { default as HRAttendance } from './HRAttendance';
 export { default as HRPayroll } from './HRPayroll';
 export { default as EmployeeProfile } from './pages/EmployeeProfile';

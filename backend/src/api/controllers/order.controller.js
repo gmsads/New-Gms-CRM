@@ -5,6 +5,7 @@ const User           = require('../../domains/users/user.model');
 const OrderApproval = require('../../domains/approvals/approval.model');
 const { createAuditLog } = require('../../guards/audit.helper');
 const orderWorkflow = require('../../services/workflows/orderWorkflow.service');
+const { getAccessibleUserIds } = require('../../utils/team.helper');
 
 const getReqContext = (req) => ({
   ipAddress: req.ip,
@@ -24,18 +25,31 @@ exports.list = async (req, res) => {
     if (verificationStatus) filter.verificationStatus = verificationStatus;
 
     // Role-based visibility
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
-      filter.salesExec = new mongoose.Types.ObjectId(req.user._id);
-      if (!status) {
-        filter.status = { $ne: 'Pending_Approval' };
-      }
-    } else if (req.user.role === 'DESIGNER') {
+    const accessibleIds = await getAccessibleUserIds(req.user);
+
+    if (req.user.role === 'DESIGNER') {
       filter.$or = [
         { designAssignedTo: new mongoose.Types.ObjectId(req.user._id) },
         // Also allow viewing if they want to pick up unassigned work, but usually assigned via Round Robin
       ];
       // Designers shouldn't need to see orders that aren't design-related at all.
       filter.designRequired = true;
+    } else if (accessibleIds) {
+      if (salesExec) {
+        const reqIds = typeof salesExec === 'string' ? salesExec.split(',').map(id => id.trim()) : (Array.isArray(salesExec) ? salesExec : [salesExec]);
+        const allowedIds = reqIds.filter(id => accessibleIds.includes(id.toString()));
+        if (allowedIds.length === 0) {
+          return res.json({ success: true, count: 0, data: [] });
+        }
+        filter.salesExec = { $in: allowedIds.map(id => new mongoose.Types.ObjectId(id)) };
+      } else {
+        filter.salesExec = { $in: accessibleIds.map(id => new mongoose.Types.ObjectId(id)) };
+      }
+      
+      // Executives hide pending approval if no status requested, but managers can see them
+      if (!status && (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC')) {
+        filter.status = { $ne: 'Pending_Approval' };
+      }
     } else if (salesExec) {
       filter.salesExec = new mongoose.Types.ObjectId(salesExec);
     }
@@ -88,8 +102,9 @@ exports.searchClient = async (req, res) => {
 
     const filter = { $or: conditions };
 
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
-      filter.salesExec = req.user._id;
+    const accessibleIds = await getAccessibleUserIds(req.user);
+    if (accessibleIds) {
+      filter.salesExec = { $in: accessibleIds.map(id => new mongoose.Types.ObjectId(id)) };
     }
 
     const order = await Order.findOne(filter)
@@ -135,6 +150,50 @@ exports.getOne = async (req, res) => {
     }
 
     res.json({ success: true, data: orderObj });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── POST /api/orders/bulk ───────────────────────────────────────────────────────
+exports.bulkImport = async (req, res) => {
+  try {
+    const records = req.body;
+    if (!Array.isArray(records)) {
+      return res.status(400).json({ success: false, message: 'Expected an array of orders' });
+    }
+
+    let successCount = 0;
+    let failedCount = 0;
+    const errors = [];
+
+    for (const record of records) {
+      try {
+        const body = { ...record };
+        if (!body.salesExec && (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC')) {
+          body.salesExec = req.user._id;
+        }
+
+        // Add a default line item if none exist, so totals calculate correctly
+        if (!body.lineItems || body.lineItems.length === 0) {
+          body.lineItems = [{
+            description: 'Historical Order Data',
+            quantity: 1,
+            unitPrice: body.grandTotal || body.totalPaid || 0,
+            gstRate: 0,
+            discount: 0
+          }];
+        }
+
+        await orderWorkflow.createOrder(body, req.user._id, getReqContext(req));
+        successCount++;
+      } catch (err) {
+        failedCount++;
+        errors.push({ orderNumber: record.orderNumber || 'Unknown', error: err.message });
+      }
+    }
+
+    res.status(201).json({ success: true, successCount, failedCount, errors });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -537,8 +596,9 @@ exports.approveAdvance = async (req, res) => {
 exports.stats = async (req, res) => {
   try {
     const filter = {};
-    if (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') {
-      filter.salesExec = new mongoose.Types.ObjectId(req.user._id);
+    const accessibleIds = await getAccessibleUserIds(req.user);
+    if (accessibleIds) {
+      filter.salesExec = { $in: accessibleIds.map(id => new mongoose.Types.ObjectId(id)) };
     }
 
     const startOfMonth = new Date();

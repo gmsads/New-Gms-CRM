@@ -2,11 +2,13 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/layout/Layout';
+import PerformanceDashboard from './modules/performance/pages/PerformanceDashboard';
 
 // Direct imports to bypass index cycle issues
 import UnifiedDashboard from './pages/UnifiedDashboard';
 import Login from './pages/Login';
 import HR from './pages/HR';
+import EmployeeLeaves from './pages/EmployeeLeaves';
 
 // Modular Page Direct Imports
 import Clients from './modules/sales/pages/ClientPortfolio';
@@ -26,6 +28,7 @@ import ProductManagement from './modules/admin/pages/ProductManagement';
 import CostManagement from './modules/admin/pages/CostManagement';
 import AdvancePaymentApprovals from './modules/admin/pages/AdvancePaymentApprovals';
 import OrderVerification from './modules/admin/pages/OrderVerification';
+import TeamAssignment from './modules/admin/pages/TeamAssignment';
 import PaymentVerification from './modules/admin/pages/PaymentVerification';
 import SalesApprovals from './modules/sales/pages/ApprovalsTerminal';
 import QuotationManagementList from './modules/admin/pages/QuotationManagementList';
@@ -72,8 +75,38 @@ const AdminTeamViewSwitch = ({ viewType, salesElement }) => {
 };
 
 const AppRoutes = () => {
-  
-  
+  React.useEffect(() => {
+    const handleGlobalModalClick = (e) => {
+      const el = e.target;
+      // Identify if the clicked element is a modal backdrop wrapper
+      if (
+        el.tagName === 'DIV' && 
+        typeof el.className === 'string' && 
+        el.className.includes('fixed') && 
+        el.className.includes('inset-0')
+      ) {
+        // Try to find the X (close) button or Cancel button inside this backdrop wrapper
+        const buttons = Array.from(el.querySelectorAll('button'));
+        let closeBtn = buttons.find(b => b.querySelector('svg.lucide-x') || b.querySelector('svg.lucide-close'));
+        
+        if (!closeBtn) {
+          closeBtn = buttons.find(b => {
+            const txt = b.textContent.toLowerCase().trim();
+            return txt === 'cancel' || txt === 'close';
+          });
+        }
+
+        // Programmatically click the close button to close the modal
+        if (closeBtn) {
+          closeBtn.click();
+        }
+      }
+    };
+
+    window.addEventListener('mousedown', handleGlobalModalClick);
+    return () => window.removeEventListener('mousedown', handleGlobalModalClick);
+  }, []);
+
   return (
     <Router>
       <Routes>
@@ -83,6 +116,7 @@ const AppRoutes = () => {
           <Route path="clients"     element={<AdminTeamViewSwitch viewType="prospects" salesElement={<Clients />} />} />
           <Route path="campaigns"   element={<Campaigns />} />
           <Route path="tasks"       element={<Tasks />} />
+          <Route path="leaves"      element={<EmployeeLeaves />} />
           <Route path="operations/authority" element={<AuthorityAccess />} />
           <Route path="hr/*"        element={<HR />} />
           <Route path="field"       element={<Field />} />
@@ -109,6 +143,7 @@ const AppRoutes = () => {
           <Route path="payments"    element={<SalesPayments />} />
           <Route path="followups"   element={<SalesFollowups />} />
           <Route path="appointments" element={<AdminTeamViewSwitch viewType="appointments" salesElement={<SalesAppointments />} />} />
+          <Route path="assigned-appointments" element={<SalesAppointments isAssignedView={true} />} />
           <Route path="brochures"   element={<SalesBrochures />} />
           <Route path="quotations"  element={<AdminTeamViewSwitch viewType="quotations" salesElement={<SalesQuotations />} />} />
 
@@ -143,8 +178,12 @@ const AppRoutes = () => {
             <Route path="lead-allocation" element={<TeamDataView viewType="allocation" />} />
           </Route>
           
+          {/* Performance Module */}
+          <Route path="performance" element={<PerformanceDashboard />} />
+
           {/* Admin Placeholder Routes */}
           <Route path="operations/targets" element={<ErrorBoundary><TargetAssignment /></ErrorBoundary>} />
+          <Route path="operations/teams" element={<ErrorBoundary><TeamAssignment /></ErrorBoundary>} />
           <Route path="finance/transactions" element={<ComingSoon title="Transactions" />} />
           <Route path="finance/refunds" element={<ComingSoon title="Refunds" />} />
           <Route path="hr/inactive" element={<ComingSoon title="Inactive Employees" />} />

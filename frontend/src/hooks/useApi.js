@@ -76,13 +76,18 @@ export const useApi = (path = null, options = {}) => {
 
   // Generic request method for mutations (POST/PUT/PATCH/DELETE)
   const request = useCallback(async (method, url, body) => {
+    const isFormData = body instanceof FormData;
+    const headers = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+    if (!isFormData) {
+      headers['Content-Type'] = 'application/json';
+    }
+
     const res = await fetch(`${BASE}${url}`, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: body ? JSON.stringify(body) : undefined,
+      headers,
+      body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
     });
     let json = {};
     const text = await res.text();

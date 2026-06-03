@@ -82,6 +82,7 @@ export const prospectApi = {
   },
   searchPhone: (params, token)   => api.get(`/prospects/search?${new URLSearchParams(params)}`, token),
   create:      (data, token)     => api.post('/prospects', data, token),
+  bulkImport:  (data, token)     => api.post('/prospects/bulk', data, token),
   update:      (id, data, token) => api.patch(`/prospects/${id}`, data, token),
   moveStage:   (id, data, token) => api.patch(`/prospects/${id}/stage`, data, token),
   addInteraction: (id, data, token) => api.post(`/prospects/${id}/interactions`, data, token),
@@ -107,6 +108,7 @@ export const orderApi = {
     return api.get(`/orders/stats?${new URLSearchParams(params)}`, token);
   },
   create:         (data, token)     => api.post('/orders', data, token),
+  bulkImport:     (data, token)     => api.post('/orders/bulk', data, token),
   confirm:        (id, token)       => api.post(`/orders/${id}/confirm`, {}, token),
   updateStatus:   (id, data, token) => api.patch(`/orders/${id}/status`, data, token),
   approveAdvance: (id, token)       => api.post(`/orders/${id}/approve-advance`, {}, token),
@@ -131,7 +133,8 @@ export const appointmentApi = {
   list:         (p1, p2) => {
     const token = typeof p1 === 'string' ? p1 : p2;
     const params = typeof p1 === 'string' ? {} : (p1 || {});
-    return api.get(`/appointments?${new URLSearchParams(params)}`, token);
+    const cleanParams = Object.fromEntries(Object.entries(params).filter(([_, v]) => v != null));
+    return api.get(`/appointments?${new URLSearchParams(cleanParams)}`, token);
   },
   stats:        (p1, p2) => {
     const token = typeof p1 === 'string' ? p1 : p2;
@@ -155,6 +158,7 @@ export const approvalApi = {
 // Leaves
 export const leaveApi = {
   list:          (params, token) => api.get(`/leaves?${new URLSearchParams(params)}`, token),
+  create:        (data, token)   => api.post('/leaves', data, token),
   hrReview:      (id, data, token) => api.put(`/leaves/${id}/hr-review`, data, token),
   adminOverride: (id, data, token) => api.put(`/leaves/${id}/admin-override`, data, token),
 };
@@ -202,6 +206,7 @@ export const productApi = {
 export const quotationApi = {
   list:           (params, token) => api.get(`/quotations?${new URLSearchParams(params)}`, token),
   create:         (data, token)   => api.post('/quotations', data, token),
+  bulkImport:     (data, token)   => api.post('/quotations/bulk', data, token),
   getTemplate:    (token)         => api.get('/quotations/template', token),
   updateTemplate: (data, token)   => api.post('/quotations/template', data, token),
   getById:        (id, token)     => api.get(`/quotations/${id}`, token),
@@ -237,6 +242,13 @@ export const vendorPaymentApi = {
   create:   (data, token)     => api.post('/vendors/payments', data, token),
   update:   (id, data, token) => api.patch(`/vendors/payments/${id}`, data, token),
   delete:   (id, token)       => api.delete(`/vendors/payments/${id}`, token),
+};
+
+export const teamApi = {
+  create: (data, token) => api.post('/teams', data, token),
+  list:   (token) => api.get('/teams', token),
+  update: (id, data, token) => api.patch(`/teams/${id}`, data, token),
+  delete: (id, token) => api.delete(`/teams/${id}`, token),
 };
 
 export default api;

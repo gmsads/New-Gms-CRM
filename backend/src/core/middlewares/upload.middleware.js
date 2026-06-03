@@ -8,6 +8,8 @@ const storage = multer.diskStorage({
     if (file.fieldname === 'brochure') folder = 'brochures';
     if (file.fieldname === 'thumbnail') folder = 'thumbnails';
     if (file.fieldname === 'designAsset') folder = 'design';
+    if (file.fieldname === 'documents') folder = 'employees/documents';
+    if (file.fieldname === 'profileImage') folder = 'employees/profiles';
     
     const uploadDir = path.join(__dirname, '../../../public/uploads', folder);
     if (!fs.existsSync(uploadDir)) {

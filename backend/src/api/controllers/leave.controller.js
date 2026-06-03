@@ -36,12 +36,14 @@ exports.submitLeave = async (req, res) => {
     await createAuditLog({ action: 'LEAVE_SUBMITTED', performedBy: req.user, targetEmployee: req.user._id, newValue: { leaveType, totalDays }, req });
 
     const hrs = await User.find({ role: 'HR', status: 'ACTIVE' }).select('_id');
-    await Notification.insertMany(hrs.map(hr => ({
-      recipient: hr._id, type: 'LEAVE_SUBMITTED',
-      title: `Leave Request — ${req.user.name}`,
-      message: `${req.user.name} requested ${totalDays} day(s) of ${leaveType} leave.`,
-      priority: 'MEDIUM', relatedEntity: { entityType: 'Leave', entityId: leave._id },
-    })));
+    if (hrs.length > 0) {
+      await Notification.insertMany(hrs.map(hr => ({
+        recipient: hr._id, type: 'LEAVE_SUBMITTED',
+        title: `Leave Request — ${req.user.name}`,
+        message: `${req.user.name} requested ${totalDays} day(s) of ${leaveType} leave.`,
+        priority: 'MEDIUM', relatedEntity: { entityType: 'Leave', entityId: leave._id },
+      })));
+    }
 
     res.status(201).json({ message: 'Leave submitted successfully.', leave, balance });
   } catch (err) {

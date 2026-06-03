@@ -93,7 +93,18 @@ const UnifiedDashboard = () => {
       const pendingPaymentsData = pendingPaymentsRes.data || [];
       
       const userTargets = targetsRes?.data || [];
-      const userTarget = userTargets.find(t => t.status === 'Pending' || t.status === 'In Progress') || (userTargets.length > 0 ? userTargets[0] : null);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const userTarget = userTargets.find(t => {
+        if (t.status !== 'Pending' && t.status !== 'In Progress') return false;
+        if (t.endDate) {
+          const endDate = new Date(t.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          if (endDate < today) return false; // Hide if expired
+        }
+        return true;
+      }) || null;
 
       setRawProspects(pData);
       setRawOrders(oData);
@@ -449,7 +460,7 @@ const UnifiedDashboard = () => {
       )}
 
       {/* Dynamic Widget Rendering based on Scope */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         
         {/* Sales & Manager Scope replacement with premium graphical analytics */}
         {['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'TELE_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'BRANCH_HEAD', 'ADMIN', 'MD_CEO'].includes(user.role) && (
@@ -493,7 +504,7 @@ const UnifiedDashboard = () => {
             <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-1">Real-time Enterprise Performance & Metrics</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
             
             {/* Card 1: Last 3 Months (col-span-2) */}
             <div className="bg-white border border-slate-100 shadow-xl rounded-[2.5rem] p-8 lg:col-span-2 flex flex-col justify-between hover:shadow-2xl transition-all duration-300">
@@ -501,7 +512,7 @@ const UnifiedDashboard = () => {
                 <h3 className="text-xl font-black text-slate-900 tracking-tight mb-1">Last 3 Months Performance</h3>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">Compare Sales Orders and Revenue</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-center">
                 <div className="md:col-span-2 h-[240px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={last3MonthsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -646,7 +657,7 @@ const UnifiedDashboard = () => {
                 <h3 className="text-xl font-black text-slate-900 tracking-tight mb-1">Most Ordered Products</h3>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">Top Product Lines by Quantity Sold</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-center">
                 <div className="md:col-span-2 h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={productData} layout="vertical" margin={{ top: 0, right: 10, left: 10, bottom: 0 }}>

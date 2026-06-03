@@ -378,7 +378,8 @@ Sales Executive`;
               </div>
 
               <div className="flex-1">
-                <table className="w-full text-[10px]">
+                <div className="overflow-x-auto w-full pb-4">
+<table className="w-full text-[10px]">
                   <thead>
                     <tr className="border-b-2 border-slate-900">
                       <th className="py-3 text-left">DESCRIPTION</th>
@@ -396,6 +397,7 @@ Sales Executive`;
                     ))}
                   </tbody>
                 </table>
+</div>
               </div>
 
               <div className="mt-10 pt-6 border-t-2 border-slate-100 space-y-3">
@@ -595,7 +597,8 @@ Sales Executive`;
 
           {/* Table */}
           <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm mb-8">
-            <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto w-full pb-4">
+<table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider font-semibold">
                   <th className="py-3 px-4 w-12 border-r border-gray-200 text-center">No</th>
@@ -656,6 +659,7 @@ Sales Executive`;
                 ))}
               </tbody>
             </table>
+</div>
             
             <div className="p-4 bg-white border-b border-gray-200 flex gap-3">
               <div className="flex-1 relative">

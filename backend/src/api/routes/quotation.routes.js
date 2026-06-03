@@ -17,6 +17,7 @@ const idempotency = require('../middlewares/idempotency');
 
 // Quotation Routes
 router.get('/', quotationCtrl.list);
+router.post('/bulk', quotationCtrl.bulkImport);
 router.post('/', idempotency, quotationCtrl.create);
 router.put('/:id', quotationCtrl.update);
 router.patch('/:id', quotationCtrl.update);

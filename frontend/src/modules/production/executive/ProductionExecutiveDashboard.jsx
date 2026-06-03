@@ -7,14 +7,14 @@ const ProductionExecutiveDashboard = () => {
   const { user } = useAuth();
   
   return (
-    <div className="p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto animate-in fade-in duration-500">
       {/* Header Section */}
-      <div className="mb-10">
-        <h1 className="text-[32px] font-extrabold text-slate-900 tracking-tight">
-          Welcome, <span className="text-blue-600">{user.name?.split(' ')[0]}!</span>
+      <div className="mb-8 sm:mb-10">
+        <h1 className="text-3xl sm:text-[32px] font-extrabold text-slate-900 tracking-tight">
+          Production Dashboard
         </h1>
-        <p className="text-slate-500 italic mt-2 text-[15px]">
-          "Seamless operations are the backbone of success. Keep the gears turning."
+        <p className="text-sm sm:text-[15px] text-slate-500 font-medium mt-1 sm:mt-2">
+          Monitor your active production jobs and installation queue.
         </p>
       </div>
       

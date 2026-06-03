@@ -90,6 +90,49 @@ exports.list = async (req, res) => {
   }
 };
 
+exports.bulkImport = async (req, res) => {
+  try {
+    const records = req.body;
+    if (!Array.isArray(records)) {
+      return res.status(400).json({ success: false, message: 'Expected an array of quotations' });
+    }
+
+    let successCount = 0;
+    let failedCount = 0;
+    const errors = [];
+
+    for (const record of records) {
+      try {
+        const body = { ...record };
+        if (!body.executive) {
+          body.executive = req.user._id;
+        }
+
+        // Add dummy line item for total calculation if missing
+        if (!body.lineItems || body.lineItems.length === 0) {
+          body.lineItems = [{
+            description: 'Historical Quotation Data',
+            quantity: 1,
+            unitPrice: body.totalAmount || 0,
+            gstRate: 0,
+            discount: 0
+          }];
+        }
+
+        await quotationWorkflow.createQuotation(body, req.user._id, getReqContext(req));
+        successCount++;
+      } catch (err) {
+        failedCount++;
+        errors.push({ quotationId: record.quotationId || 'Unknown', error: err.message });
+      }
+    }
+
+    res.status(201).json({ success: true, successCount, failedCount, errors });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 exports.create = async (req, res) => {
   try {
     const quotation = await quotationWorkflow.createQuotation(req.body, req.user._id, getReqContext(req));

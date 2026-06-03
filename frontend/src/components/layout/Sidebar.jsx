@@ -17,6 +17,7 @@ const menuConfig = [
   { title: 'Field Operations', icon: Truck,           path: '/field',     roles: ['ADMIN','FIELD_EXEC','OPERATION_MANAGER'] },
   { title: 'Design Assets',    icon: Palette,         path: '/design',    roles: ['ADMIN','DESIGNER','OPERATION_EXEC'] },
   { title: 'Tasks',            icon: CheckSquare,     path: '/tasks',     roles: ['ALL'] },
+  { title: 'My Leaves',        icon: Calendar,        path: '/leaves',    roles: ['ALL'] },
   { 
     title: 'HR & Team',        
     icon: Briefcase,        
@@ -39,6 +40,7 @@ const menuConfig = [
   { title: 'Orders',           icon: ShoppingCart,    path: '/orders',    roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','ACCOUNTS'] },
   { title: 'Approvals',        icon: ShieldCheck,     path: '/approvals', roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','ACCOUNTS'] },
   { title: 'Appointments',     icon: Calendar,        path: '/appointments', roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','FIELD_EXEC'] },
+  { title: 'Assigned Appointments', icon: Calendar,   path: '/assigned-appointments', roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','FIELD_EXEC'] },
   { 
     title: 'Product Management',   
     icon: Package,         
@@ -78,7 +80,8 @@ const adminMenuConfig = [
       { title: 'Prospects', path: '/clients', icon: Users },
       { title: 'Orders', path: '/orders', icon: ShoppingCart },
       { title: 'Appointments', path: '/appointments', icon: Calendar },
-      { title: 'Quotations', path: '/quotations', icon: Quote }
+      { title: 'Assigned Appointments', path: '/assigned-appointments', icon: Calendar },
+      { title: 'Quotations', path: '/quotation-management/list', icon: Quote }
     ]
   },
   {
@@ -88,10 +91,11 @@ const adminMenuConfig = [
     subItems: [
       { title: 'Authority Access', path: '/operations/authority', icon: ShieldCheck },
       { title: 'Target Assignment', path: '/operations/targets', icon: Target },
+      { title: 'Team Assignment', path: '/operations/teams', icon: Users },
       { title: 'Order Verification', path: '/approvals/order-verification', icon: ShieldCheck },
       { title: 'Task Assignments', path: '/tasks', icon: CheckSquare },
       { title: 'Vendor Management', path: '/vendors', icon: Truck },
-      { title: 'Quotation Management', path: '/quotation-management/list', icon: FileText }
+      { title: 'Quotation Management', path: '/quotation-management/changes', icon: FileText }
     ]
   },
   {
@@ -242,6 +246,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
   const [appointmentFollowupCount, setAppointmentFollowupCount] = useState(0);
   const [approvalCount, setApprovalCount] = useState(0);
   const [paymentPendingCount, setPaymentPendingCount] = useState(0);
+  const [orderVerificationCount, setOrderVerificationCount] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -262,6 +267,13 @@ const Sidebar = ({ isOpen, setOpen }) => {
         }).catch(console.error);
       }
 
+      // ── Order Verifications
+      if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user.role)) {
+        orderApi.list({ verificationStatus: 'Pending' }, token).then(res => {
+          if (res.success) setOrderVerificationCount(res.data?.length || 0);
+        }).catch(console.error);
+      }
+
       // ── Appointments
       if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'FIELD_EXEC', 'SALES_EXEC', 'SR_SALES_EXEC', 'AGENT'].includes(user.role)) {
         if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user.role)) {
@@ -269,7 +281,8 @@ const Sidebar = ({ isOpen, setOpen }) => {
             if (res.success) setAppointmentCount(res.pendingCount);
           }).catch(console.error);
         } else {
-          appointmentApi.list(token).then(res => {
+          // Appointments menu is strictly for 'createdBy: me' across all roles
+          appointmentApi.list({ createdBy: user._id }, token).then(res => {
             if (res.success) setAppointmentCount(res.data.filter(a => !a.remark).length);
           }).catch(console.error);
         }
@@ -294,8 +307,16 @@ const Sidebar = ({ isOpen, setOpen }) => {
     };
 
     fetchStats();
+
+    // Listen for custom event to refresh stats after verification
+    const handleRefresh = () => fetchStats();
+    window.addEventListener('refreshSidebarStats', handleRefresh);
+    
     const interval = setInterval(fetchStats, 30000); // refresh every 30s
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('refreshSidebarStats', handleRefresh);
+    };
   }, [user]);
 
   
@@ -319,11 +340,12 @@ const Sidebar = ({ isOpen, setOpen }) => {
       ]
     },
     { title: 'Appointments',  icon: Calendar,        path: '/appointments',badge: appointmentCount > 0 ? appointmentCount.toString() : null },
+    ...(user.role === 'FIELD_EXEC' ? [{ title: 'Assigned Appointments', icon: Calendar, path: '/assigned-appointments', badge: null }] : []),
     { title: 'Orders',        icon: ShoppingCart,    path: '/orders',      badge: null },
     { title: 'Approvals',     icon: ShieldCheck,     path: '/approvals',   badge: approvalCount > 0 ? approvalCount.toString() : null },
     { title: 'Catalog',       icon: FileText,        path: '/brochures',   badge: null },
     { title: 'Quotations',    icon: Quote,           path: '/quotations',  badge: null },
-    { title: 'Leaves',        icon: Calendar,        path: '/payments',    badge: null },
+    { title: 'Leaves',        icon: Calendar,        path: '/leaves',    badge: null },
     { title: 'Performance',   icon: BarChart2,       path: '/performance', badge: null },
     { title: 'Settings',      icon: Settings,        path: '/settings',    badge: null },
   ];
@@ -333,6 +355,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     { title: 'Orders',        icon: ShoppingCart,    path: '/orders',     badge: null },
     { title: 'Payments',      icon: IndianRupee,     path: '/approvals',  badge: paymentPendingCount > 0 ? paymentPendingCount.toString() : null },
     { title: 'Tasks',         icon: CheckSquare,     path: '/tasks',      badge: null },
+    { title: 'Performance',   icon: BarChart2,       path: '/performance', badge: null },
     { title: 'Settings',      icon: Settings,        path: '/settings',   badge: null },
   ];
 
@@ -549,11 +572,12 @@ const Sidebar = ({ isOpen, setOpen }) => {
       ]
     },
     { title: 'Appointments',  icon: Calendar,        path: '/appointments',badge: appointmentCount > 0 ? appointmentCount.toString() : null },
+    { title: 'Assigned Appointments', icon: Calendar, path: '/assigned-appointments', badge: null },
     { title: 'Orders',        icon: ShoppingCart,    path: '/orders',      badge: null },
     { title: 'Approvals',     icon: ShieldCheck,     path: '/manager/my-approvals',   badge: approvalCount > 0 ? approvalCount.toString() : null },
     { title: 'Catalog',       icon: FileText,        path: '/brochures',   badge: null },
     { title: 'Quotations',    icon: Quote,           path: '/quotations',  badge: null },
-    { title: 'Leaves',        icon: Calendar,        path: '/payments',    badge: null },
+    { title: 'Leaves',        icon: Calendar,        path: '/leaves',    badge: null },
     { title: 'Performance',   icon: BarChart2,       path: '/performance', badge: null }
   ];
 
@@ -639,7 +663,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
           return {
             ...item,
             subItems: item.subItems.map(sub => {
-              if (sub.title === 'Order Verification') return { ...sub, badge: approvalCount > 0 ? approvalCount.toString() : null }; // Shared badge for now
+              if (sub.title === 'Order Verification') return { ...sub, badge: orderVerificationCount > 0 ? orderVerificationCount.toString() : null };
               return sub;
             })
           };
@@ -672,23 +696,37 @@ const Sidebar = ({ isOpen, setOpen }) => {
         });
 
   
+  // Add ESC key support for closing sidebar
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape' && isOpen) setOpen(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, setOpen]);
+
+  // Body scroll lock
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
   return (
     <>
       {isOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden" onClick={() => setOpen(false)} />
       )}
 
       <aside
-        className={`w-64 min-w-[256px] flex flex-col h-full border-r bg-card relative z-50 transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'max-lg:-translate-x-full max-lg:fixed max-lg:inset-y-0 max-lg:left-0'}`}
+        className={`w-64 min-w-[256px] flex flex-col h-full border-r bg-card z-50 transition-transform duration-300 fixed md:relative inset-y-0 left-0 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        <div className="flex items-center justify-between h-16 px-5 border-b shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shadow-sm">
-              G
-            </div>
-            <span className="font-bold text-[17px] tracking-tight">GMS Ad Agency</span>
-          </div>
-          <button onClick={() => setOpen(false)} className="lg:hidden text-muted-foreground hover:text-foreground">
+        <div className="flex items-center justify-center w-full h-16 border-b shrink-0 relative">
+          <img src="/logo.png" alt="GMS Logo" className="h-18 pt-2.5 w-auto object-contain" />
+          <button onClick={() => setOpen(false)} className="lg:hidden absolute right-4 text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
