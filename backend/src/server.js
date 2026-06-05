@@ -1,4 +1,4 @@
-require('dotenv').config({ path: `.env.${process.env.NODE_ENV || 'development'}` });
+require('dotenv').config();
 const mongoose = require('mongoose');
 mongoose.plugin(require('./core/plugins/softDelete.plugin'));
 const app       = require('./app');
