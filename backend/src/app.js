@@ -4,11 +4,13 @@ const cors    = require('cors'); // refreshed
 const app = express();
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
+const envOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
+  ...envOrigins
 ];
 
 app.use(cors({
