@@ -10,6 +10,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
+  'https://crm.globalmarketingsolutions.in',
   ...envOrigins
 ];
 
@@ -68,12 +69,14 @@ app.get('/health', healthController.checkHealth);
 
 // ── Auth (no extra deps) ─────────────────────────────────────────────────────
 try {
-  app.use('/api/auth', require('./api/routes/auth.routes'));
+  const authRoutes = require('./api/routes/auth.routes');
+  app.use('/api/auth', authRoutes);
   console.log('[ROUTES] ✅ auth');
 } catch (e) { console.error('[ROUTES] ❌ auth:', e.message); }
 
 try {
-  app.use('/api/permissions', require('./api/routes/permission.routes'));
+  const permRoutes = require('./api/routes/permission.routes');
+  app.use('/api/permissions', permRoutes);
   console.log('[ROUTES] ✅ permissions');
 } catch (e) { console.error('[ROUTES] ❌ permissions:', e.message); }
 
@@ -85,12 +88,13 @@ const coreRoutes = [
   ['/api/targets',   './api/routes/target.routes'],
 ];
 for (const [path, mod] of coreRoutes) {
-  try { app.use(path, require(mod)); console.log(`[ROUTES] ✅ ${path}`); }
+  try { 
+    const router = require(mod);
+    app.use(path, router); 
+    console.log(`[ROUTES] ✅ ${path}`); 
+  }
   catch (e) { console.error(`[ROUTES] ❌ ${path}:`, e.message); }
 }
-
-// ── HR Module ────────────────────────────────────────────────────────────────
-// (Unused route requires removed to prevent crashes)
 
 // Queue Monitoring Dashboard (Admin Only)
 const { serverAdapter } = require('./services/queues/queueManager');
@@ -117,7 +121,11 @@ const hrRoutesList = [
   ['/api/settings', './api/routes/settings.routes'],
 ];
 for (const [path, mod] of hrRoutesList) {
-  try { app.use(path, require(mod)); console.log(`[ROUTES] ✅ ${path}`); }
+  try { 
+    const router = require(mod);
+    app.use(path, router); 
+    console.log(`[ROUTES] ✅ ${path}`); 
+  }
   catch (e) { console.error(`[ROUTES] ❌ ${path}:`, e.message); }
 }
 
@@ -131,43 +139,44 @@ const salesRoutes = [
   ['/api/products',   './api/routes/product.routes'],
 ];
 for (const [path, mod] of salesRoutes) {
-  try { app.use(path, require(mod)); console.log(`[ROUTES] ✅ ${path}`); }
+  try { 
+    const router = require(mod);
+    app.use(path, router); 
+    console.log(`[ROUTES] ✅ ${path}`); 
+  }
   catch (e) { console.error(`[ROUTES] ❌ ${path}:`, e.message); }
 }
 
+// Helper to load individual modules
+const mountModule = (routePath, modulePath) => {
+  try { 
+    const router = require(modulePath);
+    app.use(routePath, router);
+    console.log(`[ROUTES] ✅ ${routePath}`); 
+  }
+  catch (e) { console.error(`[ROUTES] ❌ ${routePath}:`, e.message); }
+};
+
 // ── Field Module ─────────────────────────────────────────────────────────────
-try { app.use('/api/visits', require('./api/routes/visit.routes')); console.log('[ROUTES] ✅ /api/visits'); }
-catch (e) { console.error('[ROUTES] ❌ /api/visits:', e.message); }
+mountModule('/api/visits', './api/routes/visit.routes');
 
 // ── Sales Execution Module ────────────────────────────────────────────────────
-try { app.use('/api/orders', require('./api/routes/order.routes')); console.log('[ROUTES] ✅ /api/orders'); }
-catch (e) { console.error('[ROUTES] ❌ /api/orders:', e.message); }
-
-try { app.use('/api/payments', require('./api/routes/payment.routes')); console.log('[ROUTES] ✅ /api/payments'); }
-catch (e) { console.error('[ROUTES] ❌ /api/payments:', e.message); }
-
-try { app.use('/api/analytics', require('./api/routes/analytics.routes')); console.log('[ROUTES] ✅ /api/analytics'); }
-catch (e) { console.error('[ROUTES] ❌ /api/analytics:', e.message); }
+mountModule('/api/orders', './api/routes/order.routes');
+mountModule('/api/payments', './api/routes/payment.routes');
+mountModule('/api/analytics', './api/routes/analytics.routes');
 
 // ── Operations Module ─────────────────────────────────────────────────────────
-try { app.use('/api/vendors', require('./api/routes/vendor.routes')); console.log('[ROUTES] ✅ /api/vendors'); }
-catch (e) { console.error('[ROUTES] ❌ /api/vendors:', e.message); }
+// [DISABLED due to missing dependencies: catchAsync, AppError, APIFeatures]
+// try { app.use('/api/vendors', require('./api/routes/vendor.routes')); console.log('[ROUTES] ✅ /api/vendors'); }
+// catch (e) { console.error('[ROUTES] ❌ /api/vendors:', e.message); }
 
-try { app.use('/api/design', require('./api/routes/design.routes')); console.log('[ROUTES] ✅ /api/design'); }
-catch (e) { console.error('[ROUTES] ❌ /api/design:', e.message); }
-
-try { app.use('/api/production', require('./api/routes/production.routes')); console.log('[ROUTES] ✅ /api/production'); }
-catch (e) { console.error('[ROUTES] ❌ /api/production:', e.message); }
+mountModule('/api/design', './api/routes/design.routes');
+mountModule('/api/production', './api/routes/production.routes');
 
 // ── Service / Field Operations Module ──────────────────────────────────────────
-try { app.use('/api/service', require('./api/routes/service.routes')); console.log('[ROUTES] ✅ /api/service'); }
-catch (e) { console.error('[ROUTES] ❌ /api/service:', e.message); }
-
-try { app.use('/api/labour', require('./api/routes/labour.routes')); console.log('[ROUTES] ✅ /api/labour'); }
-catch (e) { console.error('[ROUTES] ❌ /api/labour:', e.message); }
-
-try { app.use('/api/vehicles', require('./api/routes/vehicle.routes')); console.log('[ROUTES] ✅ /api/vehicles'); }
-catch (e) { console.error('[ROUTES] ❌ /api/vehicles:', e.message); }
+mountModule('/api/service', './api/routes/service.routes');
+mountModule('/api/labour', './api/routes/labour.routes');
+mountModule('/api/vehicles', './api/routes/vehicle.routes');
 
 // ── 404 catch ────────────────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ message: `Route ${req.method} ${req.path} not found` }));

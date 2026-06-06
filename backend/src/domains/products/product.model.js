@@ -102,7 +102,7 @@ const productSchema = new mongoose.Schema(
 );
 
 // Indexes
-productSchema.index({ productCode: 1 });
+// productSchema.index({ productCode: 1 }); // Removed: duplicate of unique: true in schema
 productSchema.index({ productName: 'text', sku: 'text' });
 productSchema.index({ category: 1 });
 productSchema.index({ 'pricingRules.type': 1 });

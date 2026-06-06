@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Labour = require('../../domains/service/models/labour.model');
-const { protect, authorize } = require('../middlewares/auth.middleware');
+const { protect, authorize } = require('../../guards/auth.guard');
 
 router.get('/', protect, authorize('SERVICE_MANAGER', 'ADMIN', 'MD_CEO'), async (req, res, next) => {
   try {

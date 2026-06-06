@@ -3,6 +3,7 @@ let redisClient = null;
 
 try {
   Redis = require('ioredis');
+  console.log("REDIS_URL:", process.env.REDIS_URL);
   if (process.env.REDIS_URL) {
     redisClient = new Redis(process.env.REDIS_URL);
   } else {

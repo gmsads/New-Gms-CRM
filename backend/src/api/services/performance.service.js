@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Order = require('../../domains/orders/order.model');
-const Prospect = require('../../domains/pipeline/prospect.model');
+const Prospect = require('../../domains/sales/prospects/prospect.model');
 const Task = require('../../domains/sales/task.model');
 const Target = require('../../domains/targets/target.model');
 const PerformanceSnapshot = require('../../domains/performance/performanceSnapshot.model');
