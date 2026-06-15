@@ -10,6 +10,13 @@ const DEPTS = ['Sales','Operations','Design & Creative','Field','IT','Accounts',
 
 const BLANK = { name:'', email:'', phone:'', role:'', department:'', employmentType:'FULL_TIME' };
 
+const getBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL === '/api') return ''; // Uses relative path, handled by proxy or same domain
+  const url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  return url.replace(/\/api$/, '');
+};
+const BASE_URL = getBaseUrl();
+
 const ResetPasswordModal = ({ emp, onClose }) => {
   const { request } = useApi();
   const [done, setDone] = useState(false);
@@ -462,7 +469,7 @@ const EditEmployeeModal = ({ emp, onClose, onRefresh, uniqueRoles, uniqueDepts }
         <div className="flex items-start gap-8 mb-8 pb-8 border-b border-slate-200">
           <div className="w-32 h-32 rounded-full shadow-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold border-4 border-white shrink-0 overflow-hidden relative group">
             {form.profileImage || emp.profileImage ? (
-              <img src={`http://localhost:5000${form.profileImage || emp.profileImage}`} alt={emp.name} className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
+              <img src={`${BASE_URL}${form.profileImage || emp.profileImage}`} alt={emp.name} className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
             ) : (
               emp.name.charAt(0)
             )}
@@ -550,7 +557,7 @@ const EditEmployeeModal = ({ emp, onClose, onRefresh, uniqueRoles, uniqueDepts }
                 {emp.documents && emp.documents.length > 0 && (
                   <div className="mb-6 grid grid-cols-2 gap-3">
                     {emp.documents.map((doc, idx) => (
-                      <a key={idx} href={'http://localhost:5000' + doc} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all group bg-slate-50">
+                      <a key={idx} href={BASE_URL + doc} target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all group bg-slate-50">
                         <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shrink-0 group-hover:scale-110 transition-transform">
                           <FileText className="w-5 h-5" />
                         </div>
@@ -629,7 +636,7 @@ const RoleCard = ({ role, employees, onResetPass, onToggleStatus, onEditEmp }) =
             >
               <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm overflow-hidden ${getAvatarColor(emp.name)}`}>
                 {emp.profileImage ? (
-                  <img src={`http://localhost:5000${emp.profileImage}`} alt={emp.name} className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
+                  <img src={`${BASE_URL}${emp.profileImage}`} alt={emp.name} className="w-full h-full object-cover" onError={(e) => e.target.style.display = 'none'} />
                 ) : (
                   emp.name.split(' ').map(n=>n[0]).join('').slice(0,2)
                 )}
