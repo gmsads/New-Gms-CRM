@@ -7,10 +7,7 @@ try {
   if (process.env.REDIS_URL) {
     redisClient = new Redis(process.env.REDIS_URL);
   } else {
-    redisClient = new Redis({
-      host: process.env.REDIS_HOST || '127.0.0.1',
-      port: process.env.REDIS_PORT || 6379,
-    });
+    throw new Error('REDIS_URL is not defined in the environment variables');
   }
 
   redisClient.on('connect', () => {

@@ -1,4 +1,18 @@
-require('dotenv').config();
+const dotenv = require('dotenv');
+const path = require('path');
+const fs = require('fs');
+
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+const envPath = path.resolve(__dirname, '..', envFile);
+
+if (fs.existsSync(envPath)) {
+  console.log(`[Config] Loading environment from ${envFile}`);
+  dotenv.config({ path: envPath });
+} else {
+  // Fallback to default .env for backwards compatibility
+  dotenv.config();
+}
+
 const mongoose = require('mongoose');
 mongoose.plugin(require('./core/plugins/softDelete.plugin'));
 const app       = require('./app');

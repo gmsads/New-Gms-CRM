@@ -23,7 +23,11 @@ const seedClientTypes = async () => {
 };
 
 const connectDB = async () => {
-  const URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/gms_crm';
+  const URI = process.env.MONGO_URI;
+  if (!URI) {
+    console.error('❌ MONGO_URI is not defined in the environment variables');
+    process.exit(1);
+  }
   
   const options = {
     serverSelectionTimeoutMS: 5000,
