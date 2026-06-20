@@ -449,7 +449,10 @@ const EditEmployeeModal = ({ emp, onClose, onRefresh, uniqueRoles, uniqueDepts }
       files.forEach(f => formData.append('documents', f));
       if (profilePic) formData.append('profileImage', profilePic);
 
-      await request('PUT', `/employees/${emp._id}`, formData);
+      const res = await request('PUT', `/employees/${emp._id}`, formData);
+      if (res && res.message) {
+        alert(res.message);
+      }
       onRefresh();
       onClose();
     } catch (e) { alert(e.message); }

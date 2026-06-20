@@ -157,40 +157,17 @@ exports.updateEmployee = async (req, res) => {
     const employee = await User.findById(req.params.id);
     if (!employee) return res.status(404).json({ message: 'Employee not found' });
 
-    // Role escalation block
-    if (req.body.role) {
-      const restricted = ['ADMIN', 'MD_CEO'];
-      if (!['ADMIN', 'MD_CEO'].includes(req.user.role) && restricted.includes(req.body.role)) {
-        return res.status(403).json({ message: 'Role escalation denied.' });
-      }
-      // Role changes require approval
-      if (req.body.role !== employee.role) {
-        const approval = await Approval.create({
-          type: 'ROLE_CHANGE',
-          targetEmployee: employee._id,
-          initiatedBy: req.user._id,
-          status: 'PENDING',
-          previousValue: { role: employee.role },
-          newValue: { role: req.body.role },
-          hrNotes: req.body.changeReason || 'Role change requested',
-        });
-        await notifyAdmins('APPROVAL_REQUESTED', 'Role Change Pending Approval',
-          `${req.user.name} wants to change ${employee.name}'s role from ${employee.role} to ${req.body.role}.`,
-          { entityType: 'Approval', entityId: approval._id });
-        return res.status(202).json({ message: 'Role change submitted for Admin approval.', approvalId: approval._id });
-      }
-    }
-
+    // 1. Process standard profile updates
     const allowedUpdates = [
-      'name', 'phone', 'department', 'experience', 'dateOfJoining', 'employmentType', 'profileImage',
+      'name', 'email', 'phone', 'department', 'experience', 'dateOfJoining', 'employmentType', 'profileImage',
       'alternatePhone', 'parentGuardianName', 'parentGuardianContact', 'panNumber', 'aadhaarNumber'
     ];
     const previousValue = {};
     const changedFields = [];
     allowedUpdates.forEach(field => {
-      if (req.body[field] !== undefined && req.body[field] !== employee[field]) {
+      if (req.body[field] !== undefined && String(req.body[field]) !== String(employee[field])) {
         previousValue[field] = employee[field];
-        employee[field] = req.body[field];
+        employee.set(field, req.body[field]);
         changedFields.push(field);
       }
     });
@@ -207,16 +184,42 @@ exports.updateEmployee = async (req, res) => {
       }
     }
 
-    employee.lastModifiedBy = req.user._id;
-    await employee.save();
+    if (changedFields.length > 0) {
+      employee.lastModifiedBy = req.user._id;
+      await employee.save();
 
-    await createAuditLog({
-      action: 'PROFILE_UPDATED', performedBy: req.user,
-      targetEmployee: employee, previousValue, newValue: req.body,
-      changedFields, req,
-    });
+      await createAuditLog({
+        action: 'PROFILE_UPDATED', performedBy: req.user,
+        targetEmployee: employee, previousValue, newValue: req.body,
+        changedFields, req,
+      });
+    }
 
-    res.json({ message: 'Employee updated successfully.', employee });
+    let roleMsg = '';
+    // 2. Process role escalation / change
+    if (req.body.role && req.body.role !== employee.role) {
+      const restricted = ['ADMIN', 'MD_CEO'];
+      if (!['ADMIN', 'MD_CEO'].includes(req.user.role) && restricted.includes(req.body.role)) {
+        return res.status(403).json({ message: 'Role escalation denied.' });
+      }
+      // Role changes require approval
+      const approval = await Approval.create({
+        type: 'ROLE_CHANGE',
+        targetEmployee: employee._id,
+        initiatedBy: req.user._id,
+        status: 'PENDING',
+        previousValue: { role: employee.role },
+        newValue: { role: req.body.role },
+        hrNotes: req.body.changeReason || 'Role change requested',
+      });
+      await notifyAdmins('APPROVAL_REQUESTED', 'Role Change Pending Approval',
+        `${req.user.name} wants to change ${employee.name}'s role from ${employee.role} to ${req.body.role}.`,
+        { entityType: 'Approval', entityId: approval._id });
+      
+      roleMsg = ' Role change submitted for Admin approval.';
+    }
+
+    res.json({ message: `Employee updated successfully.${roleMsg}`, employee });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
