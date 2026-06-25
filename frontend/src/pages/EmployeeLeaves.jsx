@@ -32,7 +32,7 @@ const LeaveRequestModal = ({ isOpen, onClose, onSuccess }) => {
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Request Leave">
+    <Modal open={isOpen} onClose={onClose} title="Request Leave">
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm">{error}</div>}
         
