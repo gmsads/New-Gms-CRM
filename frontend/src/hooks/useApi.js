@@ -98,7 +98,14 @@ export const useApi = (path = null, options = {}) => {
         json = { message: text };
       }
     }
-    if (!res.ok) throw new Error(json.message || `HTTP ${res.status}`);
+    if (!res.ok) {
+      if (res.status === 401) {
+        localStorage.removeItem('gms_user');
+        window.location.href = '/login';
+        return;
+      }
+      throw new Error(json.message || `HTTP ${res.status}`);
+    }
     return json;
   }, [token]);
 

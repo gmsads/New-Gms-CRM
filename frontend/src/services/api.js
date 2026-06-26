@@ -27,6 +27,10 @@ const request = async (method, path, body, token) => {
     }
   }
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('gms_user');
+      window.location.href = '/login';
+    }
     const err = new Error(data.message || `HTTP ${res.status}`);
     err.status = res.status;
     err.code   = data.code;

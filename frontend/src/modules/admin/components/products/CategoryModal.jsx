@@ -28,7 +28,7 @@ export default function CategoryModal({ isOpen, onClose, onSuccess, categories =
         alert(res.message || 'Failed to create category');
       }
     } catch (err) {
-      alert('Error saving category');
+      alert(err.message || 'Error saving category');
     } finally {
       setLoading(false);
     }

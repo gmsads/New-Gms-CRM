@@ -4,7 +4,7 @@ const jwt  = require('jsonwebtoken');
 const { createAuditLog } = require('../../guards/audit.helper');
 
 const generateToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET || 'gms_secret_2026', { expiresIn: '12h' });
+  jwt.sign({ id }, process.env.JWT_SECRET || 'gms_secret_2026', { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
 
 // ── GET /api/auth/setup ───────────────────────────────────────────────────────
 // One-time setup: creates the first Admin user if none exists.
