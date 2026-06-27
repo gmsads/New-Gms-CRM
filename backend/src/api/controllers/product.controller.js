@@ -223,10 +223,9 @@ exports.createClientType = async (req, res, next) => {
 
 exports.deleteClientType = async (req, res, next) => {
   try {
-    const clientType = await ClientType.findById(req.params.id);
+    const clientType = await ClientType.findByIdAndDelete(req.params.id);
     if (!clientType) return res.status(404).json({ success: false, message: 'Client type not found' });
     
-    await clientType.softDelete(req.user._id);
     res.json({ success: true, message: 'Client type deleted successfully' });
   } catch (err) {
     next(err);

@@ -59,14 +59,14 @@ class ProductService {
       throw err;
     }
 
-    await category.softDelete(userId);
+    await ProductCategory.findByIdAndDelete(categoryId);
 
     await auditWorkflow.log({
       action: 'DELETE',
       performedBy: userId,
       targetModel: 'ProductCategory',
       targetId: category._id,
-      notes: 'Category deleted'
+      notes: 'Category permanently deleted from database'
     });
 
     return true;
@@ -141,14 +141,14 @@ class ProductService {
     const product = await Product.findById(id);
     if (!product) throw new Error('Product not found');
     
-    await product.softDelete(userId);
+    await Product.findByIdAndDelete(id);
 
     await auditWorkflow.log({
       action: 'DELETE',
       performedBy: userId,
       targetModel: 'Product',
       targetId: id,
-      notes: 'Product deleted'
+      notes: 'Product permanently deleted from database'
     });
 
     return true;
