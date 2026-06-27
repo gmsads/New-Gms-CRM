@@ -6,8 +6,10 @@ import {
   TrendingUp, Calendar as CalendarIcon, Plus, UserPlus, 
   ShieldCheck, PhoneCall, RefreshCw, X, Quote,
   ChevronRight, Search, Filter, FileText, Send, History, Eye, ExternalLink, MoreVertical,
-  BarChart2 as BarChartIcon, MapPin, Phone, AlertCircle, MessageCircle, Users
+  BarChart2 as BarChartIcon, MapPin, Phone, AlertCircle, MessageCircle, Users, FileSpreadsheet
 } from 'lucide-react';
+import ImportExcelModal from '../../../components/ui/ImportExcelModal';
+import * as XLSX from 'xlsx';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
@@ -777,6 +779,7 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const fetch = async () => { 
     if (!user?.token) return;
@@ -801,10 +804,26 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
   useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
   const oFlow = useOrderFlow(user, fetch);
 
+  const downloadOrderTemplate = () => {
+    const headers = ['Order Number', 'Order Date', 'Client Name', 'Company', 'Phone', 'Email', 'Order Type', 'Grand Total', 'Total Paid', 'Payment Status', 'Order Status', 'Closed By'];
+    const sampleRows = [
+      ['ORD-2024-0101', '2024-03-15', 'Amit Verma', 'Verma Enterprises', '9876543210', 'amit@verma.com', 'Renewal', '50000', '50000', 'Paid', 'Completed', 'Rajesh Sharma'],
+      ['ORD-2024-0102', '2024-06-20', 'Sneha Gupta', 'Gupta Logistics', '9123456789', 'sneha@gupta.com', 'New Sale', '120000', '60000', 'Partial', 'Completed', 'Anita Desai']
+    ];
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders Template');
+    XLSX.writeFile(workbook, `GMS_Historical_Orders_Template.xlsx`);
+  };
+
+  const handleOrderImport = async (data) => {
+    const res = await orderApi.bulkImport(data, user.token);
+    if (!res.success) throw new Error(res.message || 'Import failed');
+    fetch();
+  };
   
   if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
-  
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -812,11 +831,21 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
           <h1 className="text-3xl sm:text-2xl font-black text-slate-900 tracking-tight">My Orders</h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Track order status and payments</p>
         </div>
-        {(!isTeamMode || ['ADMIN', 'MD_CEO'].includes(user?.role)) && (
-          <button onClick={() => oFlow.setShowOrderSearch(true)} className="w-full sm:w-auto bg-emerald-600 text-white px-6 py-3 sm:py-2.5 rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100">
-            <Plus className="h-5 w-5" /> New Order
-          </button>
-        )}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          {['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role) && (
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="w-full sm:w-auto bg-blue-600 text-white px-5 py-3 sm:py-2.5 rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100"
+            >
+              <FileSpreadsheet className="h-5 w-5" /> Import from Excel
+            </button>
+          )}
+          {(!isTeamMode || ['ADMIN', 'MD_CEO'].includes(user?.role)) && (
+            <button onClick={() => oFlow.setShowOrderSearch(true)} className="w-full sm:w-auto bg-emerald-600 text-white px-6 py-3 sm:py-2.5 rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-100">
+              <Plus className="h-5 w-5" /> New Order
+            </button>
+          )}
+        </div>
       </div>
       <OrderList 
         orders={orders} 
@@ -826,6 +855,13 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
         hideVerification={isTeamMode}
       />
       <ModalsRenderer prospectFlow={{}} orderFlow={oFlow} user={user} hideVerification={isTeamMode} />
+      <ImportExcelModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleOrderImport}
+        title="Import Historical Orders"
+        onDownloadTemplate={downloadOrderTemplate}
+      />
     </div>
   );
 };

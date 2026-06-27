@@ -8,13 +8,17 @@
 const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const request = async (method, path, body, token) => {
-  const headers = { 'Content-Type': 'application/json' };
+  const isFormData = body instanceof FormData;
+  const headers = {};
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
   });
 
   let data = {};
@@ -31,7 +35,14 @@ const request = async (method, path, body, token) => {
       localStorage.removeItem('gms_user');
       window.location.href = '/login';
     }
-    const err = new Error(data.message || `HTTP ${res.status}`);
+    let errorMsg = data.message || `HTTP ${res.status}`;
+    if (data.errors && typeof data.errors === 'object') {
+      const fieldErrors = Object.values(data.errors).filter(Boolean).join(', ');
+      if (fieldErrors) {
+        errorMsg = `${errorMsg}: ${fieldErrors}`;
+      }
+    }
+    const err = new Error(errorMsg);
     err.status = res.status;
     err.code   = data.code;
     err.data   = data;

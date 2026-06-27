@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { Users, ShoppingCart, Clock, Quote, Target, ShieldCheck, Eye, Search, AlertCircle, RefreshCw } from 'lucide-react';
+import { Users, ShoppingCart, Clock, Quote, Target, ShieldCheck, Eye, Search, AlertCircle, RefreshCw, FileSpreadsheet } from 'lucide-react';
 import useApi from '../../../hooks/useApi';
 import { useLocation } from 'react-router-dom';
+import { useAuth } from '../../../context/AuthContext';
+import { orderApi } from '../../../services/api';
+import ImportExcelModal from '../../../components/ui/ImportExcelModal';
+import * as XLSX from 'xlsx';
 import { SalesProspects, SalesOrders, SalesFollowups, SalesAppointments, SalesQuotations } from './ExecDashboard';
 
 const EmptyState = ({ title, desc }) => (
@@ -13,6 +17,9 @@ const EmptyState = ({ title, desc }) => (
 );
 
 export const TeamDataView = ({ viewType = 'orders' }) => {
+  const { user } = useAuth();
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [filters, setFilters] = useState({
     search: '',
     employee: '',
@@ -24,6 +31,24 @@ export const TeamDataView = ({ viewType = 'orders' }) => {
   // Example placeholder for fetching team data
   const loading = false;
   const error = null;
+
+  const downloadOrderTemplate = () => {
+    const headers = ['Order Number', 'Order Date', 'Client Name', 'Company', 'Phone', 'Email', 'Order Type', 'Grand Total', 'Total Paid', 'Payment Status', 'Order Status', 'Closed By'];
+    const sampleRows = [
+      ['ORD-2024-0101', '2024-03-15', 'Amit Verma', 'Verma Enterprises', '9876543210', 'amit@verma.com', 'Renewal', '50000', '50000', 'Paid', 'Completed', 'Rajesh Sharma'],
+      ['ORD-2024-0102', '2024-06-20', 'Sneha Gupta', 'Gupta Logistics', '9123456789', 'sneha@gupta.com', 'New Sale', '120000', '60000', 'Partial', 'Completed', 'Anita Desai']
+    ];
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders Template');
+    XLSX.writeFile(workbook, `GMS_Historical_Orders_Template.xlsx`);
+  };
+
+  const handleOrderImport = async (data) => {
+    const res = await orderApi.bulkImport(data, user?.token);
+    if (!res.success) throw new Error(res.message || 'Import failed');
+    setRefreshKey(prev => prev + 1);
+  };
 
   const getTitle = () => {
     switch(viewType) {
@@ -46,15 +71,15 @@ export const TeamDataView = ({ viewType = 'orders' }) => {
       case 'followups': return <Clock className="h-6 w-6" />;
       case 'approvals': return <ShieldCheck className="h-6 w-6" />;
       case 'quotations': return <Quote className="h-6 w-6" />;
-      case 'escalations': return <Eye className="h-6 w-6" />;
-      case 'performance': return <Target className="h-6 w-6" />;
+      case 'escalations': return <AlertCircle className="h-6 w-6" />;
+      case 'performance': return <Eye className="h-6 w-6" />;
+      case 'targets': return <Target className="h-6 w-6" />;
       default: return <Users className="h-6 w-6" />;
     }
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700 pb-12">
-      {/* Header */}
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-200">
@@ -68,7 +93,15 @@ export const TeamDataView = ({ viewType = 'orders' }) => {
           </div>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <button className="w-full sm:w-auto px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 shadow-sm flex justify-center items-center gap-2 hover:bg-slate-50 transition-colors">
+          {viewType === 'orders' && ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role) && (
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex justify-center items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Import from Excel
+            </button>
+          )}
+          <button onClick={() => setRefreshKey(prev => prev + 1)} className="w-full sm:w-auto px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 shadow-sm flex justify-center items-center gap-2 hover:bg-slate-50 transition-colors">
             <RefreshCw className="h-4 w-4" /> Sync
           </button>
         </div>
@@ -81,13 +114,20 @@ export const TeamDataView = ({ viewType = 'orders' }) => {
         </div>
       ) : (
         <div className="mt-8">
-          {viewType === 'orders' && <SalesOrders isTeamMode={true} globalFilters={filters} />}
+          {viewType === 'orders' && <SalesOrders key={refreshKey} isTeamMode={true} globalFilters={filters} />}
           {viewType === 'prospects' && <SalesProspects isTeamMode={true} globalFilters={filters} />}
           {viewType === 'followups' && <SalesFollowups isTeamMode={true} globalFilters={filters} />}
           {viewType === 'appointments' && <SalesAppointments isTeamMode={true} globalFilters={filters} />}
           {viewType === 'quotations' && <SalesQuotations isTeamMode={true} globalFilters={filters} />}
         </div>
       )}
+      <ImportExcelModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImport={handleOrderImport}
+        title="Import Historical Orders"
+        onDownloadTemplate={downloadOrderTemplate}
+      />
     </div>
   );
 };

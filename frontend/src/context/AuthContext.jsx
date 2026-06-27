@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem('gms_user', JSON.stringify(data));
       setUser(data);
-      return { success: true, mustChangePassword: data.mustChangePassword };
+      return { success: true, mustChangePassword: data.mustChangePassword, role: data.role };
     } catch (err) {
       setError(err.message);
       return { success: false, error: err.message };

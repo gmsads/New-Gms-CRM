@@ -40,7 +40,17 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { TeamDataView } from './modules/sales/pages/TeamDataView';
 import ComingSoon from './components/ui/ComingSoon';
 
+// Tele CRM Pages
+import LeadDashboard from './modules/leads/pages/LeadDashboard';
+import LeadPool from './modules/leads/pages/LeadPool';
+import LeadImport from './modules/leads/pages/LeadImport';
+import CampaignManagement from './modules/leads/pages/CampaignManagement';
+import MyLeads from './modules/leads/pages/MyLeads';
+import CallHistory from './modules/leads/pages/CallHistory';
+import LeadReports from './modules/leads/pages/LeadReports';
+
 // Sales Exec Sub-pages (imported from ExecDashboard)
+
 import ExecDashboard, { 
   SalesProspects, 
   SalesOrders, 
@@ -78,19 +88,23 @@ const AppRoutes = () => {
   React.useEffect(() => {
     const handleGlobalModalClick = (e) => {
       const el = e.target;
-      // Identify if the clicked element is a modal backdrop wrapper
+      // Identify if the clicked element is strictly a modal backdrop wrapper
       if (
         el.tagName === 'DIV' && 
         typeof el.className === 'string' && 
         el.className.includes('fixed') && 
         el.className.includes('inset-0')
       ) {
-        // Try to find the X (close) button or Cancel button inside this backdrop wrapper
+        // Prevent closing if a form or action inside the modal is actively loading/submitting
+        if (el.querySelector('.animate-spin')) return;
+
+        // Try to find an enabled X (close) button or Cancel button inside this backdrop wrapper
         const buttons = Array.from(el.querySelectorAll('button'));
-        let closeBtn = buttons.find(b => b.querySelector('svg.lucide-x') || b.querySelector('svg.lucide-close'));
+        let closeBtn = buttons.find(b => !b.disabled && (b.querySelector('svg.lucide-x') || b.querySelector('svg.lucide-close')));
         
         if (!closeBtn) {
           closeBtn = buttons.find(b => {
+            if (b.disabled) return false;
             const txt = b.textContent.toLowerCase().trim();
             return txt === 'cancel' || txt === 'close';
           });
@@ -118,6 +132,18 @@ const AppRoutes = () => {
           <Route path="tasks"       element={<Tasks />} />
           <Route path="leaves"      element={<EmployeeLeaves />} />
           <Route path="operations/authority" element={<AuthorityAccess />} />
+          
+          {/* Enterprise Lead Management & Tele Sales Routes */}
+          <Route path="telecrm">
+            <Route path="dashboard" element={<LeadDashboard />} />
+            <Route path="pool" element={<LeadPool />} />
+            <Route path="import" element={<LeadImport />} />
+            <Route path="campaigns" element={<CampaignManagement />} />
+            <Route path="my-leads" element={<MyLeads />} />
+            <Route path="call-history" element={<CallHistory />} />
+            <Route path="reports" element={<LeadReports />} />
+          </Route>
+
           <Route path="hr/*"        element={<HR />} />
           <Route path="field"       element={<Field />} />
           <Route path="design/*"    element={<DesignRoutes />} />

@@ -21,7 +21,7 @@ const AuthorityAccess = () => {
     if (hideUI) setLoading(true);
     try {
       const [empRes, permRes, assignedRes] = await Promise.all([
-        employeeApi.list({ limit: 1000 }, user.token),
+        employeeApi.list({ limit: 1000, simple: 'true' }, user.token),
         permissionApi.available(user.token),
         permissionApi.assigned(user.token)
       ]);

@@ -166,9 +166,7 @@ mountModule('/api/payments', './api/routes/payment.routes');
 mountModule('/api/analytics', './api/routes/analytics.routes');
 
 // ── Operations Module ─────────────────────────────────────────────────────────
-// [DISABLED due to missing dependencies: catchAsync, AppError, APIFeatures]
-// try { app.use('/api/vendors', require('./api/routes/vendor.routes')); console.log('[ROUTES] ✅ /api/vendors'); }
-// catch (e) { console.error('[ROUTES] ❌ /api/vendors:', e.message); }
+mountModule('/api/vendors', './api/routes/vendor.routes');
 
 mountModule('/api/design', './api/routes/design.routes');
 mountModule('/api/production', './api/routes/production.routes');
@@ -177,6 +175,10 @@ mountModule('/api/production', './api/routes/production.routes');
 mountModule('/api/service', './api/routes/service.routes');
 mountModule('/api/labour', './api/routes/labour.routes');
 mountModule('/api/vehicles', './api/routes/vehicle.routes');
+
+// ── Enterprise Lead Management & Tele Sales Module ──────────────────────────────
+mountModule('/api/telecrm', './domains/telecrm/routes/telecrm.routes');
+
 
 // ── 404 catch ────────────────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ message: `Route ${req.method} ${req.path} not found` }));

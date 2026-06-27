@@ -167,29 +167,130 @@ exports.bulkImport = async (req, res) => {
     let failedCount = 0;
     const errors = [];
 
+    // Cache user lookups to avoid redundant database queries
+    const userCache = new Map();
+
     for (const record of records) {
       try {
         const body = { ...record };
-        if (!body.salesExec && (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC')) {
-          body.salesExec = req.user._id;
+
+        // Extract employee identifier (who closed the order)
+        const empInput = body.salesExec || body.employeeName || body.closedBy || body['Closed By'] || body['Employee Name'] || body['Sales Person'] || body['Assigned To'] || body['Sales Exec'];
+        let resolvedUserId = null;
+
+        if (empInput) {
+          const empStr = String(empInput).trim();
+          if (mongoose.Types.ObjectId.isValid(empStr) && String(new mongoose.Types.ObjectId(empStr)) === empStr) {
+            resolvedUserId = empStr;
+          } else if (userCache.has(empStr.toLowerCase())) {
+            resolvedUserId = userCache.get(empStr.toLowerCase());
+          } else {
+            // Search User by exact/partial name, email, or phone
+            let matchedUser = await User.findOne({
+              $or: [
+                { email: { $regex: new RegExp(`^${empStr}$`, 'i') } },
+                { phone: empStr },
+                { name: { $regex: new RegExp(`^${empStr}$`, 'i') } }
+              ]
+            }).select('_id');
+
+            if (!matchedUser) {
+              matchedUser = await User.findOne({
+                name: { $regex: new RegExp(empStr, 'i') }
+              }).select('_id');
+            }
+
+            if (matchedUser) {
+              resolvedUserId = matchedUser._id;
+              userCache.set(empStr.toLowerCase(), matchedUser._id);
+            }
+          }
         }
 
-        // Add a default line item if none exist, so totals calculate correctly
-        if (!body.lineItems || body.lineItems.length === 0) {
+        body.salesExec = resolvedUserId || ((req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') ? req.user._id : req.user._id);
+
+        // Resolve Prospect matching
+        const phone = body.phone || body['Phone'] || body['Contact Number'] || body.clientSnapshot?.phone;
+        const email = body.email || body['Email'] || body.clientSnapshot?.email;
+        const gstNumber = body.gstNumber || body['GST Number'] || body.clientSnapshot?.gstNumber;
+        const company = body.company || body['Company Name'] || body['Company'] || body.clientSnapshot?.company;
+        const clientName = body.clientName || body['Client Name'] || body['Contact Person'] || body.name || body.clientSnapshot?.name || 'Historical Client';
+
+        let prospectId = body.prospect;
+        if (!prospectId) {
+          let matchedProspect = null;
+          if (phone) matchedProspect = await Prospect.findOne({ phone: String(phone).trim(), 'softDelete.isDeleted': { $ne: true } }).select('_id');
+          if (!matchedProspect && email) matchedProspect = await Prospect.findOne({ email: String(email).trim(), 'softDelete.isDeleted': { $ne: true } }).select('_id');
+          if (!matchedProspect && gstNumber) matchedProspect = await Prospect.findOne({ gstNumber: String(gstNumber).trim(), 'softDelete.isDeleted': { $ne: true } }).select('_id');
+          if (!matchedProspect && company) matchedProspect = await Prospect.findOne({ company: { $regex: new RegExp(`^${String(company).trim()}$`, 'i') }, 'softDelete.isDeleted': { $ne: true } }).select('_id');
+
+          if (matchedProspect) prospectId = matchedProspect._id;
+        }
+
+        body.prospect = prospectId;
+        body.clientSnapshot = {
+          name: String(clientName).trim(),
+          phone: phone ? String(phone).trim() : '',
+          company: company ? String(company).trim() : '',
+          email: email ? String(email).trim() : ''
+        };
+
+        const orderTotal = Number(body.grandTotal || body['Grand Total'] || body.totalAmount || body['Total Amount'] || body.amount || body['Amount'] || body.totalPaid || body['Total Paid'] || 0);
+        const paidTotal = Number(body.totalPaid || body['Total Paid'] || body.advancePaid || body['Advance Paid'] || body.paidAmount || 0);
+
+        // Add a default line item if none exist so pre-save calculates grandTotal correctly
+        if (!body.lineItems || !Array.isArray(body.lineItems) || body.lineItems.length === 0) {
           body.lineItems = [{
-            description: 'Historical Order Data',
+            description: body.description || body['Order Type'] || body.orderType || 'Historical Order Data',
             quantity: 1,
-            unitPrice: body.grandTotal || body.totalPaid || 0,
+            unitPrice: orderTotal,
             gstRate: 0,
             discount: 0
           }];
         }
 
-        await orderWorkflow.createOrder(body, req.user._id, getReqContext(req));
+        // Parse historical date
+        const rawDate = body.createdAt || body['Order Date'] || body.date || body['Date'];
+        let parsedDate = null;
+        if (rawDate) {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) parsedDate = d;
+        }
+
+        // Preserve payments so pre-save hook calculates totalPaid correctly
+        if (paidTotal > 0 && (!body.paymentRecords || !Array.isArray(body.paymentRecords) || body.paymentRecords.length === 0)) {
+          body.paymentRecords = [{
+            amount: paidTotal,
+            method: body.paymentMethod || body['Payment Method'] || 'Bank Transfer',
+            status: 'Verified',
+            receivedAt: parsedDate || new Date(),
+            verifiedAt: parsedDate || new Date(),
+            receivedBy: req.user._id,
+            verifiedBy: req.user._id
+          }];
+        }
+
+        body.orderType = body.orderType || body['Order Type'] || 'Historical';
+        body.status = body.status || body['Order Status'] || body['Status'] || 'Completed';
+        if (body['Order Number'] || body.orderNumber) {
+          body.orderNumber = String(body['Order Number'] || body.orderNumber).trim();
+        }
+
+        const order = new Order(body);
+        if (parsedDate) {
+          order.createdAt = parsedDate;
+          order.updatedAt = parsedDate;
+        }
+        await order.save();
+
+        if (parsedDate) {
+          await Order.updateOne({ _id: order._id }, { $set: { createdAt: parsedDate, updatedAt: parsedDate } }, { timestamps: false });
+        }
+
         successCount++;
       } catch (err) {
         failedCount++;
-        errors.push({ orderNumber: record.orderNumber || 'Unknown', error: err.message });
+        errors.push({ orderNumber: record.orderNumber || record['Order Number'] || 'Unknown', error: err.message });
       }
     }
 

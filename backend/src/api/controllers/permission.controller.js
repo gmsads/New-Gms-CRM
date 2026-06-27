@@ -3,7 +3,9 @@ const UserPermission = require('../../domains/users/user_permission.model');
 const User = require('../../domains/users/user.model');
 
 // Pre-populate core permissions if they don't exist
+let _corePermissionsInitialized = false;
 const initializeCorePermissions = async () => {
+  if (_corePermissionsInitialized) return;
   const corePermissions = [
     { permission_key: 'TARGET_ASSIGNMENT', permission_name: 'Target Assignment', module_name: 'Operations', description: 'Assign targets to employees' },
     { permission_key: 'ORDER_VERIFICATION', permission_name: 'Order Verification', module_name: 'Operations', description: 'Verify generated orders' },
@@ -13,18 +15,20 @@ const initializeCorePermissions = async () => {
     { permission_key: 'PAYMENT_VERIFICATION', permission_name: 'Payment Verification', module_name: 'Finance', description: 'Verify received payments' },
     { permission_key: 'ADVANCE_APPROVAL', permission_name: 'Advance Payment Approval', module_name: 'Finance', description: 'Approve orders with low advance' },
     { permission_key: 'REPORTS_ACCESS', permission_name: 'Reports Access', module_name: 'Analytics', description: 'Access system reports and analytics' },
-    { permission_key: 'INVENTORY_CATALOG', permission_name: 'Inventory & Catalog', module_name: 'Inventory', description: 'Manage products and catalogs' }
+    { permission_key: 'INVENTORY_CATALOG', permission_name: 'Inventory & Catalog', module_name: 'Inventory', description: 'Manage products and catalogs' },
+    { permission_key: 'TELESALES_LEADS', permission_name: 'Tele Sales & Leads', module_name: 'Operations', description: 'Manage tele sales campaigns, leads desk, and lead pools' }
   ];
 
-  for (const p of corePermissions) {
-    await Permission.findOneAndUpdate({ permission_key: p.permission_key }, p, { upsert: true, new: true });
-  }
+  await Promise.all(corePermissions.map(p =>
+    Permission.findOneAndUpdate({ permission_key: p.permission_key }, p, { upsert: true, new: true })
+  ));
+  _corePermissionsInitialized = true;
 };
 
 exports.getAvailablePermissions = async (req, res) => {
   try {
     await initializeCorePermissions();
-    const permissions = await Permission.find().sort({ module_name: 1, permission_name: 1 });
+    const permissions = await Permission.find().sort({ module_name: 1, permission_name: 1 }).lean();
     res.json({ success: true, data: permissions });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -33,12 +37,15 @@ exports.getAvailablePermissions = async (req, res) => {
 
 exports.getAllAssignedPermissions = async (req, res) => {
   try {
-    const assigned = await UserPermission.find()
-      .populate('user_id', 'name email role department')
-      .populate('assigned_by', 'name role')
-      .sort({ createdAt: -1 });
+    const [assigned, permissionsData] = await Promise.all([
+      UserPermission.find()
+        .populate('user_id', 'name email role department')
+        .populate('assigned_by', 'name role')
+        .sort({ createdAt: -1 })
+        .lean(),
+      Permission.find().lean()
+    ]);
 
-    const permissionsData = await Permission.find();
     const permissionMap = permissionsData.reduce((acc, p) => {
       acc[p.permission_key] = p;
       return acc;

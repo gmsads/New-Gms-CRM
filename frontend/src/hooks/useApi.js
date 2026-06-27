@@ -56,7 +56,12 @@ export const useApi = (path = null, options = {}) => {
           window.location.href = '/login';
           return;
         }
-        setError(json.message || `HTTP ${res.status}`);
+        let errorMsg = json.message || `HTTP ${res.status}`;
+        if (json.errors && typeof json.errors === 'object') {
+          const fieldErrors = Object.values(json.errors).filter(Boolean).join(', ');
+          if (fieldErrors) errorMsg = `${errorMsg}: ${fieldErrors}`;
+        }
+        setError(errorMsg);
         return;
       }
       setData(json);
@@ -104,7 +109,16 @@ export const useApi = (path = null, options = {}) => {
         window.location.href = '/login';
         return;
       }
-      throw new Error(json.message || `HTTP ${res.status}`);
+      let errorMsg = json.message || `HTTP ${res.status}`;
+      if (json.errors && typeof json.errors === 'object') {
+        const fieldErrors = Object.values(json.errors).filter(Boolean).join(', ');
+        if (fieldErrors) errorMsg = `${errorMsg}: ${fieldErrors}`;
+      }
+      const err = new Error(errorMsg);
+      err.status = res.status;
+      err.code = json.code;
+      err.data = json;
+      throw err;
     }
     return json;
   }, [token]);

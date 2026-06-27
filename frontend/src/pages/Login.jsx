@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Lock, IdCard, Eye, EyeOff, AlertCircle, Loader2, KeyRound, CheckCircle2 } from 'lucide-react';
+import { getRoleDashboardPath } from '../components/layout/Sidebar';
 
 // ─── First Login — Force Password Change ─────────────────────────────────────
 const ForcePasswordChange = ({ onDone }) => {
@@ -104,7 +105,7 @@ const Login = () => {
 
     if (!result.success) return setError(result.error || 'Login failed.');
     if (result.mustChangePassword) return setMustChange(true);
-    navigate('/');
+    navigate(getRoleDashboardPath(result.role));
   };
 
   return (
@@ -121,7 +122,10 @@ const Login = () => {
 
           {mustChange ? (
             <div style={{ background: 'white' }}>
-              <ForcePasswordChange onDone={() => navigate('/')} />
+              <ForcePasswordChange onDone={() => {
+                const userRole = JSON.parse(localStorage.getItem('gms_user') || '{}')?.role;
+                navigate(getRoleDashboardPath(userRole));
+              }} />
             </div>
           ) : (
             <>

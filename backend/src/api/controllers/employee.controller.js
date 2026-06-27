@@ -30,15 +30,19 @@ exports.getEmployees = async (req, res) => {
       ];
     }
     const skip = (page - 1) * limit;
-    const [employees, total] = await Promise.all([
-      User.find(filter)
-        .select('-password -aadhaarNumber -currentSalary -passwordResetToken')
+    const isSimple = req.query.simple === 'true' || req.query.dropdown === 'true';
+    let query = User.find(filter);
+    if (isSimple) {
+      query = query.select('_id name email role department status').sort('name');
+    } else {
+      query = query.select('-password -aadhaarNumber -currentSalary -passwordResetToken')
         .populate('createdBy', 'name role')
         .populate('approvedBy', 'name role')
         .populate('reportingManager', 'name role')
-        .sort('-createdAt')
-        .skip(skip)
-        .limit(Number(limit)),
+        .sort('-createdAt');
+    }
+    const [employees, total] = await Promise.all([
+      query.skip(skip).limit(Number(limit)).lean(),
       User.countDocuments(filter),
     ]);
     res.json({ employees, total, page: Number(page), pages: Math.ceil(total / limit) });

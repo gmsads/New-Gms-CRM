@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileSpreadsheet, AlertCircle, X, Check } from 'lucide-react';
+import { Upload, FileSpreadsheet, AlertCircle, X, Check, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-export default function ImportExcelModal({ isOpen, onClose, onImport, title = 'Import from Excel' }) {
+export default function ImportExcelModal({ isOpen, onClose, onImport, title = 'Import from Excel', onDownloadTemplate }) {
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -111,6 +111,18 @@ export default function ImportExcelModal({ isOpen, onClose, onImport, title = 'I
               <p className="text-xs font-medium text-slate-400 mt-2 max-w-xs">
                 Make sure your file has headers in the first row matching the system fields.
               </p>
+              {onDownloadTemplate && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDownloadTemplate();
+                  }}
+                  className="mt-4 px-3.5 py-1.5 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-xs flex items-center gap-1.5 transition-colors border border-blue-200 shadow-sm"
+                >
+                  <Download className="h-3.5 w-3.5" /> Download Sample Template
+                </button>
+              )}
               <input
                 type="file"
                 ref={fileInputRef}

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Bell, Search, Menu, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { getRoleDashboardPath } from './Sidebar';
 
 const ROLE_COLORS = {
   MD_CEO:           '#7c3aed',
@@ -44,6 +45,9 @@ const Navbar = ({ onMenuClick }) => {
         <button onClick={onMenuClick} className="md:hidden p-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted/50 transition-colors active:scale-95">
           <Menu className="w-5 h-5" />
         </button>
+        <Link to={getRoleDashboardPath(user?.role)} className="md:hidden flex items-center cursor-pointer ml-1">
+          <img src="/logo.png" alt="GMS Logo" className="h-10 w-auto object-contain" />
+        </Link>
         <div className="relative hidden sm:flex flex-1 max-w-[200px] items-center">
           <Search className="absolute left-3 w-3.5 h-3.5 text-muted-foreground" />
           <input type="search" placeholder="Search..."

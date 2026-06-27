@@ -1,17 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Megaphone, CheckSquare, Settings,
   PieChart, Briefcase, FileText, Palette, Truck, Server, X, ShieldCheck,
   Clock, ShoppingCart, Calendar, IndianRupee, BarChart2, Search, AlertCircle, CheckCircle,
   ChevronDown, ChevronRight, UserPlus, Quote, Package, Target, Bell, Eye,
-  Image as ImageIcon, MapPin, Activity
+  Image as ImageIcon, MapPin, Activity, PhoneCall, Zap
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { prospectApi, orderApi, appointmentApi, approvalApi, paymentApi } from '../../services/api';
 
+export const getRoleDashboardPath = (role) => {
+  if (!role) return '/';
+  switch (role) {
+    case 'SALES_MANAGER':
+    case 'SR_SALES_MANAGER':
+      return '/manager';
+    case 'PRODUCTION_MANAGER':
+      return '/production/manager';
+    case 'PRODUCTION_EXEC':
+      return '/production/executive';
+    case 'SERVICE_MANAGER':
+      return '/service/manager';
+    case 'SERVICE_EXEC':
+      return '/service/executive';
+    case 'DESIGNER':
+    case 'OPERATION_EXEC':
+      return '/design';
+    case 'HR':
+      return '/hr/dashboard';
+    case 'IT':
+      return '/it';
+    case 'VENDOR':
+      return '/vendors';
+    default:
+      return '/';
+  }
+};
+
 const menuConfig = [
   { title: 'Dashboard',        icon: LayoutDashboard, path: '/',          roles: ['ALL'] },
+  { 
+    title: 'Tele Sales & Leads', 
+    icon: PhoneCall, 
+    path: '/telecrm/my-leads', 
+    roles: ['ALL'],
+    subItems: [
+      { title: 'My Leads Desk', path: '/telecrm/my-leads', icon: Zap },
+      { title: 'Lead Pool Master', path: '/telecrm/pool', icon: Users },
+      { title: 'Campaign Engine', path: '/telecrm/campaigns', icon: Megaphone },
+      { title: 'Bulk Import', path: '/telecrm/import', icon: FileText },
+      { title: 'Call Logs QA', path: '/telecrm/call-history', icon: Clock },
+      { title: 'KPI Dashboard', path: '/telecrm/dashboard', icon: LayoutDashboard },
+      { title: 'Reports Deck', path: '/telecrm/reports', icon: PieChart }
+    ]
+  },
   { title: 'Clients & Leads',  icon: Users,           path: '/clients',   roles: ['ADMIN','SALES_MANAGER','SR_SALES_MANAGER','AGENT'] },
   { title: 'Campaigns',        icon: Megaphone,       path: '/campaigns', roles: ['ADMIN','SALES_MANAGER','OPERATION_MANAGER','AGENT'] },
   { title: 'Field Operations', icon: Truck,           path: '/field',     roles: ['ADMIN','FIELD_EXEC','OPERATION_MANAGER'] },
@@ -82,6 +125,20 @@ const adminMenuConfig = [
       { title: 'Appointments', path: '/appointments', icon: Calendar },
       { title: 'Assigned Appointments', path: '/assigned-appointments', icon: Calendar },
       { title: 'Quotations', path: '/quotation-management/list', icon: Quote }
+    ]
+  },
+  { 
+    title: 'Tele Sales & Leads', 
+    icon: PhoneCall, 
+    path: '/telecrm/my-leads', 
+    subItems: [
+      { title: 'My Leads Desk', path: '/telecrm/my-leads', icon: Zap },
+      { title: 'Lead Pool Master', path: '/telecrm/pool', icon: Users },
+      { title: 'Campaign Engine', path: '/telecrm/campaigns', icon: Megaphone },
+      { title: 'Bulk Import', path: '/telecrm/import', icon: FileText },
+      { title: 'Call Logs QA', path: '/telecrm/call-history', icon: Clock },
+      { title: 'KPI Dashboard', path: '/telecrm/dashboard', icon: LayoutDashboard },
+      { title: 'Reports Deck', path: '/telecrm/reports', icon: PieChart }
     ]
   },
   {
@@ -326,6 +383,14 @@ const Sidebar = ({ isOpen, setOpen }) => {
 
   const dynamicExecMenu = [
     { title: 'Dashboard',     icon: LayoutDashboard, path: '/',            badge: null },
+    { 
+      title: 'Tele Sales & Leads', 
+      icon: PhoneCall, 
+      path: '/telecrm/my-leads', 
+      subItems: [
+        { title: 'My Leads Desk', path: '/telecrm/my-leads', icon: Zap }
+      ]
+    },
     ...(user.role === 'FIELD_EXEC' ? [{ title: 'Field Visits', icon: Truck, path: '/field', badge: null }] : []),
     { title: 'Prospects',     icon: Users,           path: '/prospects',   badge: null },
     { 
@@ -559,6 +624,20 @@ const Sidebar = ({ isOpen, setOpen }) => {
 
   const smMyWorkMenu = [
     { title: 'Dashboard',     icon: LayoutDashboard, path: '/manager',            badge: null },
+    { 
+      title: 'Tele Sales & Leads', 
+      icon: PhoneCall, 
+      path: '/telecrm/my-leads', 
+      subItems: [
+        { title: 'My Leads Desk', path: '/telecrm/my-leads', icon: Zap },
+        { title: 'Lead Pool Master', path: '/telecrm/pool', icon: Users },
+        { title: 'Campaign Engine', path: '/telecrm/campaigns', icon: Megaphone },
+        { title: 'Bulk Import', path: '/telecrm/import', icon: FileText },
+        { title: 'Call Logs QA', path: '/telecrm/call-history', icon: Clock },
+        { title: 'KPI Dashboard', path: '/telecrm/dashboard', icon: LayoutDashboard },
+        { title: 'Reports Deck', path: '/telecrm/reports', icon: PieChart }
+      ]
+    },
     { title: 'Prospects',     icon: Users,           path: '/prospects',   badge: null },
     { 
       title: 'Follow-ups',    
@@ -602,6 +681,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     { title: 'Team Performance',icon: BarChart2,     path: '/manager/team-performance' },
     { title: 'Team Targets',    icon: Target,        path: '/manager/team-targets' },
     { title: 'Escalations',     icon: Eye,           path: '/manager/escalations' },
+    { title: 'Team Tele CRM Logs', icon: PhoneCall, path: '/telecrm/call-history' },
     { title: 'Lead Allocation', icon: UserPlus,      path: '/manager/lead-allocation' },
   ];
 
@@ -621,6 +701,13 @@ const Sidebar = ({ isOpen, setOpen }) => {
     'Team Performance': 'REPORTS_ACCESS',
     'Workflow Reports': 'REPORTS_ACCESS',
     'Conversion Analytics': 'REPORTS_ACCESS',
+    'My Leads Desk': 'TELESALES_LEADS',
+    'Lead Pool Master': 'TELESALES_LEADS',
+    'Campaign Engine': 'TELESALES_LEADS',
+    'Bulk Import': 'TELESALES_LEADS',
+    'Call Logs QA': 'TELESALES_LEADS',
+    'KPI Dashboard': 'TELESALES_LEADS',
+    'Reports Deck': 'TELESALES_LEADS',
   };
 
   const userPermKeys = user?.permissions?.map(p => p.key) || [];
@@ -725,7 +812,9 @@ const Sidebar = ({ isOpen, setOpen }) => {
         className={`w-64 min-w-[256px] flex flex-col h-full border-r bg-card z-50 transition-transform duration-300 fixed md:relative inset-y-0 left-0 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div className="flex items-center justify-center w-full h-16 border-b shrink-0 relative">
-          <img src="/logo.png" alt="GMS Logo" className="h-18 pt-2.5 w-auto object-contain" />
+          <Link to={getRoleDashboardPath(user?.role)} onClick={() => setOpen(false)} className="flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity">
+            <img src="/logo.png" alt="GMS Logo" className="h-18 pt-2.5 w-auto object-contain" />
+          </Link>
           <button onClick={() => setOpen(false)} className="lg:hidden absolute right-4 text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
