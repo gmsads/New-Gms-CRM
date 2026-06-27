@@ -828,11 +828,11 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl sm:text-2xl font-black text-slate-900 tracking-tight">My Orders</h1>
+          <h1 className="text-3xl sm:text-2xl font-black text-slate-900 tracking-tight">{isTeamMode ? 'Orders List' : 'My Orders'}</h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Track order status and payments</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          {['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role) && (
+          {!isTeamMode && ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role) && (
             <button
               onClick={() => setShowImportModal(true)}
               className="w-full sm:w-auto bg-blue-600 text-white px-5 py-3 sm:py-2.5 rounded-xl font-bold flex justify-center items-center gap-2 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-100"

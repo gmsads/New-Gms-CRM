@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, ChevronRight, ChevronLeft, Package, DollarSign, Activity, 
-  UploadCloud, Plus, Trash2, AlertCircle, CheckCircle2 
+  UploadCloud, Plus, Trash2, AlertCircle, CheckCircle2, Layers 
 } from 'lucide-react';
 import useApi from '../../../../hooks/useApi';
 
@@ -130,7 +130,9 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
       const endpoint = product ? `/products/${product._id}` : '/products';
       const method = product ? 'PATCH' : 'POST';
       
-      const payload = { ...formData };
+      const slabs = formData.pricingRules?.quantitySlabs || [];
+      const derivedMoq = slabs.length > 0 && slabs[0].minQty ? Number(slabs[0].minQty) : 1;
+      const payload = { ...formData, minimumOrderQuantity: derivedMoq };
       
       const res = await request(method, endpoint, payload);
       if (res && res.success) {
@@ -176,23 +178,24 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
         </div>
 
         {/* Stepper */}
-        <div className="flex border-b border-slate-100 px-8 bg-white relative z-10 shadow-sm">
+        <div className="flex border-b border-slate-100 px-8 bg-white relative z-10 shadow-sm overflow-x-auto">
           {[
             { num: 1, title: 'Basic Info', icon: Package },
             { num: 2, title: 'Total Base Price', icon: Activity },
-            { num: 3, title: 'Pricing Engine', icon: DollarSign }
+            { num: 3, title: 'Pricing Engine', icon: DollarSign },
+            { num: 4, title: 'Quantity Tiers', icon: Layers }
           ].map((s) => (
             <button
               key={s.num}
               onClick={() => setStep(s.num)}
-              className={`flex-1 py-4 flex items-center justify-center gap-3 border-b-2 transition-all ${
+              className={`flex-1 py-4 px-2 flex items-center justify-center gap-2 border-b-2 transition-all whitespace-nowrap ${
                 step === s.num 
                   ? 'border-blue-600 text-blue-600' 
                   : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              <s.icon className={`h-5 w-5 ${step === s.num ? 'text-blue-600' : 'text-slate-400'}`} />
-              <span className="font-bold text-sm tracking-wide uppercase">{s.title}</span>
+              <s.icon className={`h-5 w-5 flex-shrink-0 ${step === s.num ? 'text-blue-600' : 'text-slate-400'}`} />
+              <span className="font-bold text-xs sm:text-sm tracking-wide uppercase">{s.title}</span>
             </button>
           ))}
         </div>
@@ -229,23 +232,13 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
                       )}
                     </select>
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="block text-sm font-bold text-slate-700 mb-2">SKU Code</label>
                     <input 
                       type="text" 
                       className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                       value={formData.sku}
                       onChange={e => setFormData({ ...formData, sku: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Minimum Order Quantity (MOQ)</label>
-                    <input 
-                      type="number" 
-                      min="1"
-                      className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                      value={formData.minimumOrderQuantity}
-                      onChange={e => setFormData({ ...formData, minimumOrderQuantity: parseInt(e.target.value) || 1 })}
                     />
                   </div>
                   <div className="col-span-2">
@@ -262,7 +255,7 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
             )}
 
             {step === 3 && (
-              <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
+              <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-3">Select Pricing Architecture</label>
                   <div className="grid grid-cols-3 gap-4">
@@ -357,48 +350,17 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
                   )}
 
                   {formData.pricingRules.type === 'QUANTITY_BASED' && (
-                    <div>
-                      <p className="text-sm font-bold text-slate-700 mb-4">Quantity Slabs</p>
-                      {formData.pricingRules.quantitySlabs.map((slab, idx) => (
-                        <div key={idx} className="flex gap-4 mb-3">
-                          <input type="number" placeholder="Min Qty" className="w-1/3 px-4 py-2 bg-slate-50 border rounded-lg appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                            value={slab.minQty} onChange={e => {
-                              const arr = [...formData.pricingRules.quantitySlabs];
-                              arr[idx].minQty = e.target.value;
-                              setFormData({ ...formData, pricingRules: { ...formData.pricingRules, quantitySlabs: arr } });
-                            }}
-                          />
-                          <input type="number" placeholder="Max Qty" className="w-1/3 px-4 py-2 bg-slate-50 border rounded-lg appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                            value={slab.maxQty} onChange={e => {
-                              const arr = [...formData.pricingRules.quantitySlabs];
-                              arr[idx].maxQty = e.target.value;
-                              setFormData({ ...formData, pricingRules: { ...formData.pricingRules, quantitySlabs: arr } });
-                            }}
-                          />
-                          <input type="number" placeholder="Price" className="w-1/3 px-4 py-2 bg-slate-50 border rounded-lg appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                            value={slab.price} onChange={e => {
-                              const arr = [...formData.pricingRules.quantitySlabs];
-                              arr[idx].price = e.target.value;
-                              setFormData({ ...formData, pricingRules: { ...formData.pricingRules, quantitySlabs: arr } });
-                            }}
-                          />
-                          <button 
-                            onClick={() => {
-                              const arr = [...formData.pricingRules.quantitySlabs];
-                              arr.splice(idx, 1);
-                              setFormData({ ...formData, pricingRules: { ...formData.pricingRules, quantitySlabs: arr } });
-                            }}
-                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                            title="Remove Slab"
-                          >
-                            <X className="h-5 w-5" />
-                          </button>
-                        </div>
-                      ))}
+                    <div className="p-6 bg-blue-50/60 rounded-2xl border border-blue-200 flex items-center justify-between">
+                      <div>
+                        <h4 className="font-black text-slate-800 text-base">Quantity & Volume Tiers Enabled</h4>
+                        <p className="text-xs text-slate-600 mt-1">Tiered pricing slabs (e.g., 1-100 = ₹45, 101-500 = ₹40) are configured in the next step.</p>
+                      </div>
                       <button 
-                        onClick={() => setFormData({ ...formData, pricingRules: { ...formData.pricingRules, quantitySlabs: [...formData.pricingRules.quantitySlabs, { minQty: 1, maxQty: 10, price: 0 }] } })}
-                        className="text-sm text-blue-600 font-bold flex items-center mt-2"
-                      ><Plus className="h-4 w-4 mr-1"/> Add Slab</button>
+                        onClick={() => setStep(4)}
+                        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1 shadow-md transition-all whitespace-nowrap"
+                      >
+                        Configure Quantity Tiers <ChevronRight className="h-4 w-4" />
+                      </button>
                     </div>
                   )}
 
@@ -479,7 +441,7 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
             )}
 
             {step === 2 && (
-              <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
+              <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
                 <div className="grid grid-cols-2 gap-8">
                   {/* Cost Breakdown Inputs */}
                   <div className="space-y-4">
@@ -545,6 +507,137 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
                 </div>
               </motion.div>
             )}
+
+            {step === 4 && (
+              <motion.div key="step4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+                <div>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 tracking-tight">Volume & Quantity Pricing Slabs</h3>
+                      <p className="text-xs text-slate-500 font-medium mt-1">Set unit costs based on order quantity ranges. The lowest minimum quantity acts as the product MOQ.</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const slabs = formData.pricingRules?.quantitySlabs || [];
+                        const lastMax = slabs.length > 0 ? Number(slabs[slabs.length - 1].maxQty) : 0;
+                        const newMin = lastMax > 0 && lastMax < 999999 ? lastMax + 1 : 1;
+                        const newMax = newMin > 1000 ? 999999 : newMin + 99;
+                        setFormData({ 
+                          ...formData, 
+                          pricingRules: { 
+                            ...formData.pricingRules, 
+                            type: 'QUANTITY_BASED',
+                            quantitySlabs: [...slabs, { minQty: newMin, maxQty: newMax, price: 0 }] 
+                          } 
+                        });
+                      }}
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-blue-100 transition-all active:scale-95 whitespace-nowrap"
+                    >
+                      <Plus className="h-4 w-4"/> Add Quantity Tier
+                    </button>
+                  </div>
+
+                  {(!formData.pricingRules.quantitySlabs || formData.pricingRules.quantitySlabs.length === 0) ? (
+                    <div className="p-10 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200">
+                      <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-blue-600">
+                        <Layers className="h-8 w-8" />
+                      </div>
+                      <h4 className="text-base font-black text-slate-800">No Quantity Tiers Configured</h4>
+                      <p className="text-xs text-slate-400 mt-1 mb-6 max-w-md mx-auto">Offer volume discounting by defining quantity ranges (e.g. 1-100 = ₹45, 101-500 = ₹40, &gt;500 = ₹38).</p>
+                      <button 
+                        onClick={() => setFormData({ 
+                          ...formData, 
+                          pricingRules: { 
+                            ...formData.pricingRules, 
+                            type: 'QUANTITY_BASED', 
+                            quantitySlabs: [
+                              { minQty: 1, maxQty: 100, price: 45 }, 
+                              { minQty: 101, maxQty: 500, price: 40 }, 
+                              { minQty: 501, maxQty: 1000, price: 38 }, 
+                              { minQty: 1001, maxQty: 999999, price: 35 }
+                            ] 
+                          } 
+                        })}
+                        className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs inline-flex items-center gap-2 shadow-lg transition-all active:scale-95"
+                      >
+                        Load Preset Example (1-100, 101-500, &gt;1000)
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-black uppercase text-slate-400 tracking-wider">
+                            <th className="py-3.5 px-4">Tier #</th>
+                            <th className="py-3.5 px-4">From Qty (Min)</th>
+                            <th className="py-3.5 px-4">To Qty (Max)</th>
+                            <th className="py-3.5 px-4">Unit Cost (₹)</th>
+                            <th className="py-3.5 px-4 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-sm">
+                          {formData.pricingRules.quantitySlabs.map((slab, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                              <td className="py-3 px-4 font-black text-slate-500">Tier {idx + 1}</td>
+                              <td className="py-3 px-4">
+                                <input type="number" min="1" className="w-28 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  value={slab.minQty} onChange={e => {
+                                    const arr = [...formData.pricingRules.quantitySlabs];
+                                    arr[idx].minQty = Number(e.target.value) || 0;
+                                    setFormData({ ...formData, pricingRules: { ...formData.pricingRules, quantitySlabs: arr } });
+                                  }}
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <input type="number" min="1" className="w-28 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    value={slab.maxQty} onChange={e => {
+                                      const arr = [...formData.pricingRules.quantitySlabs];
+                                      arr[idx].maxQty = Number(e.target.value) || 0;
+                                      setFormData({ ...formData, pricingRules: { ...formData.pricingRules, quantitySlabs: arr } });
+                                    }}
+                                  />
+                                  {Number(slab.maxQty) >= 999999 && (
+                                    <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-lg">
+                                      (&gt; {Number(slab.minQty) - 1} / Infinite)
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="relative w-36">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                  <input type="number" min="0" step="0.01" className="w-full pl-7 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-black text-blue-600 outline-none focus:ring-2 focus:ring-blue-500 appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    value={slab.price} onChange={e => {
+                                      const arr = [...formData.pricingRules.quantitySlabs];
+                                      arr[idx].price = Number(e.target.value) || 0;
+                                      setFormData({ ...formData, pricingRules: { ...formData.pricingRules, quantitySlabs: arr } });
+                                    }}
+                                  />
+                                </div>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <button 
+                                  onClick={() => {
+                                    const arr = [...formData.pricingRules.quantitySlabs];
+                                    arr.splice(idx, 1);
+                                    setFormData({ ...formData, pricingRules: { ...formData.pricingRules, quantitySlabs: arr } });
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                                  title="Remove Tier"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
 
@@ -556,7 +649,7 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
             </button>
           ) : <div></div>}
           
-          {step < 3 ? (
+          {step < 4 ? (
             <button onClick={() => setStep(step + 1)} className="px-8 py-2.5 bg-slate-900 text-white font-bold rounded-xl shadow-lg shadow-slate-300 hover:bg-slate-800 transition-all active:scale-95 flex items-center">
               Next Step <ChevronRight className="h-5 w-5 ml-1" />
             </button>

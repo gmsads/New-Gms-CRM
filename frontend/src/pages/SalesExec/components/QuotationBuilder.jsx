@@ -146,7 +146,24 @@ const QuotationBuilder = ({ prospect, onClose, onSave }) => {
   const finalTotal = taxableAmount;
 
   // -- Handlers --
-  const addItem = (productId) => {
+  const getProductSlabPrice = (product, qty) => {
+    if (!product) return 0;
+    let basePrice = product.pricingRules?.sellingPrice || product.pricingRules?.totalBasePrice || product.basePrice || 0;
+    const slabs = product.pricingRules?.quantitySlabs || [];
+    if (slabs && slabs.length > 0) {
+      const match = slabs.find(s => qty >= s.minQty && qty <= s.maxQty);
+      if (match) {
+        return Number(match.price);
+      }
+      const sorted = [...slabs].sort((a, b) => Number(a.maxQty) - Number(b.maxQty));
+      if (sorted.length > 0 && qty > sorted[sorted.length - 1].maxQty) {
+        return Number(sorted[sorted.length - 1].price);
+      }
+    }
+    return basePrice;
+  };
+
+  const handleProductSelect = (productId) => {
     if (!productId) return;
     const product = products.find(p => p._id === productId);
     if (!product) return;
@@ -157,12 +174,15 @@ const QuotationBuilder = ({ prospect, onClose, onSave }) => {
       return; 
     }
     
+    const moq = product.minimumOrderQuantity || product.moq || 1;
+    const slabPrice = getProductSlabPrice(product, moq);
+    
     setItems([...items, {
       product: product._id,
       name: product.productName || product.name,
-      originalPrice: product.pricingRules?.totalBasePrice || product.basePrice || 0,
-      unitPrice: product.pricingRules?.totalBasePrice || product.basePrice || 0,
-      quantity: product.minimumOrderQuantity || product.moq || 1,
+      originalPrice: slabPrice,
+      unitPrice: slabPrice,
+      quantity: moq,
       isCustomPrice: false,
       hsn: product.hsn || '',
       taxRate: 18
@@ -173,6 +193,14 @@ const QuotationBuilder = ({ prospect, onClose, onSave }) => {
   const updateItem = (index, field, value) => {
     const newItems = [...items];
     newItems[index][field] = value;
+    if (field === 'quantity' && !newItems[index].isCustomPrice && newItems[index].product) {
+      const prod = products.find(p => p._id === newItems[index].product);
+      if (prod && prod.pricingRules?.quantitySlabs?.length > 0) {
+        const newPrice = getProductSlabPrice(prod, Number(value) || 1);
+        newItems[index].unitPrice = newPrice;
+        newItems[index].originalPrice = newPrice;
+      }
+    }
     setItems(newItems);
   };
 

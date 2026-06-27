@@ -830,10 +830,18 @@ export const CreateOrderModal = ({
   onClose,
   onSubmit,
 }) => {
+  const getInitialOrderType = (ct) => {
+    if (!ct) return "retail";
+    const lower = ct.toLowerCase();
+    if (lower.includes("corporate")) return "corporate";
+    if (lower.includes("agent")) return "agent";
+    return "retail";
+  };
+
   const [formData, setFormData] = useState({
     executiveName: executiveName || "",
     orderDate: new Date().toISOString().split("T")[0],
-    orderType: client?.clientType || "retail",
+    orderType: getInitialOrderType(client?.clientType),
     gstNumber: "",
     company: client?.company || client?.businessName || "",
     name: client?.name || client?.contactPerson || "",
@@ -864,6 +872,13 @@ export const CreateOrderModal = ({
       .catch(console.error);
   }, [user]);
 
+  React.useEffect(() => {
+    if (client && client.clientType) {
+      const initType = getInitialOrderType(client.clientType);
+      setFormData((prev) => ({ ...prev, orderType: initType }));
+    }
+  }, [client]);
+
   const [items, setItems] = useState([
     {
       productId: "",
@@ -885,9 +900,22 @@ export const CreateOrderModal = ({
   const [errors, setErrors] = useState({});
   const [designFile, setDesignFile] = useState(null);
 
-  const getProductPriceForOrderType = (product, orderType) => {
+  const getProductPriceForOrderType = (product, orderType, qty = 1) => {
     if (!product) return 0;
-    if (!orderType) return product.pricingRules?.sellingPrice || product.pricingRules?.totalBasePrice || product.basePrice || 0;
+    let basePrice = product.pricingRules?.sellingPrice || product.pricingRules?.totalBasePrice || product.basePrice || 0;
+    const slabs = product.pricingRules?.quantitySlabs || [];
+    if (slabs && slabs.length > 0) {
+      const match = slabs.find(s => qty >= s.minQty && qty <= s.maxQty);
+      if (match) {
+        basePrice = Number(match.price);
+      } else {
+        const sorted = [...slabs].sort((a, b) => Number(a.maxQty) - Number(b.maxQty));
+        if (sorted.length > 0 && qty > sorted[sorted.length - 1].maxQty) {
+          basePrice = Number(sorted[sorted.length - 1].price);
+        }
+      }
+    }
+    if (!orderType) return basePrice;
     
     if (product.clientTypePricing) {
       if (product.clientTypePricing[orderType] !== undefined) {
@@ -900,13 +928,18 @@ export const CreateOrderModal = ({
         return product.clientTypePricing[matchKey];
       }
     }
-    return product.pricingRules?.sellingPrice || product.pricingRules?.totalBasePrice || product.basePrice || 0;
+    const ct = clientTypes.find(c => c.key?.toLowerCase() === orderType.toLowerCase() || c.name?.toLowerCase() === orderType.toLowerCase());
+    if (ct && ct.multiplier !== undefined) {
+      return parseFloat((basePrice * (ct.multiplier || 1)).toFixed(2));
+    }
+    return basePrice;
   };
 
   const handleSelectFromCatalogue = (product) => {
-    const price = getProductPriceForOrderType(product, formData.orderType);
-    const desc = product.productName || product.name;
     const moq = product.minimumOrderQuantity || 1;
+    const targetQty = activeItemIndex !== null ? Math.max(items[activeItemIndex]?.qty || 1, moq) : moq;
+    const price = getProductPriceForOrderType(product, formData.orderType, targetQty);
+    const desc = product.productName || product.name;
 
     if (activeItemIndex !== null) {
       setItems((prev) =>
@@ -1025,7 +1058,19 @@ export const CreateOrderModal = ({
     setItems((prev) => prev.filter((_, idx) => idx !== i));
   const updateItem = (i, k, v) =>
     setItems((prev) =>
-      prev.map((item, idx) => (idx === i ? { ...item, [k]: v } : item)),
+      prev.map((item, idx) => {
+        if (idx !== i) return item;
+        const updated = { ...item, [k]: v };
+        if (k === 'qty' && !item.isCustom && item.productId) {
+          const product = availableProducts.find((p) => p._id === item.productId);
+          if (product && product.pricingRules?.quantitySlabs?.length > 0) {
+            const newCost = getProductPriceForOrderType(product, formData.orderType, Number(v) || 1);
+            updated.cost = newCost;
+            updated.baseCost = newCost;
+          }
+        }
+        return updated;
+      })
     );
 
   const handleProductSelect = (i, productId) => {
@@ -1034,11 +1079,15 @@ export const CreateOrderModal = ({
     setItems((prev) =>
       prev.map((item, idx) => {
         if (idx === i) {
+          const newQty = Math.max(item.qty, product.minimumOrderQuantity || 1);
+          const newPrice = getProductPriceForOrderType(product, formData.orderType, newQty);
           return {
             ...item,
             productId,
             desc: product.productName || product.name,
-            cost: getProductPriceForOrderType(product, formData.orderType),
+            cost: newPrice,
+            baseCost: newPrice,
+            qty: newQty,
             isCustom: false,
           };
         }
@@ -1088,9 +1137,11 @@ export const CreateOrderModal = ({
           if (!item.productId || item.isCustom) return item;
           const product = availableProducts.find((p) => p._id === item.productId);
           if (!product) return item;
+          const newCost = getProductPriceForOrderType(product, finalValue, item.qty || 1);
           return {
             ...item,
-            cost: getProductPriceForOrderType(product, finalValue),
+            cost: newCost,
+            baseCost: newCost,
           };
         })
       );
@@ -1244,29 +1295,18 @@ export const CreateOrderModal = ({
                   className={`h-9 w-full rounded border ${errors.orderType ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-green-500`}
                 >
                   <option value="">Select Type...</option>
-                  {clientTypes.length === 0 ? (
-                    [
-                      "renewal",
-                      "renewal-agent",
-                      "retail",
-                      "retail-agent",
-                      "agent",
-                      "corporate",
-                      "corporate-renewal",
-                      "website",
-                      "walk-in",
-                    ].map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))
-                  ) : (
-                    clientTypes.map((ct) => (
-                      <option key={ct._id} value={ct.key}>
-                        {ct.name}
-                      </option>
-                    ))
-                  )}
+                  {(clientTypes.length === 0
+                    ? [
+                        { _id: "retail", key: "retail", name: "Retail" },
+                        { _id: "corporate", key: "corporate", name: "Corporate" },
+                        { _id: "agent", key: "agent", name: "Agent" },
+                      ]
+                    : clientTypes.filter((ct) => ["retail", "corporate", "agent"].includes(ct.key?.toLowerCase()) || ["retail", "corporate", "agent"].includes(ct.name?.toLowerCase()))
+                  ).map((ct) => (
+                    <option key={ct._id || ct.key} value={ct.key}>
+                      {ct.name}
+                    </option>
+                  ))}
                 </select>
                 {errors.orderType && (
                   <p className="text-[10px] text-red-500 mt-0.5 font-bold">
