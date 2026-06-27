@@ -114,7 +114,7 @@ productSchema.plugin(softDeletePlugin);
 
 // Pre-save hook to auto-calculate base cost and generate productCode
 productSchema.pre('save', async function (next) {
-  if (this.sku === '') {
+  if (!this.sku || this.sku.trim() === '' || this.sku === null) {
     this.sku = undefined;
   }
 
@@ -133,8 +133,9 @@ productSchema.pre('save', async function (next) {
   }
 
   if (this.isNew && !this.productCode) {
-    const count = await mongoose.model('Product').countDocuments();
-    this.productCode = `GMS-PROD-${String(count + 1).padStart(4, '0')}`;
+    const timeSuffix = Date.now().toString().slice(-5);
+    const randSuffix = Math.floor(100 + Math.random() * 900);
+    this.productCode = `GMS-PROD-${timeSuffix}${randSuffix}`;
   }
 
   // Calculate totalBasePrice

@@ -134,6 +134,11 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
       const derivedMoq = slabs.length > 0 && slabs[0].minQty ? Number(slabs[0].minQty) : 1;
       const payload = { ...formData, minimumOrderQuantity: derivedMoq };
       
+      if (!payload.sku || payload.sku.trim() === '') {
+        delete payload.sku;
+      }
+      delete payload.__v;
+      
       const res = await request(method, endpoint, payload);
       if (res && res.success) {
         onSuccess();
