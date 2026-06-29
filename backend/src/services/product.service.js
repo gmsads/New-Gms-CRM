@@ -59,7 +59,7 @@ class ProductService {
       throw err;
     }
 
-    await ProductCategory.findByIdAndDelete(categoryId);
+    await Category.findByIdAndDelete(categoryId);
 
     await auditWorkflow.log({
       action: 'DELETE',

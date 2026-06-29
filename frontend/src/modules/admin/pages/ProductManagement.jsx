@@ -134,7 +134,7 @@ const ProductManagement = () => {
             <span>Manage Categories ({categories.length})</span>
           </button>
           <button 
-            onClick={() => setShowProductModal(true)}
+            onClick={() => { setSelectedProduct(null); setShowProductModal(true); }}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg shadow-blue-200 transition-all active:scale-95"
           >
             <Plus className="h-5 w-5" />

@@ -174,25 +174,33 @@ productSchema.pre('save', async function (next) {
 
 productSchema.pre(['findOneAndUpdate', 'updateOne', 'updateMany'], function(next) {
   const update = this.getUpdate();
-  
+  if (!update) return typeof next === 'function' ? next() : undefined;
+
+  const target = update.$set || update;
+
   // Handle Cost Breakdown sum
-  if (update.costBreakdown) {
+  const cb = target.costBreakdown || update.costBreakdown;
+  if (cb) {
     let sum = 0;
-    if (update.costBreakdown instanceof Map) {
-      for (const value of update.costBreakdown.values()) {
+    if (cb instanceof Map) {
+      for (const value of cb.values()) {
         sum += Number(value) || 0;
       }
-    } else if (typeof update.costBreakdown === 'object') {
-      for (const key in update.costBreakdown) {
-        sum += Number(update.costBreakdown[key]) || 0;
+    } else if (typeof cb === 'object') {
+      for (const key in cb) {
+        sum += Number(cb[key]) || 0;
       }
     }
-    update.totalBaseCost = sum;
+    if (update.$set) {
+      update.$set.totalBaseCost = sum;
+    } else {
+      update.totalBaseCost = sum;
+    }
   }
 
   // Handle Total Base Price calculation on update
-  if (update.pricingRules) {
-    const rules = update.pricingRules;
+  const rules = target.pricingRules || update.pricingRules;
+  if (rules && typeof rules === 'object') {
     const taxFactor = 1 + (Number(rules.taxPercentage) || 0) / 100;
     const installation = Number(rules.installationCharge) || 0;
     let basePrice = 0;
@@ -218,7 +226,15 @@ productSchema.pre(['findOneAndUpdate', 'updateOne', 'updateMany'], function(next
       default:
         basePrice = 0;
     }
-    update['pricingRules.totalBasePrice'] = (basePrice * taxFactor) + installation;
+    rules.totalBasePrice = (basePrice * taxFactor) + installation;
+  } else if (target['pricingRules.type'] || update['pricingRules.type']) {
+    const dotTarget = update.$set ? update.$set : update;
+    const type = dotTarget['pricingRules.type'];
+    const taxFactor = 1 + (Number(dotTarget['pricingRules.taxPercentage']) || 0) / 100;
+    const installation = Number(dotTarget['pricingRules.installationCharge']) || 0;
+    let basePrice = 0;
+    if (type === 'FIXED_PRICE') basePrice = Number(dotTarget['pricingRules.sellingPrice']) || 0;
+    dotTarget['pricingRules.totalBasePrice'] = (basePrice * taxFactor) + installation;
   }
 
   if (typeof next === 'function') next();
