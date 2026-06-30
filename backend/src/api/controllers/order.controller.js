@@ -167,6 +167,33 @@ exports.bulkImport = async (req, res) => {
     let failedCount = 0;
     const errors = [];
 
+    // Self-repair: ensure existing historical/completed orders in DB have all workflows completed so they are disabled from pending queues
+    try {
+      const existingHistorical = await Order.find({
+        $or: [{ orderType: 'Historical' }, { status: { $regex: /^completed$/i } }]
+      });
+      for (const hOrder of existingHistorical) {
+        let modified = false;
+        if (hOrder.status !== 'Completed') { hOrder.status = 'Completed'; modified = true; }
+        if (hOrder.designStatus !== 'Completed') { hOrder.designStatus = 'Completed'; modified = true; }
+        if (Array.isArray(hOrder.lineItems)) {
+          hOrder.lineItems.forEach(li => {
+            if (!li.designerWorkflow) li.designerWorkflow = {};
+            if (li.designerWorkflow.currentStatus !== 'Completed') { li.designerWorkflow.currentStatus = 'Completed'; modified = true; }
+            if (!li.productionWorkflow) li.productionWorkflow = {};
+            if (li.productionWorkflow.status !== 'Completed') { li.productionWorkflow.status = 'Completed'; li.productionWorkflow.handoverStatus = 'Handed Over'; modified = true; }
+            if (!li.serviceWorkflow) li.serviceWorkflow = {};
+            if (li.serviceWorkflow.status !== 'Service Completed') { li.serviceWorkflow.status = 'Service Completed'; modified = true; }
+            if (li.operationStatus !== 'completed') { li.operationStatus = 'completed'; modified = true; }
+            if (li.serviceStatus !== 'completed') { li.serviceStatus = 'completed'; modified = true; }
+          });
+        }
+        if (modified) await hOrder.save();
+      }
+    } catch (e) {
+      console.error('Self-repair historical orders failed:', e.message);
+    }
+
     // Cache user lookups to avoid redundant database queries
     const userCache = new Map();
 
@@ -271,9 +298,51 @@ exports.bulkImport = async (req, res) => {
         }
 
         body.orderType = body.orderType || body['Order Type'] || 'Historical';
-        body.status = body.status || body['Order Status'] || body['Status'] || 'Completed';
+        const rawStatus = String(body.status || body['Order Status'] || body['Status'] || 'Completed').trim();
+        body.status = rawStatus;
         if (body['Order Number'] || body.orderNumber) {
           body.orderNumber = String(body['Order Number'] || body.orderNumber).trim();
+        }
+
+        const isCompleted = ['completed', 'delivered'].includes(rawStatus.toLowerCase()) || body.orderType === 'Historical';
+        if (isCompleted) {
+          body.status = 'Completed';
+          body.designStatus = 'Completed';
+          body.verificationStatus = 'Verified';
+          body.paymentStatus = 'Paid';
+
+          if (Array.isArray(body.lineItems)) {
+            body.lineItems = body.lineItems.map(item => ({
+              ...item,
+              designerStatus: 'Completed',
+              designerWorkflow: {
+                ...(item.designerWorkflow || {}),
+                workflowType: item.designerWorkflow?.workflowType || 'DESIGN_CREATED',
+                currentStatus: 'Completed',
+                statusHistory: [
+                  ...(item.designerWorkflow?.statusHistory || []),
+                  { status: 'Completed', changedAt: parsedDate || new Date(), note: 'Historical order auto-completed and disabled' }
+                ]
+              },
+              productionWorkflow: {
+                ...(item.productionWorkflow || {}),
+                status: 'Completed',
+                handoverStatus: 'Handed Over',
+                producedQuantity: item.quantity || 1,
+                qcStatus: 'Approved',
+                startedAt: parsedDate || new Date(),
+                actualCompletion: parsedDate || new Date()
+              },
+              serviceWorkflow: {
+                ...(item.serviceWorkflow || {}),
+                status: 'Service Completed',
+                startedAt: parsedDate || new Date(),
+                completedAt: parsedDate || new Date()
+              },
+              operationStatus: 'completed',
+              serviceStatus: 'completed'
+            }));
+          }
         }
 
         const order = new Order(body);
@@ -505,6 +574,10 @@ exports.confirm = async (req, res) => {
 // ── PATCH /api/orders/:id/status ──────────────────────────────────────────────
 exports.updateStatus = async (req, res) => {
   try {
+    const existing = await Order.findById(req.params.id);
+    if (existing?.orderType === 'Historical') {
+      return res.status(400).json({ success: false, message: 'Historical orders are completed old data and disabled for workflow modification' });
+    }
     const order = await orderWorkflow.updateOrderStatus(req.params.id, req.body.status, req.user, req.body, getReqContext(req));
     res.json({ success: true, data: order });
   } catch (err) {
@@ -519,6 +592,10 @@ exports.updateStatus = async (req, res) => {
 // ── PATCH /api/orders/:id ─────────────────────────────────────────────────────
 exports.update = async (req, res) => {
   try {
+    const existing = await Order.findById(req.params.id);
+    if (existing?.orderType === 'Historical') {
+      return res.status(400).json({ success: false, message: 'Historical orders are completed old data and disabled for workflow modification' });
+    }
     const order = await orderWorkflow.updateOrder(req.params.id, req.body, req.user, getReqContext(req));
     res.json({ success: true, data: order });
   } catch (err) {
@@ -529,6 +606,10 @@ exports.update = async (req, res) => {
 // ── PATCH /api/orders/:id/line-items/:itemIndex ─────────────────────────────────
 exports.updateLineItem = async (req, res) => {
   try {
+    const existing = await Order.findById(req.params.id);
+    if (existing?.orderType === 'Historical') {
+      return res.status(400).json({ success: false, message: 'Historical orders are completed old data and disabled for workflow modification' });
+    }
     const { id, itemIndex } = req.params;
     const { designerStatus, designFileUrl, operationStatus, operationFileUrl, serviceStatus, serviceFileUrl } = req.body;
     

@@ -42,7 +42,8 @@ exports.getServices = async (req, res) => {
     // Find orders that have lineItems with designer workflow and have been verified
     const filter = { 
       'lineItems': { $exists: true, $not: { $size: 0 } },
-      status: { $nin: ['Draft', 'Pending_Approval', 'Cancelled'] }
+      status: { $nin: ['Draft', 'Pending_Approval', 'Cancelled'] },
+      orderType: { $ne: 'Historical' }
     };
     
     const orders = await Order.find(filter)
@@ -90,6 +91,9 @@ exports.updateServiceStatus = async (req, res) => {
 
     const order = await Order.findById(orderId);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.orderType === 'Historical') {
+      return res.status(400).json({ success: false, message: 'Historical orders are completed old data and disabled for workflow modification' });
+    }
     
     const item = order.lineItems[itemIndex];
     if (!item) return res.status(404).json({ success: false, message: 'Service not found' });

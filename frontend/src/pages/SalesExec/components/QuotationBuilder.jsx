@@ -631,35 +631,41 @@ Sales Executive`;
                 <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider font-semibold">
                   <th className="py-3 px-4 w-12 border-r border-gray-200 text-center">No</th>
                   <th className="py-3 px-4 border-r border-gray-200">Items/Services</th>
-                  <th className="py-3 px-4 w-24 border-r border-gray-200 text-center">Qty</th>
+                  <th className="py-3 px-4 w-28 border-r border-gray-200 text-center">Qty</th>
                   <th className="py-3 px-4 w-32 border-r border-gray-200 text-right">Price/Item (₹)</th>
                   <th className="py-3 px-4 w-32 border-r border-gray-200 text-right">Amount (₹)</th>
                   <th className="py-3 px-4 w-12 text-center border-l border-gray-200"></th>
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, idx) => (
-                  <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors group">
-                    <td className="py-3 px-4 text-gray-500 border-r border-gray-200 text-center font-medium">{idx + 1}</td>
-                    <td className="py-3 px-4 border-r border-gray-200">
-                      <input type="text" value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-full bg-transparent outline-none text-gray-900 font-medium" />
-                    </td>
-                    <td className="py-3 px-4 border-r border-gray-200">
-                      <input 
-                        type="text" 
-                        value={item.quantity} 
-                        onChange={e => {
-                          const val = e.target.value.replace(/\D/g, '');
-                          updateItem(idx, 'quantity', val === '' ? '' : parseInt(val, 10));
-                        }}
-                        onBlur={() => {
-                          if (item.quantity === '' || item.quantity < 1) {
-                            updateItem(idx, 'quantity', 1);
-                          }
-                        }}
-                        className="w-full bg-transparent outline-none text-gray-900 text-center font-medium" 
-                      />
-                    </td>
+                {items.map((item, idx) => {
+                  const prod = products.find(p => p._id === item.product);
+                  const moq = prod ? (prod.minimumOrderQuantity || 1) : 1;
+                  return (
+                    <tr key={idx} className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors group">
+                      <td className="py-3 px-4 text-gray-500 border-r border-gray-200 text-center font-medium">{idx + 1}</td>
+                      <td className="py-3 px-4 border-r border-gray-200">
+                        <input type="text" value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="w-full bg-transparent outline-none text-gray-900 font-medium" />
+                      </td>
+                      <td className="py-3 px-4 border-r border-gray-200 relative">
+                        <input 
+                          type="number" 
+                          min={moq}
+                          value={item.quantity} 
+                          onChange={e => {
+                            const val = e.target.value === '' ? '' : parseInt(e.target.value, 10);
+                            updateItem(idx, 'quantity', isNaN(val) ? '' : val);
+                          }}
+                          onBlur={() => {
+                            if (item.quantity === '' || item.quantity < moq) {
+                              updateItem(idx, 'quantity', moq);
+                            }
+                          }}
+                          title={`Minimum Order Quantity: ${moq}`}
+                          className="w-full bg-transparent outline-none text-gray-900 text-center font-bold" 
+                        />
+                        {moq > 1 && <span className="absolute bottom-0.5 right-1 text-[8px] text-emerald-600 font-bold">MOQ:{moq}</span>}
+                      </td>
                     <td className="py-3 px-4 border-r border-gray-200">
                       <div className="flex flex-col gap-1 items-end">
                         <input 
@@ -684,7 +690,8 @@ Sales Executive`;
                       </button>
                     </td>
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
 </div>

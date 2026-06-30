@@ -10,6 +10,7 @@ const storage = multer.diskStorage({
     if (file.fieldname === 'designAsset') folder = 'design';
     if (file.fieldname === 'documents') folder = 'employees/documents';
     if (file.fieldname === 'profileImage') folder = 'employees/profiles';
+    if (['proof', 'proofFile', 'file', 'receipt'].includes(file.fieldname)) folder = 'payments/proofs';
     
     const uploadDir = path.join(__dirname, '../../../public/uploads', folder);
     if (!fs.existsSync(uploadDir)) {
@@ -25,7 +26,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.pdf', '.docx', '.xlsx'];
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.pdf', '.docx', '.xlsx', '.webp', '.gif'];
   const ext = path.extname(file.originalname).toLowerCase();
   
   if (allowedExtensions.includes(ext)) {

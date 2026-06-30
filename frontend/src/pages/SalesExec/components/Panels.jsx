@@ -1598,14 +1598,25 @@ export const CreateOrderModal = ({
 
                     <div>
                       <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">
-                        Quantity
+                        Quantity (MOQ: {(() => {
+                          const prod = availableProducts.find(p => p._id === item.productId);
+                          return prod ? (prod.minimumOrderQuantity || 1) : 1;
+                        })()})
                       </label>
                       <input
                         type="number"
                         value={item.qty}
-                        onChange={(e) => updateItem(i, "qty", +e.target.value)}
-                        className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none"
-                        min="1"
+                        onChange={(e) => updateItem(i, "qty", e.target.value === '' ? '' : +e.target.value)}
+                        onBlur={() => {
+                          const prod = availableProducts.find(p => p._id === item.productId);
+                          const moq = prod ? (prod.minimumOrderQuantity || 1) : 1;
+                          if (Number(item.qty) < moq) updateItem(i, "qty", moq);
+                        }}
+                        className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none font-bold"
+                        min={(() => {
+                          const prod = availableProducts.find(p => p._id === item.productId);
+                          return prod ? (prod.minimumOrderQuantity || 1) : 1;
+                        })()}
                       />
                     </div>
 
@@ -2549,6 +2560,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
     if (activeItemIndex !== null) {
       const newItems = [...items];
       newItems[activeItemIndex].product = name;
+      newItems[activeItemIndex].qty = Math.max(newItems[activeItemIndex].qty || 1, prodObj.minimumOrderQuantity || 1);
       newItems[activeItemIndex].unitPrice = price;
       setItems(newItems);
     } else {
@@ -2677,16 +2689,27 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                     </button>
                   </div>
                 </div>
-                <div className="w-20">
+                <div className="w-24">
                   <label className="text-[10px] text-muted-foreground block mb-0.5">
-                    Qty
+                    Qty (MOQ: {(() => {
+                      const prod = productList.find(p => (p.productName || p.name) === item.product);
+                      return prod ? (prod.minimumOrderQuantity || 1) : 1;
+                    })()})
                   </label>
                   <input
                     type="number"
                     value={item.qty}
-                    onChange={(e) => updateItem(i, "qty", +e.target.value)}
-                    className="h-9 w-full rounded border border-slate-300 px-2 text-sm outline-none"
-                    min="1"
+                    onChange={(e) => updateItem(i, "qty", e.target.value === '' ? '' : +e.target.value)}
+                    onBlur={() => {
+                      const prod = productList.find(p => (p.productName || p.name) === item.product);
+                      const moq = prod ? (prod.minimumOrderQuantity || 1) : 1;
+                      if (Number(item.qty) < moq) updateItem(i, "qty", moq);
+                    }}
+                    className="h-9 w-full rounded border border-slate-300 px-2 text-sm outline-none font-bold text-center"
+                    min={(() => {
+                      const prod = productList.find(p => (p.productName || p.name) === item.product);
+                      return prod ? (prod.minimumOrderQuantity || 1) : 1;
+                    })()}
                   />
                 </div>
                 <div className="w-24">
@@ -3396,18 +3419,31 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     amount: "",
     method: "UPI",
+    proofFile: null,
     proofUrl: "",
     reference: "",
     paymentType: "Partial",
     notes: "",
   });
 
+  const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setFormData({ ...formData, proofFile: file });
+    if (file.type.startsWith("image/")) {
+      setPreview(URL.createObjectURL(file));
+    } else {
+      setPreview("DOCUMENT");
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.amount || !formData.proofUrl) {
-      alert("Amount and Proof are required.");
+    if (!formData.amount || (!formData.proofFile && !formData.proofUrl)) {
+      alert("Amount and Upload Proof file are required.");
       return;
     }
     setLoading(true);
@@ -3524,24 +3560,49 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
 
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">
-              Proof URL (Screenshot/Photo) *
+              Upload Proof (Screenshot / Receipt / PDF) *
             </label>
-            <div className="relative">
+            <div className={`border-2 border-dashed rounded-2xl p-4 transition-all relative ${formData.proofFile ? "border-emerald-500 bg-emerald-50/40" : "border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400"}`}>
               <input
-                type="url"
-                required
-                value={formData.proofUrl}
-                onChange={(e) =>
-                  setFormData({ ...formData, proofUrl: e.target.value })
-                }
-                placeholder="https://..."
-                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm font-medium outline-none focus:border-blue-600 transition-all"
+                type="file"
+                required={!formData.proofFile && !formData.proofUrl}
+                accept="image/*,.pdf"
+                onChange={handleFileChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
               />
-              <Link className="absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+              {formData.proofFile ? (
+                <div className="flex flex-col items-center justify-center p-2 text-center relative z-20">
+                  {preview && preview !== "DOCUMENT" ? (
+                    <img src={preview} alt="Proof preview" className="w-full h-32 object-contain rounded-xl shadow-sm mb-2 bg-white" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-2 shadow-sm">
+                      <FileText className="h-8 w-8" />
+                    </div>
+                  )}
+                  <p className="text-xs font-bold text-slate-800 truncate max-w-[240px]">{formData.proofFile.name}</p>
+                  <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">{(formData.proofFile.size / 1024).toFixed(1)} KB · Ready to upload</p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFormData({ ...formData, proofFile: null });
+                      setPreview(null);
+                    }}
+                    className="mt-2 text-[10px] font-bold text-red-600 hover:underline relative z-30"
+                  >
+                    Remove & pick another
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-4 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mb-2 shadow-sm transition-transform">
+                    <Upload className="h-6 w-6" />
+                  </div>
+                  <p className="text-xs font-black text-slate-700">Click to upload or drag & drop</p>
+                  <p className="text-[10px] font-bold text-slate-400 mt-0.5">Supports PNG, JPG, WEBP, or PDF (up to 10MB)</p>
+                </div>
+              )}
             </div>
-            <p className="text-[9px] text-slate-400 mt-1 italic">
-              Paste the link to the payment screenshot here.
-            </p>
           </div>
 
           <div>
@@ -3576,7 +3637,7 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
               ) : (
                 <IndianRupee className="h-4 w-4" />
               )}
-              {loading ? "Submitting..." : "Submit Collection"}
+              {loading ? "Uploading & Submitting..." : "Submit Collection"}
             </button>
           </div>
         </form>

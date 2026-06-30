@@ -4,6 +4,7 @@ const router  = express.Router();
 const { protect }                                    = require('../../guards/auth.guard');
 const { can }                                        = require('../../guards/role.guard');
 const { requireProof, preventSelfVerification }      = require('../../guards/payment.guard');
+const upload = require('../../core/middlewares/upload.middleware');
 const ctrl = require('../controllers/payment.controller');
 
 router.use(protect);
@@ -14,6 +15,7 @@ router.get('/:id',      can('payments:read'),    ctrl.getOne);
 
 router.post('/',
   can('payments:collect'),
+  upload.any(),
   requireProof,
   ctrl.create
 );

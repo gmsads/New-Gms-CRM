@@ -193,10 +193,14 @@ export const useOrderFlow = (user, onSaved) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await paymentApi.create({
-        orderId: paymentOrder._id || paymentOrder.id,
-        ...paymentData
-      }, user?.token);
+      const payload = new FormData();
+      payload.append('orderId', paymentOrder._id || paymentOrder.id);
+      Object.keys(paymentData).forEach(key => {
+        if (paymentData[key] !== null && paymentData[key] !== undefined) {
+          payload.append(key, paymentData[key]);
+        }
+      });
+      await paymentApi.create(payload, user?.token);
       setToastMsg('Payment submitted for verification!');
       setPaymentOrder(null);
       setTimeout(() => setToastMsg(null), 3000);

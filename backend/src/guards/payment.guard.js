@@ -18,6 +18,17 @@ const Order = require('../domains/orders/order.model');
  * For now checks the request body for proofUrl field.
  */
 const requireProof = (req, res, next) => {
+  if (req.file && req.file.filename) {
+    const hostUrl = `${req.protocol}://${req.get('host')}`;
+    req.body.proofUrl = `${hostUrl}/uploads/payments/proofs/${req.file.filename}`;
+  } else if (req.files && req.files.length > 0 && req.files[0].filename) {
+    const hostUrl = `${req.protocol}://${req.get('host')}`;
+    req.body.proofUrl = `${hostUrl}/uploads/payments/proofs/${req.files[0].filename}`;
+  }
+
+  if (!req.body.orderId && req.body.order) req.body.orderId = req.body.order;
+  if (!req.body.order && req.body.orderId) req.body.order = req.body.orderId;
+
   const { proofUrl } = req.body;
   if (!proofUrl || proofUrl.trim() === '') {
     return res.status(422).json({

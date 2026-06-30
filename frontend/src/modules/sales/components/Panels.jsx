@@ -1352,75 +1352,88 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
             </div>
             
             <div className="space-y-4">
-              {items.map((item, i) => (
-                <div key={i} className="rounded-xl border border-slate-200 bg-slate-50 p-4 relative">
-                  {items.length > 1 && (
-                    <button onClick={() => removeItem(i)} className="absolute top-2 right-2 h-7 w-7 rounded bg-red-100 hover:bg-red-200 flex items-center justify-center shrink-0"><X className="h-3 w-3 text-red-600" /></button>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div className="col-span-1 sm:col-span-2">
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Requirement</label>
-                      <div className="flex gap-2">
-                        <select value={item.productId} onChange={e => handleProductSelect(i, e.target.value)} className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none">
-                          <option value="">Select product...</option>
-                          {availableProducts.map(p => <option key={p._id} value={p._id}>{p.productName || p.name}</option>)}
-                        </select>
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <input type="checkbox" id={`custom-${i}`} checked={item.isCustom} onChange={e => updateItem(i, 'isCustom', e.target.checked)} className="rounded cursor-pointer" />
-                        <label htmlFor={`custom-${i}`} className="text-xs font-bold text-slate-700 cursor-pointer">Customization Required</label>
-                      </div>
-                      {item.isCustom && (
-                        <div className="mt-2">
-                          <input value={item.customDesc} onChange={e => updateItem(i, 'customDesc', e.target.value)} placeholder="Describe customization..." className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs outline-none" />
+              {items.map((item, i) => {
+                const prod = availableProducts.find(p => p._id === item.productId);
+                const moq = prod ? (prod.minimumOrderQuantity || 1) : 1;
+                return (
+                  <div key={i} className="rounded-xl border border-slate-200 bg-slate-50 p-4 relative">
+                    {items.length > 1 && (
+                      <button onClick={() => removeItem(i)} className="absolute top-2 right-2 h-7 w-7 rounded bg-red-100 hover:bg-red-200 flex items-center justify-center shrink-0"><X className="h-3 w-3 text-red-600" /></button>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                      <div className="col-span-1 sm:col-span-2">
+                        <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Requirement</label>
+                        <div className="flex gap-2">
+                          <select value={item.productId} onChange={e => handleProductSelect(i, e.target.value)} className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none">
+                            <option value="">Select product...</option>
+                            {availableProducts.map(p => <option key={p._id} value={p._id}>{p.productName || p.name}</option>)}
+                          </select>
                         </div>
-                      )}
-                    </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <input type="checkbox" id={`custom-${i}`} checked={item.isCustom} onChange={e => updateItem(i, 'isCustom', e.target.checked)} className="rounded cursor-pointer" />
+                          <label htmlFor={`custom-${i}`} className="text-xs font-bold text-slate-700 cursor-pointer">Customization Required</label>
+                        </div>
+                        {item.isCustom && (
+                          <div className="mt-2">
+                            <input value={item.customDesc} onChange={e => updateItem(i, 'customDesc', e.target.value)} placeholder="Describe customization..." className="h-8 w-full rounded border border-slate-300 bg-white px-2 text-xs outline-none" />
+                          </div>
+                        )}
+                      </div>
 
-                    <div>
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Quantity</label>
-                      <input type="number" value={item.qty} onChange={e => updateItem(i, 'qty', +e.target.value)} className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none" min="1" />
-                    </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Cost (₹)</label>
-                      <div className="relative">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Quantity (MOQ: {moq})</label>
                         <input 
                           type="number" 
-                          value={item.cost} 
-                          onChange={e => {
-                            const val = +e.target.value;
-                            if (item.isCustom) {
-                              updateItem(i, 'cost', val);
-                            } else if (val >= (item.baseCost || 0)) {
-                              updateItem(i, 'cost', val);
-                            }
-                          }} 
-                          min={!item.isCustom ? (item.baseCost || 0) : 0}
-                          className={`h-9 w-full rounded border px-3 pr-8 text-sm outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!item.isCustom && item.cost <= (item.baseCost || 0) ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-300'}`} 
-                          placeholder={item.isCustom ? "Enter cost" : "Fixed cost"} 
-                        />
-                        <button 
-                          type="button"
-                          onClick={() => {
-                            const currentCost = Number(item.cost) || 0;
-                            updateItem(i, 'cost', currentCost + 1);
+                          value={item.qty} 
+                          onChange={e => updateItem(i, 'qty', e.target.value === '' ? '' : +e.target.value)}
+                          onBlur={() => {
+                            if (Number(item.qty) < moq) updateItem(i, 'qty', moq);
                           }}
-                          title="Increase Cost"
-                          className="absolute right-1 top-1 bottom-1 w-6 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 flex items-center justify-center transition-colors border border-slate-200 shadow-sm"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
-                        </button>
+                          className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none" 
+                          min={moq} 
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Cost (₹)</label>
+                        <div className="relative">
+                          <input 
+                            type="number" 
+                            value={item.cost} 
+                            onChange={e => {
+                              const val = +e.target.value;
+                              if (item.isCustom) {
+                                updateItem(i, 'cost', val);
+                              } else if (val >= (item.baseCost || 0)) {
+                                updateItem(i, 'cost', val);
+                              }
+                            }} 
+                            min={!item.isCustom ? (item.baseCost || 0) : 0}
+                            className={`h-9 w-full rounded border px-3 pr-8 text-sm outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!item.isCustom && item.cost <= (item.baseCost || 0) ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-300'}`} 
+                            placeholder={item.isCustom ? "Enter cost" : "Fixed cost"} 
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const currentCost = Number(item.cost) || 0;
+                              updateItem(i, 'cost', currentCost + 1);
+                            }}
+                            title="Increase Cost"
+                            className="absolute right-1 top-1 bottom-1 w-6 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 flex items-center justify-center transition-colors border border-slate-200 shadow-sm"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Delivery Date</label>
+                        <input type="date" value={item.deliveryDate} onChange={e => updateItem(i, 'deliveryDate', e.target.value)} className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none" />
                       </div>
                     </div>
-
-                    <div>
-                      <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Delivery Date</label>
-                      <input type="date" value={item.deliveryDate} onChange={e => updateItem(i, 'deliveryDate', e.target.value)} className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none" />
-                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mt-6 border-t pt-4 space-y-3">
@@ -1949,11 +1962,13 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
     const clientType = prospect?.clientType || 'Retail';
     const price = getProductPriceForClientType(product, clientType);
     const name = product.productName || product.name;
+    const moq = product.minimumOrderQuantity || 1;
 
     if (activeItemIndex !== null) {
       const newItems = [...items];
       newItems[activeItemIndex].productId = product._id;
       newItems[activeItemIndex].variantId = '';
+      newItems[activeItemIndex].qty = Math.max(newItems[activeItemIndex].qty || 1, moq);
       newItems[activeItemIndex].unitPrice = price;
       newItems[activeItemIndex].systemPrice = price;
       newItems[activeItemIndex].customPrice = false;
@@ -1965,7 +1980,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
         productId: product._id, 
         variantId: '', 
         name: name, 
-        qty: product.minimumOrderQuantity || 1, 
+        qty: moq, 
         unitPrice: price, 
         systemPrice: price,
         customPrice: false 
@@ -2015,10 +2030,12 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
       if (prod) {
         const clientType = prospect?.clientType || 'Retail';
         const price = getProductPriceForClientType(prod, clientType);
+        const moq = prod.minimumOrderQuantity || 1;
         newItems[index].unitPrice = price;
         newItems[index].systemPrice = price;
         newItems[index].customPrice = false;
         newItems[index].name = prod.productName || prod.name;
+        newItems[index].qty = Math.max(newItems[index].qty || 1, moq);
       } else {
         newItems[index].unitPrice = 0;
         newItems[index].systemPrice = 0;
@@ -2167,49 +2184,56 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
               </div>
 
               <div className="space-y-3">
-                {items.map((item, i) => (
-                  <div key={i} className="group bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex flex-wrap md:flex-nowrap gap-4 items-end transition-all hover:shadow-md">
-                    <div className="flex-[2] min-w-[200px]">
-                      <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Product</label>
-                      <div className="flex gap-2">
-                        <select 
-                          value={item.productId} onChange={(e) => updateItem(i, 'productId', e.target.value)}
-                          className="flex-1 h-12 px-4 bg-slate-50 border-0 rounded-2xl text-xs font-black outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        >
-                          <option value="">Select Product...</option>
-                          {productList.map(p => <option key={p._id} value={p._id}>{p.productName || p.name}</option>)}
-                        </select>
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            setActiveItemIndex(i);
-                            setIsCatalogueOpen(true);
-                          }} 
-                          className="h-12 w-12 rounded-2xl bg-indigo-600 text-white transition-colors hover:bg-indigo-700 flex items-center justify-center shrink-0 shadow" 
-                          title="Select from Catalogue"
-                        >
-                          <ShoppingBag className="h-4 w-4" />
-                        </button>
+                {items.map((item, i) => {
+                  const prod = productList.find(p => p._id === item.productId);
+                  const moq = prod ? (prod.minimumOrderQuantity || 1) : 1;
+                  return (
+                    <div key={i} className="flex flex-wrap md:flex-nowrap items-center gap-3 bg-white p-4 rounded-3xl border border-slate-200/80 shadow-sm transition-all hover:border-slate-300">
+                      <div className="w-full md:w-48">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Product</label>
+                        <div className="flex gap-2">
+                          <select 
+                            value={item.productId} onChange={(e) => updateItem(i, 'productId', e.target.value)}
+                            className="w-full h-12 px-4 bg-slate-50 border-0 rounded-2xl text-xs font-black outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+                          >
+                            <option value="">Select Product...</option>
+                            {productList.map(p => <option key={p._id} value={p._id}>{p.productName || p.name}</option>)}
+                          </select>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              setActiveItemIndex(i);
+                              setIsCatalogueOpen(true);
+                            }} 
+                            className="h-12 w-12 rounded-2xl bg-indigo-600 text-white transition-colors hover:bg-indigo-700 flex items-center justify-center shrink-0 shadow" 
+                            title="Select from Catalogue"
+                          >
+                            <ShoppingBag className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-[140px]">
-                      <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Variant / Size</label>
-                      <select 
-                        value={item.variantId} onChange={(e) => updateItem(i, 'variantId', e.target.value)}
-                        disabled={!item.productId}
-                        className="w-full h-12 px-4 bg-slate-50 border-0 rounded-2xl text-xs font-black outline-none focus:ring-2 focus:ring-blue-500/20 transition-all disabled:opacity-50"
-                      >
-                        <option value="">Select Size...</option>
-                        {variants[item.productId]?.map(v => <option key={v._id} value={v._id}>{v.name} ({v.unit})</option>)}
-                      </select>
-                    </div>
-                    <div className="w-24">
-                      <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Qty</label>
-                      <input 
-                        type="number" min="1" value={item.qty} onChange={(e) => updateItem(i, 'qty', +e.target.value)}
-                        className="w-full h-12 px-4 bg-slate-50 border-0 rounded-2xl text-xs font-black outline-none text-center"
-                      />
-                    </div>
+                      <div className="flex-1 min-w-[140px]">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Variant / Size</label>
+                        <select 
+                          value={item.variantId} onChange={(e) => updateItem(i, 'variantId', e.target.value)}
+                          disabled={!item.productId}
+                          className="w-full h-12 px-4 bg-slate-50 border-0 rounded-2xl text-xs font-black outline-none focus:ring-2 focus:ring-blue-500/20 transition-all disabled:opacity-50"
+                        >
+                          <option value="">Select Size...</option>
+                          {variants[item.productId]?.map(v => <option key={v._id} value={v._id}>{v.name} ({v.unit})</option>)}
+                        </select>
+                      </div>
+                      <div className="w-24">
+                        <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Qty (MOQ: {moq})</label>
+                        <input 
+                          type="number" min={moq} value={item.qty} 
+                          onChange={(e) => updateItem(i, 'qty', e.target.value === '' ? '' : +e.target.value)}
+                          onBlur={() => {
+                            if (Number(item.qty) < moq) updateItem(i, 'qty', moq);
+                          }}
+                          className="w-full h-12 px-4 bg-slate-50 border-0 rounded-2xl text-xs font-black outline-none text-center"
+                        />
+                      </div>
                     <div className="w-40">
                       <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Unit Price (₹)</label>
                       <div className="relative">
@@ -2226,7 +2250,8 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                       </button>
                     )}
                   </div>
-                ))}
+                );
+              })}
               </div>
             </div>
 
@@ -2776,28 +2801,128 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
   );
 };
 
-// ─── Payment Upload Modal ───────────────────────────────────────────────────
 export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
-  const [formData, setFormData] = useState({ amount: '', method: 'UPI', proofUrl: '', reference: '', paymentType: 'Partial', notes: '' });
+  const [formData, setFormData] = useState({ amount: '', method: 'UPI', proofFile: null, proofUrl: '', reference: '', paymentType: 'Partial', notes: '' });
+  const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setFormData({ ...formData, proofFile: file });
+    if (file.type.startsWith('image/')) {
+      setPreview(URL.createObjectURL(file));
+    } else {
+      setPreview('DOCUMENT');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.amount || !formData.proofUrl) return alert('Amount and Proof are required.');
-    setLoading(true); try { await onSubmit(formData); } finally { setLoading(false); }
+    if (!formData.amount || (!formData.proofFile && !formData.proofUrl)) {
+      return alert('Amount and Upload Proof file are required.');
+    }
+    setLoading(true);
+    try {
+      await onSubmit(formData);
+    } finally {
+      setLoading(false);
+    }
   };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-black/60 backdrop-blur-md">
       <div className="w-full max-w-md rounded-2xl border bg-white shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 duration-300">
-        <div className="p-6 border-b bg-slate-50 flex items-center justify-between"><div><h2 className="text-xl font-black text-slate-900 tracking-tight">Record Payment</h2><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Order: {order?.orderNumber}</p></div><button onClick={onClose} className="h-8 w-8 rounded-full hover:bg-slate-200 flex items-center justify-center"><X className="h-5 w-5 text-slate-500" /></button></div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2"><div className="flex justify-between items-center text-[10px] font-black uppercase text-blue-400 mb-1"><span>Pending Payment</span><span>Received Payment</span></div><div className="flex justify-between items-end"><span className="text-2xl font-black text-blue-700">₹{order?.balanceDue}</span><span className="text-sm font-bold text-blue-900 opacity-60">₹{order?.totalPaid}</span></div></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2"><label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block">Amount Collected (₹) *</label><input type="number" required value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold outline-none" /></div>
-            <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block">Method *</label><select value={formData.method} onChange={e => setFormData({...formData, method: e.target.value})} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold outline-none"><option value="UPI">UPI / PhonePe</option><option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option></select></div>
-            <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block">Type</label><select value={formData.paymentType} onChange={e => setFormData({...formData, paymentType: e.target.value})} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold outline-none"><option value="Advance">Advance</option><option value="Partial">Partial</option><option value="Final">Final</option></select></div>
+        <div className="p-6 border-b bg-slate-50 flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-slate-900 tracking-tight">Record Payment</h2>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Order: {order?.orderNumber}</p>
           </div>
-          <div><label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block">Proof URL *</label><input type="url" required value={formData.proofUrl} onChange={e => setFormData({...formData, proofUrl: e.target.value})} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none" placeholder="https://..." /></div>
-          <div className="pt-4 flex gap-3"><button type="button" onClick={onClose} className="flex-1 h-12 rounded-xl border text-sm font-bold">Cancel</button><button type="submit" disabled={loading} className="flex-[2] h-12 rounded-xl bg-slate-900 text-white font-bold text-sm">{loading ? 'Submitting...' : 'Submit Collection'}</button></div>
+          <button onClick={onClose} className="h-8 w-8 rounded-full hover:bg-slate-200 flex items-center justify-center">
+            <X className="h-5 w-5 text-slate-500" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2">
+            <div className="flex justify-between items-center text-[10px] font-black uppercase text-blue-400 mb-1">
+              <span>Pending Payment</span>
+              <span>Received Payment</span>
+            </div>
+            <div className="flex justify-between items-end">
+              <span className="text-2xl font-black text-blue-700">₹{order?.balanceDue}</span>
+              <span className="text-sm font-bold text-blue-900 opacity-60">₹{order?.totalPaid}</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block">Amount Collected (₹) *</label>
+              <input type="number" required value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold outline-none" />
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block">Method *</label>
+              <select value={formData.method} onChange={e => setFormData({...formData, method: e.target.value})} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold outline-none">
+                <option value="UPI">UPI / PhonePe</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block">Type</label>
+              <select value={formData.paymentType} onChange={e => setFormData({...formData, paymentType: e.target.value})} className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold outline-none">
+                <option value="Advance">Advance</option>
+                <option value="Partial">Partial</option>
+                <option value="Final">Final</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-black uppercase text-slate-400 mb-1.5 block">Upload Proof (Screenshot / Receipt / PDF) *</label>
+            <div className={`border-2 border-dashed rounded-2xl p-4 transition-all relative ${formData.proofFile ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-slate-400'}`}>
+              <input
+                type="file"
+                required={!formData.proofFile && !formData.proofUrl}
+                accept="image/*,.pdf"
+                onChange={handleFileChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              {formData.proofFile ? (
+                <div className="flex flex-col items-center justify-center p-2 text-center relative z-20">
+                  {preview && preview !== 'DOCUMENT' ? (
+                    <img src={preview} alt="Proof preview" className="w-full h-32 object-contain rounded-xl shadow-sm mb-2 bg-white" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-2 shadow-sm">
+                      <FileText className="h-8 w-8" />
+                    </div>
+                  )}
+                  <p className="text-xs font-bold text-slate-800 truncate max-w-[240px]">{formData.proofFile.name}</p>
+                  <p className="text-[10px] font-semibold text-emerald-600 mt-0.5">{(formData.proofFile.size / 1024).toFixed(1)} KB · Ready to upload</p>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFormData({ ...formData, proofFile: null });
+                      setPreview(null);
+                    }}
+                    className="mt-2 text-[10px] font-bold text-red-600 hover:underline relative z-30"
+                  >
+                    Remove & pick another
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-4 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mb-2 shadow-sm transition-transform">
+                    <Upload className="h-6 w-6" />
+                  </div>
+                  <p className="text-xs font-black text-slate-700">Click to upload or drag & drop</p>
+                  <p className="text-[10px] font-bold text-slate-400 mt-0.5">Supports PNG, JPG, WEBP, or PDF (up to 10MB)</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="pt-4 flex gap-3">
+            <button type="button" onClick={onClose} className="flex-1 h-12 rounded-xl border text-sm font-bold">Cancel</button>
+            <button type="submit" disabled={loading} className="flex-[2] h-12 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors">{loading ? 'Uploading & Submitting...' : 'Submit Collection'}</button>
+          </div>
         </form>
       </div>
     </div>

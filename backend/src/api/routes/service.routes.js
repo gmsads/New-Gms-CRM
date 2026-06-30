@@ -8,6 +8,7 @@ const { can, authorize } = require('../../guards/role.guard');
 router.get('/queue', protect, authorize('SERVICE_MANAGER', 'ADMIN', 'MD_CEO'), async (req, res, next) => {
   try {
     const orders = await Order.find({
+      orderType: { $ne: 'Historical' },
       'lineItems': { 
         $elemMatch: { 
           $or: [
@@ -31,6 +32,7 @@ router.get('/active', protect, authorize('SERVICE_MANAGER', 'ADMIN', 'MD_CEO'), 
   try {
     const activeStatuses = ['Scheduled', 'Labour Assigned', 'Vendor Assigned', 'In Transit', 'Installation Started', 'Installation In Progress', 'Installation Completed', 'Client Confirmation Pending'];
     const orders = await Order.find({
+      orderType: { $ne: 'Historical' },
       'lineItems.serviceWorkflow.status': { $in: activeStatuses }
     }).populate('salesExec', 'name')
       .populate('lineItems.serviceWorkflow.serviceExecutiveId', 'name')
@@ -64,6 +66,7 @@ router.get('/completed', protect, authorize('SERVICE_MANAGER', 'ADMIN', 'MD_CEO'
 router.get('/my-tasks', protect, can('SERVICE_EXEC'), async (req, res, next) => {
   try {
     const orders = await Order.find({
+      orderType: { $ne: 'Historical' },
       'lineItems.serviceWorkflow.serviceExecutiveId': req.user._id,
       'lineItems.serviceWorkflow.status': { $ne: 'Service Completed' }
     }).populate('salesExec', 'name')
@@ -120,6 +123,9 @@ router.put('/status/:orderId/item/:itemId', protect, can('SERVICE_EXEC', 'SERVIC
     const { status, installedQuantity, remarks } = req.body;
     const order = await Order.findById(req.params.orderId);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.orderType === 'Historical') {
+      return res.status(400).json({ success: false, message: 'Historical orders are completed old data and disabled for workflow modification' });
+    }
 
     const item = order.lineItems.id(req.params.itemId);
     if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
