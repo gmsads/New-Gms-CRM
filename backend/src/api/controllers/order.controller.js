@@ -163,6 +163,14 @@ exports.bulkImport = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Expected an array of orders' });
     }
 
+    const parseNum = (val, def = 0) => {
+      if (val === undefined || val === null || val === '') return def;
+      if (typeof val === 'number') return isNaN(val) ? def : val;
+      const str = String(val).replace(/[^0-9.-]+/g, '');
+      const num = parseFloat(str);
+      return isNaN(num) ? def : num;
+    };
+
     let successCount = 0;
     let failedCount = 0;
     const errors = [];
@@ -179,16 +187,16 @@ exports.bulkImport = async (req, res) => {
         existing = records[records.length - 1];
       }
 
-      const desc = raw['Requirements'] || raw['Requirement'] || raw.description || raw['Order Type'] || raw.orderType;
-      const qty = Number(raw['Qty'] || raw['Quantity'] || raw.quantity || raw.qty || 1);
-      const rate = Number(raw['Rate'] || raw['Price'] || raw.unitPrice || raw.rate || 0);
+      const desc = raw['Requirements'] || raw['Requirement'] || raw.description || raw['Order Type'] || raw.orderType || 'Requirement';
+      const qty = Math.max(1, parseNum(raw['Qty'] || raw['Quantity'] || raw.quantity || raw.qty, 1));
+      const rate = Math.max(0, parseNum(raw['Rate'] || raw['Price'] || raw.unitPrice || raw.rate, 0));
 
       if (existing && (orderIdKey ? groupedMap.has(orderIdKey.toLowerCase()) : true)) {
         if (desc) {
           existing.lineItems.push({
             description: String(desc).trim(),
-            quantity: qty || 1,
-            unitPrice: rate || 0,
+            quantity: qty,
+            unitPrice: rate,
             discount: 0,
             gstRate: 0
           });
@@ -198,8 +206,8 @@ exports.bulkImport = async (req, res) => {
         if (desc) {
           newRecord.lineItems.push({
             description: String(desc).trim(),
-            quantity: qty || 1,
-            unitPrice: rate || 0,
+            quantity: qty,
+            unitPrice: rate,
             discount: 0,
             gstRate: 0
           });
@@ -209,33 +217,6 @@ exports.bulkImport = async (req, res) => {
           groupedMap.set(orderIdKey.toLowerCase(), newRecord);
         }
       }
-    }
-
-    // Self-repair: ensure existing historical/completed orders in DB have all workflows completed so they are disabled from pending queues
-    try {
-      const existingHistorical = await Order.find({
-        $or: [{ orderType: 'Historical' }, { status: { $regex: /^completed$/i } }]
-      });
-      for (const hOrder of existingHistorical) {
-        let modified = false;
-        if (hOrder.status !== 'Completed') { hOrder.status = 'Completed'; modified = true; }
-        if (hOrder.designStatus !== 'Completed') { hOrder.designStatus = 'Completed'; modified = true; }
-        if (Array.isArray(hOrder.lineItems)) {
-          hOrder.lineItems.forEach(li => {
-            if (!li.designerWorkflow) li.designerWorkflow = {};
-            if (li.designerWorkflow.currentStatus !== 'Completed') { li.designerWorkflow.currentStatus = 'Completed'; modified = true; }
-            if (!li.productionWorkflow) li.productionWorkflow = {};
-            if (li.productionWorkflow.status !== 'Completed') { li.productionWorkflow.status = 'Completed'; li.productionWorkflow.handoverStatus = 'Handed Over'; modified = true; }
-            if (!li.serviceWorkflow) li.serviceWorkflow = {};
-            if (li.serviceWorkflow.status !== 'Service Completed') { li.serviceWorkflow.status = 'Service Completed'; modified = true; }
-            if (li.operationStatus !== 'completed') { li.operationStatus = 'completed'; modified = true; }
-            if (li.serviceStatus !== 'completed') { li.serviceStatus = 'completed'; modified = true; }
-          });
-        }
-        if (modified) await hOrder.save();
-      }
-    } catch (e) {
-      console.error('Self-repair historical orders failed:', e.message);
     }
 
     // Cache user lookups to avoid redundant database queries
@@ -277,7 +258,7 @@ exports.bulkImport = async (req, res) => {
           }
         }
 
-        body.salesExec = resolvedUserId || ((req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') ? req.user._id : req.user._id);
+        body.salesExec = resolvedUserId || req.user?._id;
 
         // Resolve Prospect matching
         const phone = body['Contact Number'] || body.phone || body['Phone'] || body.clientSnapshot?.phone;
@@ -305,23 +286,32 @@ exports.bulkImport = async (req, res) => {
           email: email ? String(email).trim() : ''
         };
 
-        const orderTotal = Number(body['Total'] || body.grandTotal || body['Grand Total'] || body.totalAmount || body['Total Amount'] || body.amount || body['Amount'] || body['Final Amount'] || 0);
-        const finalAmt = Number(body['Final Amount'] || body.grandTotal || body['Grand Total'] || orderTotal || 0);
-        const advanceAmt = Number(body['Advance'] || body.advancePaid || body['Advance Paid'] || 0);
+        const orderTotal = parseNum(body['Total'] || body.grandTotal || body['Grand Total'] || body.totalAmount || body['Total Amount'] || body.amount || body['Amount'], 0);
+        const finalAmt = parseNum(body['Final Amount'] || body.grandTotal || body['Grand Total'] || orderTotal, 0);
+        const advanceAmt = parseNum(body['Advance'] || body.advancePaid || body['Advance Paid'], 0);
         const pendingBalStr = body['Pending Balance'];
-        const pendingBal = (pendingBalStr !== undefined && pendingBalStr !== '') ? Number(pendingBalStr) : Math.max(0, finalAmt - advanceAmt);
+        const pendingBal = (pendingBalStr !== undefined && pendingBalStr !== '') ? parseNum(pendingBalStr, 0) : Math.max(0, finalAmt - advanceAmt);
         const paidTotal = Math.max(0, finalAmt - pendingBal);
 
-        // Add a default line item if none exist so pre-save calculates grandTotal correctly
+        // Add default or normalize line items
         if (!body.lineItems || !Array.isArray(body.lineItems) || body.lineItems.length === 0) {
           body.lineItems = [{
             description: body['Requirements'] || body['Requirement'] || body.description || body['Client Type'] || body['Order Type'] || body.orderType || 'Historical Order Data',
-            quantity: Number(body['Qty'] || body['Quantity'] || 1),
-            unitPrice: Number(body['Rate'] || finalAmt || orderTotal),
+            quantity: Math.max(1, parseNum(body['Qty'] || body['Quantity'], 1)),
+            unitPrice: Math.max(0, parseNum(body['Rate'], finalAmt || orderTotal)),
             gstRate: 0,
-            discount: Number(body['Discount'] || body.discount || 0)
+            discount: 0
           }];
+        } else {
+          const lineSum = body.lineItems.reduce((acc, li) => acc + (li.quantity * li.unitPrice), 0);
+          if (lineSum === 0 && finalAmt > 0 && body.lineItems[0]) {
+            body.lineItems[0].unitPrice = finalAmt / (body.lineItems[0].quantity || 1);
+          }
         }
+
+        body.lineItems.forEach(li => {
+          if (li.discount > 100) li.discount = 0;
+        });
 
         // Parse historical date
         const rawDate = body['Order Date'] || body.createdAt || body.date || body['Date'];
@@ -346,12 +336,15 @@ exports.bulkImport = async (req, res) => {
         }
 
         let methodStr = String(body['Payment Method'] || body.paymentMethod || 'Bank Transfer').trim();
-        const validMethods = ['Cash', 'UPI', 'PhonePe', 'GPay', 'Bank Transfer', 'Cheque', 'Other'];
-        if (body['Cheque Number'] || methodStr.toLowerCase().includes('cheque') || methodStr.toLowerCase().includes('chq')) {
-          methodStr = 'Cheque';
-        } else if (!validMethods.includes(methodStr)) {
-          methodStr = 'Bank Transfer';
-        }
+        const methodLower = methodStr.toLowerCase();
+        if (methodLower.includes('cash')) methodStr = 'Cash';
+        else if (methodLower.includes('upi') || methodLower.includes('paytm') || methodLower.includes('bhim')) methodStr = 'UPI';
+        else if (methodLower.includes('phonepe')) methodStr = 'PhonePe';
+        else if (methodLower.includes('gpay') || methodLower.includes('google')) methodStr = 'GPay';
+        else if (methodLower.includes('cheque') || methodLower.includes('chq')) methodStr = 'Cheque';
+        else if (methodLower.includes('bank') || methodLower.includes('neft') || methodLower.includes('rtgs') || methodLower.includes('imps') || methodLower.includes('transfer')) methodStr = 'Bank Transfer';
+        else methodStr = 'Other';
+
         const chequeNo = String(body['Cheque Number'] || body.chequeNumber || '').trim();
 
         // Build detailed paymentRecords for payment history view details
@@ -365,8 +358,8 @@ exports.bulkImport = async (req, res) => {
             receivedAt: parsedAdvDate,
             verifiedAt: parsedAdvDate,
             status: 'Verified',
-            receivedBy: req.user._id,
-            verifiedBy: req.user._id
+            receivedBy: req.user?._id,
+            verifiedBy: req.user?._id
           });
         }
 
@@ -380,8 +373,8 @@ exports.bulkImport = async (req, res) => {
             receivedAt: parsedPayDate,
             verifiedAt: parsedPayDate,
             status: 'Verified',
-            receivedBy: req.user._id,
-            verifiedBy: req.user._id
+            receivedBy: req.user?._id,
+            verifiedBy: req.user?._id
           });
         } else if (body.paymentRecords.length === 0 && (paidTotal > 0 || chequeNo || body['Payment Method'])) {
           body.paymentRecords.push({
@@ -392,19 +385,30 @@ exports.bulkImport = async (req, res) => {
             receivedAt: parsedPayDate,
             verifiedAt: parsedPayDate,
             status: 'Verified',
-            receivedBy: req.user._id,
-            verifiedBy: req.user._id
+            receivedBy: req.user?._id,
+            verifiedBy: req.user?._id
           });
         }
 
         body.orderType = body['Client Type'] || body['Order Type'] || body.orderType || 'Historical';
-        const rawStatus = String(body['Order Status'] || body.status || body['Status'] || 'Completed').trim();
-        body.status = rawStatus;
+        const rawStatusStr = String(body['Order Status'] || body.status || body['Status'] || 'Completed').trim().toLowerCase();
+        let normalizedStatus = 'Completed';
+        if (rawStatusStr.includes('cancel')) normalizedStatus = 'Cancelled';
+        else if (rawStatusStr.includes('draft')) normalizedStatus = 'Draft';
+        else if (rawStatusStr.includes('confirm')) normalizedStatus = 'Confirmed';
+        else if (rawStatusStr.includes('production') || rawStatusStr.includes('progress')) normalizedStatus = 'In_Production';
+        else if (rawStatusStr.includes('review')) normalizedStatus = 'Design_Review';
+        else if (rawStatusStr.includes('deliver')) normalizedStatus = 'Delivered';
+        else if (rawStatusStr.includes('pending') && !rawStatusStr.includes('balance')) normalizedStatus = 'Pending_Approval';
+        else normalizedStatus = 'Completed';
+
+        body.status = normalizedStatus;
+
         if (body['Order ID'] || body['Order Number'] || body.orderNumber) {
           body.orderNumber = String(body['Order ID'] || body['Order Number'] || body.orderNumber).trim();
         }
 
-        const isCompleted = ['completed', 'delivered'].includes(rawStatus.toLowerCase()) || body.orderType === 'Historical';
+        const isCompleted = normalizedStatus === 'Completed' || body.orderType === 'Historical';
         if (isCompleted) {
           body.status = 'Completed';
           body.designStatus = 'Completed';
@@ -445,21 +449,37 @@ exports.bulkImport = async (req, res) => {
           }
         }
 
-        const order = new Order(body);
-        if (parsedDate) {
-          order.createdAt = parsedDate;
-          order.updatedAt = parsedDate;
+        let order = null;
+        if (body.orderNumber) {
+          order = await Order.findOne({ orderNumber: body.orderNumber });
         }
-        await order.save();
 
-        if (parsedDate) {
-          await Order.updateOne({ _id: order._id }, { $set: { createdAt: parsedDate, updatedAt: parsedDate } }, { timestamps: false });
+        if (order) {
+          Object.assign(order, body);
+          if (parsedDate) {
+            order.createdAt = parsedDate;
+            order.updatedAt = parsedDate;
+          }
+          await order.save();
+          if (parsedDate) {
+            await Order.updateOne({ _id: order._id }, { $set: { createdAt: parsedDate, updatedAt: parsedDate } }, { timestamps: false });
+          }
+        } else {
+          order = new Order(body);
+          if (parsedDate) {
+            order.createdAt = parsedDate;
+            order.updatedAt = parsedDate;
+          }
+          await order.save();
+          if (parsedDate) {
+            await Order.updateOne({ _id: order._id }, { $set: { createdAt: parsedDate, updatedAt: parsedDate } }, { timestamps: false });
+          }
         }
 
         successCount++;
       } catch (err) {
         failedCount++;
-        errors.push({ orderNumber: record.orderNumber || record['Order Number'] || 'Unknown', error: err.message });
+        errors.push({ orderNumber: record.orderNumber || record['Order Number'] || record['Order ID'] || 'Unknown', error: err.message });
       }
     }
 

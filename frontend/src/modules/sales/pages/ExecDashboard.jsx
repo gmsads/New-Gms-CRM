@@ -812,6 +812,14 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
   const handleOrderImport = async (data) => {
     const res = await orderApi.bulkImport(data, user.token);
     if (!res.success) throw new Error(res.message || 'Import failed');
+    if (res.failedCount > 0 && res.successCount === 0) {
+      const errDetails = (res.errors || []).slice(0, 5).map(e => `Order ${e.orderNumber}: ${e.error}`).join('\n');
+      throw new Error(`Failed to import all ${res.failedCount} orders.\nReasons:\n${errDetails}`);
+    } else if (res.failedCount > 0) {
+      alert(`Imported ${res.successCount} orders successfully. ${res.failedCount} skipped/failed.\nFirst error: ${res.errors?.[0]?.error || ''}`);
+    } else {
+      alert(`Successfully imported ${res.successCount || data.length} orders!`);
+    }
     fetch();
   };
   
