@@ -34,7 +34,26 @@ export default function ImportExcelModal({ isOpen, onClose, onImport, title = 'I
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet, { raw: false });
+
+        // Fill merged cell values so sub-rows inherit Order ID and client details
+        if (worksheet['!merges']) {
+          worksheet['!merges'].forEach(merge => {
+            const startCellRef = XLSX.utils.encode_cell({ r: merge.s.r, c: merge.s.c });
+            const startCell = worksheet[startCellRef];
+            if (startCell) {
+              for (let r = merge.s.r; r <= merge.e.r; r++) {
+                for (let c = merge.s.c; c <= merge.e.c; c++) {
+                  const cellRef = XLSX.utils.encode_cell({ r, c });
+                  if (!worksheet[cellRef]) {
+                    worksheet[cellRef] = { ...startCell };
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        const json = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: '' });
         
         if (json.length === 0) {
           setError('The uploaded file is empty.');

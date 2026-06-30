@@ -6,6 +6,7 @@ import api from './api';
 export const leadApi = {
   list: (params, token) => api.get(`/telecrm/leads?${new URLSearchParams(params)}`, token),
   createManual: (data, token) => api.post('/telecrm/leads', data, token),
+  distributePoolLeads: (payload, token) => api.post('/telecrm/leads/distribute', payload, token),
   convert: (id, token) => api.post(`/telecrm/leads/${id}/convert`, {}, token),
   getDashboard: (token) => api.get('/telecrm/dashboard', token),
   

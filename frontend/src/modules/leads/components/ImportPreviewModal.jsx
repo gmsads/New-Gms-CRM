@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UploadCloud, ShieldAlert, CheckCircle2, Users, ArrowRight, X, FileSpreadsheet } from 'lucide-react';
 
 /**
@@ -12,13 +12,19 @@ export const ImportPreviewModal = ({ isOpen, previewData, users = [], onClose, o
   const [distMethod, setDistMethod] = useState('Round Robin');
   const [singleUserId, setSingleUserId] = useState(users[0]?._id || '');
 
+  useEffect(() => {
+    if (!singleUserId && users && users.length > 0) {
+      setSingleUserId(users[0]._id);
+    }
+  }, [users, singleUserId]);
+
   const handleCommit = () => {
     onCommit({
       validRows: previewData.validRows,
       duplicateRows: previewData.duplicateRows,
       resolution,
       distributionMethod: distMethod,
-      singleUserId: distMethod === 'Assign To Single Employee' ? singleUserId : undefined
+      singleUserId: distMethod === 'Assign To Single Employee' ? (singleUserId || users[0]?._id) : undefined
     });
   };
 
@@ -97,7 +103,7 @@ export const ImportPreviewModal = ({ isOpen, previewData, users = [], onClose, o
                 { id: 'Round Robin', label: 'Round Robin', desc: 'Equally distribute among agents.' },
                 { id: 'Assign To Single Employee', label: 'Single Employee', desc: 'Assign all to one executive.' },
                 { id: 'Employee Mapping', label: 'Excel Mapping', desc: 'Auto-map Excel names to CRM users.' },
-                { id: 'Keep Unassigned', label: 'Keep Unassigned', desc: 'Hold in pool unassigned.' }
+                { id: 'Keep Unassigned', label: 'Keep Unassigned', desc: 'Send to Lead Pool Master for manual distribution.' }
               ].map(method => (
                 <label
                   key={method.id}

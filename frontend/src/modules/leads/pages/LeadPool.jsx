@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import leadApi from '../../../services/lead.api';
-import { Search, Filter, Download, Plus, Trash2, Eye, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, Download, Plus, Trash2, Eye, RefreshCw, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 
 /**
  * LeadPool.jsx
@@ -11,16 +11,54 @@ import { Search, Filter, Download, Plus, Trash2, Eye, RefreshCw, ChevronLeft, Ch
 export default function LeadPool() {
   const { user } = useAuth();
   const [leads, setLeads] = useState([]);
+  const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
+  const [distMethod, setDistMethod] = useState('Round Robin');
+  const [targetUser, setTargetUser] = useState('');
 
   // New Lead Modal
   const [showNewModal, setShowNewModal] = useState(false);
   const [formData, setFormData] = useState({ contactPerson: '', companyName: '', phone: '', email: '', source: 'Manual Entry', priority: 'Medium' });
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/employees`, {
+      headers: { Authorization: `Bearer ${user.token}` }
+    })
+      .then(r => r.json())
+      .then(res => {
+        const empList = res.data || res.employees || [];
+        if (Array.isArray(empList)) {
+          setUsers(empList);
+          if (empList.length > 0) setTargetUser(empList[0]._id);
+        }
+      })
+      .catch(console.error);
+  }, [user]);
+
+  const handleDistributeSelected = () => {
+    if (selectedIds.length === 0) return;
+    leadApi.distributePoolLeads({
+      leadIds: selectedIds,
+      method: distMethod,
+      singleUserId: distMethod === 'Assign To Single Employee' ? targetUser : undefined
+    }, user.token)
+      .then(res => {
+        if (res.success) {
+          alert(res.message || 'Leads distributed successfully.');
+          setSelectedIds([]);
+          fetchLeads(pagination.page);
+        } else {
+          alert(res.message || 'Failed to distribute leads.');
+        }
+      })
+      .catch(err => alert('Error distributing leads: ' + err.message));
+  };
 
   const fetchLeads = (pg = 1) => {
     if (!user) return;
@@ -127,6 +165,41 @@ export default function LeadPool() {
           </select>
         </div>
       </div>
+
+      {/* Manual Distribution Toolbar for Selected Leads */}
+      {selectedIds.length > 0 && (
+        <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 animate-in fade-in">
+          <div className="flex items-center gap-2 text-xs font-bold text-primary">
+            <Users className="h-4 w-4" />
+            <span>{selectedIds.length} lead(s) selected for manual distribution</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <select
+              value={distMethod}
+              onChange={e => setDistMethod(e.target.value)}
+              className="bg-background border rounded-lg px-2.5 py-1.5 font-semibold"
+            >
+              <option value="Round Robin">Round Robin</option>
+              <option value="Assign To Single Employee">Assign To Single Employee</option>
+            </select>
+            {distMethod === 'Assign To Single Employee' && (
+              <select
+                value={targetUser}
+                onChange={e => setTargetUser(e.target.value)}
+                className="bg-background border rounded-lg px-2.5 py-1.5 font-semibold"
+              >
+                {users.map(u => <option key={u._id} value={u._id}>{u.name} ({u.role})</option>)}
+              </select>
+            )}
+            <button
+              onClick={handleDistributeSelected}
+              className="px-4 py-1.5 bg-primary text-primary-foreground font-bold rounded-lg shadow hover:bg-primary/90"
+            >
+              Distribute Leads
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Grid Table */}
       <div className="bg-card border rounded-xl overflow-hidden shadow-sm">

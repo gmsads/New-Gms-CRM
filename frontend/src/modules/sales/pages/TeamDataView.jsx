@@ -6,6 +6,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { orderApi } from '../../../services/api';
 import ImportExcelModal from '../../../components/ui/ImportExcelModal';
 import * as XLSX from 'xlsx';
+import { downloadOrderTemplate as downloadTemplateHelper } from '../../../utils/orderExcel';
 import { SalesProspects, SalesOrders, SalesFollowups, SalesAppointments, SalesQuotations } from './ExecDashboard';
 
 const EmptyState = ({ title, desc }) => (
@@ -33,15 +34,7 @@ export const TeamDataView = ({ viewType = 'orders' }) => {
   const error = null;
 
   const downloadOrderTemplate = () => {
-    const headers = ['Order Number', 'Order Date', 'Client Name', 'Company', 'Phone', 'Email', 'Order Type', 'Grand Total', 'Total Paid', 'Payment Status', 'Order Status', 'Closed By'];
-    const sampleRows = [
-      ['ORD-2024-0101', '2024-03-15', 'Amit Verma', 'Verma Enterprises', '9876543210', 'amit@verma.com', 'Renewal', '50000', '50000', 'Paid', 'Completed', 'Rajesh Sharma'],
-      ['ORD-2024-0102', '2024-06-20', 'Sneha Gupta', 'Gupta Logistics', '9123456789', 'sneha@gupta.com', 'New Sale', '120000', '60000', 'Partial', 'Completed', 'Anita Desai']
-    ];
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders Template');
-    XLSX.writeFile(workbook, `GMS_Historical_Orders_Template.xlsx`);
+    downloadTemplateHelper('GMS_Historical_Orders_Template.xlsx');
   };
 
   const handleOrderImport = async (data) => {

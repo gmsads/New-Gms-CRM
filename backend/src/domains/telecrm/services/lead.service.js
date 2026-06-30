@@ -163,7 +163,8 @@ class LeadService {
           city: (row.city || row.City || '').toString().trim(),
           state: (row.state || row.State || '').toString().trim(),
           businessCategory: (row.businessCategory || row.Category || '').toString().trim(),
-          source: row.source || 'Excel'
+          source: row.source || 'Excel',
+          mappedEmployee: (row.mappedEmployee || row['Assigned To'] || row.employee || '').toString().trim()
         });
       }
     });

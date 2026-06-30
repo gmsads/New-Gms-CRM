@@ -9,6 +9,7 @@ router.use(protect);
 // Leads Pool & My Leads work area
 router.get('/leads', ctrl.getLeads);
 router.post('/leads', ctrl.createManualLead);
+router.post('/leads/distribute', ctrl.distributePoolLeads);
 router.post('/leads/:id/convert', ctrl.convertLead);
 
 // Admin Dashboard stats

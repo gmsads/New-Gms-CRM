@@ -205,6 +205,8 @@ const lineItemSchema = new mongoose.Schema({
 const paymentRecordSchema = new mongoose.Schema({
   amount:       { type: Number, required: true },
   method:       { type: String, enum: ['Cash', 'UPI', 'PhonePe', 'GPay', 'Bank Transfer', 'Cheque', 'Other'], required: true },
+  chequeNumber: { type: String },
+  notes:        { type: String },
   proofUrl:     { type: String },          // uploaded screenshot/receipt
   receivedAt:   { type: Date, default: Date.now },
   receivedBy:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

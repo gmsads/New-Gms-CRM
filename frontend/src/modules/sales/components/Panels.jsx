@@ -13,6 +13,7 @@ import {
   employeeApi, productApi, quotationApi 
 } from '../../../services/api';
 import { ProductCatalogueModal } from '../../../pages/SalesExec/components/ProductCatalogueModal';
+import { exportOrdersToExcel } from '../../../utils/orderExcel';
 
 // ─── Appointment Hub ──────────────────────────────────────────────────────────
 export const AppointmentHub = ({ appointments = [], onSchedule }) => (
@@ -142,26 +143,7 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
   });
 
   const handleExportExcel = () => {
-    if (!filteredOrders.length) return alert('No orders to export');
-    const headers = ['Order Number', 'Date', 'Client', 'Order Type', 'Sales Exec', 'Total', 'Paid', 'Pending'];
-    const rows = filteredOrders.map(o => [
-      o.orderNumber || o.id,
-      new Date(o.createdAt || o.date).toLocaleDateString(),
-      (o.clientSnapshot?.company || o.clientSnapshot?.name || o.client || '').replace(/,/g, ' '),
-      o.orderType || 'Retail',
-      (o.salesExec?.name || o.salesExec || 'N/A').replace(/,/g, ' '),
-      o.grandTotal || o.amount || 0,
-      o.totalPaid || 0,
-      (o.grandTotal || o.amount || 0) - (o.totalPaid || 0)
-    ]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(e => e.join(','))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `orders_export_${new Date().getTime()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    exportOrdersToExcel(filteredOrders, `GMS_Orders_Export_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const handlePrintReport = () => {
@@ -2737,7 +2719,11 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
                       {order.paymentRecords.map((pay, pIdx) => (
                         <tr key={pay._id || pIdx} className="hover:bg-slate-50/50">
                           <td className="py-2 text-slate-600">{new Date(pay.receivedAt || pay.createdAt).toLocaleString()}</td>
-                          <td className="py-2 font-medium text-slate-800">{pay.method}</td>
+                          <td className="py-2 font-medium text-slate-800">
+                            <div>{pay.method}</div>
+                            {pay.chequeNumber && <div className="text-[10px] text-slate-500 font-normal">Chq: {pay.chequeNumber}</div>}
+                            {pay.notes && <div className="text-[10px] text-blue-600 font-normal">{pay.notes}</div>}
+                          </td>
                           <td className="py-2 font-bold text-slate-900">₹{pay.amount}</td>
                           <td className="py-2">
                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${

@@ -198,6 +198,31 @@ const useOrderFlow = (user, onSaved) => {
     }
   };
 
+  const [isSubmittingPmt, setIsSubmittingPmt] = useState(false);
+  const handlePaymentSubmit = async (paymentData) => {
+    if (isSubmittingPmt) return;
+    setIsSubmittingPmt(true);
+    try {
+      const payload = new FormData();
+      payload.append('orderId', paymentOrder._id || paymentOrder.id);
+      Object.keys(paymentData).forEach(key => {
+        if (paymentData[key] !== null && paymentData[key] !== undefined) {
+          payload.append(key, paymentData[key]);
+        }
+      });
+      await paymentApi.create(payload, user?.token);
+      setToastMsg('Payment proof uploaded successfully!');
+      setPaymentOrder(null);
+      setTimeout(() => setToastMsg(null), 3000);
+      if (onSaved) onSaved();
+    } catch (err) {
+      setToastMsg(err.message || 'Failed to record payment');
+      setTimeout(() => setToastMsg(null), 4000);
+    } finally {
+      setIsSubmittingPmt(false);
+    }
+  };
+
   const renderOrderModals = () => (
     <>
       {toastMsg && (
@@ -235,11 +260,7 @@ const useOrderFlow = (user, onSaved) => {
         <PaymentUploadModal 
           order={paymentOrder} 
           onClose={() => setPaymentOrder(null)} 
-          onSaved={() => {
-            setToastMsg('Payment proof uploaded!');
-            setTimeout(() => setToastMsg(null), 3000);
-            if (onSaved) onSaved();
-          }}
+          onSubmit={handlePaymentSubmit}
         />
       )}
     </>

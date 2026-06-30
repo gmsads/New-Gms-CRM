@@ -25,17 +25,18 @@ export default function LeadImport() {
     })
       .then(r => r.json())
       .then(res => {
-        if (res.success || Array.isArray(res.data)) setUsers(res.data || res.employees || []);
+        const empList = res.data || res.employees || [];
+        if (Array.isArray(empList)) setUsers(empList);
       })
       .catch(console.error);
   }, [user]);
 
   const downloadSampleTemplate = () => {
-    const headers = ['Contact Person', 'Phone', 'Company Name', 'Email', 'City', 'State', 'Business Category', 'Alternate Phone', 'Source'];
+    const headers = ['Contact Person', 'Phone', 'Company Name', 'Email', 'City', 'State', 'Business Category', 'Alternate Phone', 'Source', 'Assigned To'];
     const sampleRows = [
-      ['Rajesh Sharma', '9876543210', 'TechSolutions Ltd', 'rajesh@techsolutions.com', 'Hyderabad', 'Telangana', 'IT Services', '0401234567', 'Trade Show'],
-      ['Anita Desai', '9123456780', 'Desai Exports', 'anita@desaiexports.com', 'Mumbai', 'Maharashtra', 'Manufacturing', '', 'Referral'],
-      ['Suresh Kumar', '9988776655', 'Apex Traders', 'suresh@apextraders.com', 'Bangalore', 'Karnataka', 'Retail', '9811223344', 'LinkedIn']
+      ['Rajesh Sharma', '9876543210', 'TechSolutions Ltd', 'rajesh@techsolutions.com', 'Hyderabad', 'Telangana', 'IT Services', '0401234567', 'Trade Show', 'Rahul Sales'],
+      ['Anita Desai', '9123456780', 'Desai Exports', 'anita@desaiexports.com', 'Mumbai', 'Maharashtra', 'Manufacturing', '', 'Referral', 'Priya Exec'],
+      ['Suresh Kumar', '9988776655', 'Apex Traders', 'suresh@apextraders.com', 'Bangalore', 'Karnataka', 'Retail', '9811223344', 'LinkedIn', 'Rahul Sales']
     ];
     
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
@@ -96,7 +97,8 @@ export default function LeadImport() {
             state: getVal('state', 'province') || '',
             businessCategory: getVal('business category', 'category', 'industry') || '',
             alternatePhone: getVal('alternate phone', 'alt phone', 'other phone') || '',
-            source: getVal('source', 'lead source') || 'Excel'
+            source: getVal('source', 'lead source') || 'Excel',
+            mappedEmployee: getVal('assigned to', 'assignedto', 'employee', 'sales exec', 'agent', 'owner', 'assignee', 'mapped employee') || ''
           };
         }).filter(r => r.contactPerson && r.phone);
 

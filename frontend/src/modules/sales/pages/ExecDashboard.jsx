@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import ImportExcelModal from '../../../components/ui/ImportExcelModal';
 import * as XLSX from 'xlsx';
+import { downloadOrderTemplate as downloadTemplateHelper } from '../../../utils/orderExcel';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
@@ -805,15 +806,7 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
   const oFlow = useOrderFlow(user, fetch);
 
   const downloadOrderTemplate = () => {
-    const headers = ['Order Number', 'Order Date', 'Client Name', 'Company', 'Phone', 'Email', 'Order Type', 'Grand Total', 'Total Paid', 'Payment Status', 'Order Status', 'Closed By'];
-    const sampleRows = [
-      ['ORD-2024-0101', '2024-03-15', 'Amit Verma', 'Verma Enterprises', '9876543210', 'amit@verma.com', 'Renewal', '50000', '50000', 'Paid', 'Completed', 'Rajesh Sharma'],
-      ['ORD-2024-0102', '2024-06-20', 'Sneha Gupta', 'Gupta Logistics', '9123456789', 'sneha@gupta.com', 'New Sale', '120000', '60000', 'Partial', 'Completed', 'Anita Desai']
-    ];
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders Template');
-    XLSX.writeFile(workbook, `GMS_Historical_Orders_Template.xlsx`);
+    downloadTemplateHelper('GMS_Historical_Orders_Template.xlsx');
   };
 
   const handleOrderImport = async (data) => {
@@ -868,54 +861,77 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
 
 export const SalesPayments = () => {
   const { user } = useAuth();
-  const [leaves, setLeaves] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  
-
   useEffect(() => { 
-    leaveApi.list({}, user.token).then(res => {
-      if (res.success || res.leaves) setLeaves(res.leaves || res.data || []);
+    paymentApi.list({}, user.token).then(res => {
+      if (res.success || res.payments || res.data) {
+        setPayments(res.payments || res.data || []);
+      }
       setLoading(false);
-    }); 
+    }).catch(() => setLoading(false)); 
   }, []);
 
   if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
-  
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-black text-slate-900">Leave Requests</h1>
-      <div className="bg-white rounded-[2rem] border overflow-hidden shadow-sm">
+    <div className="space-y-6 animate-in fade-in duration-300">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900">Payment Collections</h1>
+          <p className="text-xs font-bold text-slate-400 mt-1">All payment records submitted by you and their verification statuses</p>
+        </div>
+      </div>
+      <div className="bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px]">
             <tr>
-              <th className="p-5 text-left">Type</th>
-              <th className="p-5 text-left">From Date</th>
-              <th className="p-5 text-left">To Date</th>
-              <th className="p-5 text-left">Total Days</th>
-              <th className="p-5 text-left">Reason</th>
+              <th className="p-5 text-left">Ref #</th>
+              <th className="p-5 text-left">Client & Order</th>
+              <th className="p-5 text-left">Amount</th>
+              <th className="p-5 text-left">Method / Type</th>
+              <th className="p-5 text-left">Uploaded Proof</th>
               <th className="p-5 text-left">Status</th>
+              <th className="p-5 text-left">Date</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {leaves.length === 0 ? (
-              <tr><td colSpan={6} className="p-10 text-center text-slate-400 italic">No leave requests found</td></tr>
-            ) : leaves.map(lv => (
-              <tr key={lv._id} className="hover:bg-slate-50 transition-colors">
-                <td className="p-5 font-bold text-slate-700">{lv.leaveType}</td>
-                <td className="p-5 text-slate-600">{new Date(lv.fromDate).toLocaleDateString()}</td>
-                <td className="p-5 text-slate-600">{new Date(lv.toDate).toLocaleDateString()}</td>
-                <td className="p-5 font-black text-slate-950">{lv.totalDays}</td>
-                <td className="p-5 text-slate-600 italic">"{lv.reason}"</td>
+            {payments.length === 0 ? (
+              <tr><td colSpan={7} className="p-10 text-center text-slate-400 italic font-medium">No payment records found</td></tr>
+            ) : payments.map(pmt => (
+              <tr key={pmt._id} className="hover:bg-slate-50/80 transition-colors">
+                <td className="p-5 font-mono font-bold text-xs text-amber-600">{pmt.paymentNumber || pmt.reference || '—'}</td>
                 <td className="p-5">
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                    lv.status.includes('APPROVED') ? 'bg-green-100 text-green-700' :
-                    lv.status.includes('REJECTED') ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                  <p className="font-bold text-slate-900">{pmt.order?.clientSnapshot?.name || pmt.client?.name || 'Client'}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">Order #{pmt.order?.orderNumber || '—'}</p>
+                </td>
+                <td className="p-5 font-black text-slate-900 text-base">₹{pmt.amount?.toLocaleString('en-IN')}</td>
+                <td className="p-5">
+                  <span className="font-bold text-slate-700">{pmt.method}</span>
+                  <span className="ml-2 text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold">{pmt.paymentType || 'Partial'}</span>
+                </td>
+                <td className="p-5">
+                  {pmt.proofUrl ? (
+                    <button
+                      onClick={() => window.open(pmt.proofUrl, '_blank')}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-all shadow-sm active:scale-95"
+                    >
+                      <Eye className="h-3.5 w-3.5" /> View Uploaded Proof
+                    </button>
+                  ) : (
+                    <span className="text-slate-400 text-xs italic">No Proof</span>
+                  )}
+                </td>
+                <td className="p-5">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    pmt.status === 'Verified' ? 'bg-emerald-100 text-emerald-800' :
+                    pmt.status === 'Rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
                   }`}>
-                    {lv.status.replace('_', ' ')}
+                    {pmt.status === 'Verified' ? '✅ Verified' : pmt.status === 'Rejected' ? '❌ Rejected' : '⏳ Pending'}
                   </span>
                 </td>
+                <td className="p-5 text-slate-500 font-medium text-xs">{new Date(pmt.createdAt || pmt.receivedAt).toLocaleDateString()}</td>
               </tr>
             ))}
           </tbody>

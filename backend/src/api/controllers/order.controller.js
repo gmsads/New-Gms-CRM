@@ -158,14 +158,58 @@ exports.getOne = async (req, res) => {
 // ── POST /api/orders/bulk ───────────────────────────────────────────────────────
 exports.bulkImport = async (req, res) => {
   try {
-    const records = req.body;
-    if (!Array.isArray(records)) {
+    const rawRecords = req.body;
+    if (!Array.isArray(rawRecords)) {
       return res.status(400).json({ success: false, message: 'Expected an array of orders' });
     }
 
     let successCount = 0;
     let failedCount = 0;
     const errors = [];
+
+    // Pre-process & Group records by Order ID to merge multiple requirement rows into lineItems
+    const groupedMap = new Map();
+    const records = [];
+
+    for (const raw of rawRecords) {
+      const orderIdKey = String(raw['Order ID'] || raw['Order Number'] || raw.orderNumber || raw['Serial Number'] || '').trim();
+      
+      let existing = orderIdKey ? groupedMap.get(orderIdKey.toLowerCase()) : null;
+      if (!existing && !orderIdKey && records.length > 0) {
+        existing = records[records.length - 1];
+      }
+
+      const desc = raw['Requirements'] || raw['Requirement'] || raw.description || raw['Order Type'] || raw.orderType;
+      const qty = Number(raw['Qty'] || raw['Quantity'] || raw.quantity || raw.qty || 1);
+      const rate = Number(raw['Rate'] || raw['Price'] || raw.unitPrice || raw.rate || 0);
+
+      if (existing && (orderIdKey ? groupedMap.has(orderIdKey.toLowerCase()) : true)) {
+        if (desc) {
+          existing.lineItems.push({
+            description: String(desc).trim(),
+            quantity: qty || 1,
+            unitPrice: rate || 0,
+            discount: 0,
+            gstRate: 0
+          });
+        }
+      } else {
+        const newRecord = { ...raw, lineItems: [] };
+        if (desc) {
+          newRecord.lineItems.push({
+            description: String(desc).trim(),
+            quantity: qty || 1,
+            unitPrice: rate || 0,
+            discount: 0,
+            gstRate: 0
+          });
+        }
+        records.push(newRecord);
+        if (orderIdKey) {
+          groupedMap.set(orderIdKey.toLowerCase(), newRecord);
+        }
+      }
+    }
 
     // Self-repair: ensure existing historical/completed orders in DB have all workflows completed so they are disabled from pending queues
     try {
@@ -202,7 +246,7 @@ exports.bulkImport = async (req, res) => {
         const body = { ...record };
 
         // Extract employee identifier (who closed the order)
-        const empInput = body.salesExec || body.employeeName || body.closedBy || body['Closed By'] || body['Employee Name'] || body['Sales Person'] || body['Assigned To'] || body['Sales Exec'];
+        const empInput = body['Employee Name'] || body.salesExec || body.employeeName || body.closedBy || body['Closed By'] || body['Sales Person'] || body['Assigned To'] || body['Sales Exec'];
         let resolvedUserId = null;
 
         if (empInput) {
@@ -212,7 +256,6 @@ exports.bulkImport = async (req, res) => {
           } else if (userCache.has(empStr.toLowerCase())) {
             resolvedUserId = userCache.get(empStr.toLowerCase());
           } else {
-            // Search User by exact/partial name, email, or phone
             let matchedUser = await User.findOne({
               $or: [
                 { email: { $regex: new RegExp(`^${empStr}$`, 'i') } },
@@ -237,11 +280,11 @@ exports.bulkImport = async (req, res) => {
         body.salesExec = resolvedUserId || ((req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC') ? req.user._id : req.user._id);
 
         // Resolve Prospect matching
-        const phone = body.phone || body['Phone'] || body['Contact Number'] || body.clientSnapshot?.phone;
+        const phone = body['Contact Number'] || body.phone || body['Phone'] || body.clientSnapshot?.phone;
         const email = body.email || body['Email'] || body.clientSnapshot?.email;
-        const gstNumber = body.gstNumber || body['GST Number'] || body.clientSnapshot?.gstNumber;
-        const company = body.company || body['Company Name'] || body['Company'] || body.clientSnapshot?.company;
-        const clientName = body.clientName || body['Client Name'] || body['Contact Person'] || body.name || body.clientSnapshot?.name || 'Historical Client';
+        const gstNumber = body['GST Number'] || body.gstNumber || body.clientSnapshot?.gstNumber;
+        const company = body['Business Name'] || body.company || body['Company Name'] || body['Company'] || body.clientSnapshot?.company;
+        const clientName = body['Client Name'] || body.clientName || body['Contact Person'] || body.name || body.clientSnapshot?.name || 'Historical Client';
 
         let prospectId = body.prospect;
         if (!prospectId) {
@@ -262,46 +305,103 @@ exports.bulkImport = async (req, res) => {
           email: email ? String(email).trim() : ''
         };
 
-        const orderTotal = Number(body.grandTotal || body['Grand Total'] || body.totalAmount || body['Total Amount'] || body.amount || body['Amount'] || body.totalPaid || body['Total Paid'] || 0);
-        const paidTotal = Number(body.totalPaid || body['Total Paid'] || body.advancePaid || body['Advance Paid'] || body.paidAmount || 0);
+        const orderTotal = Number(body['Total'] || body.grandTotal || body['Grand Total'] || body.totalAmount || body['Total Amount'] || body.amount || body['Amount'] || body['Final Amount'] || 0);
+        const finalAmt = Number(body['Final Amount'] || body.grandTotal || body['Grand Total'] || orderTotal || 0);
+        const advanceAmt = Number(body['Advance'] || body.advancePaid || body['Advance Paid'] || 0);
+        const pendingBalStr = body['Pending Balance'];
+        const pendingBal = (pendingBalStr !== undefined && pendingBalStr !== '') ? Number(pendingBalStr) : Math.max(0, finalAmt - advanceAmt);
+        const paidTotal = Math.max(0, finalAmt - pendingBal);
 
         // Add a default line item if none exist so pre-save calculates grandTotal correctly
         if (!body.lineItems || !Array.isArray(body.lineItems) || body.lineItems.length === 0) {
           body.lineItems = [{
-            description: body.description || body['Order Type'] || body.orderType || 'Historical Order Data',
-            quantity: 1,
-            unitPrice: orderTotal,
+            description: body['Requirements'] || body['Requirement'] || body.description || body['Client Type'] || body['Order Type'] || body.orderType || 'Historical Order Data',
+            quantity: Number(body['Qty'] || body['Quantity'] || 1),
+            unitPrice: Number(body['Rate'] || finalAmt || orderTotal),
             gstRate: 0,
-            discount: 0
+            discount: Number(body['Discount'] || body.discount || 0)
           }];
         }
 
         // Parse historical date
-        const rawDate = body.createdAt || body['Order Date'] || body.date || body['Date'];
+        const rawDate = body['Order Date'] || body.createdAt || body.date || body['Date'];
         let parsedDate = null;
         if (rawDate) {
           const d = new Date(rawDate);
           if (!isNaN(d.getTime())) parsedDate = d;
         }
 
-        // Preserve payments so pre-save hook calculates totalPaid correctly
-        if (paidTotal > 0 && (!body.paymentRecords || !Array.isArray(body.paymentRecords) || body.paymentRecords.length === 0)) {
-          body.paymentRecords = [{
-            amount: paidTotal,
-            method: body.paymentMethod || body['Payment Method'] || 'Bank Transfer',
-            status: 'Verified',
-            receivedAt: parsedDate || new Date(),
-            verifiedAt: parsedDate || new Date(),
-            receivedBy: req.user._id,
-            verifiedBy: req.user._id
-          }];
+        const rawAdvDate = body['Advance Date'] || body.advanceDate;
+        let parsedAdvDate = parsedDate || new Date();
+        if (rawAdvDate) {
+          const d = new Date(rawAdvDate);
+          if (!isNaN(d.getTime())) parsedAdvDate = d;
         }
 
-        body.orderType = body.orderType || body['Order Type'] || 'Historical';
-        const rawStatus = String(body.status || body['Order Status'] || body['Status'] || 'Completed').trim();
+        const rawPayDate = body['Payment Date'] || body.paymentDate;
+        let parsedPayDate = parsedAdvDate || parsedDate || new Date();
+        if (rawPayDate) {
+          const d = new Date(rawPayDate);
+          if (!isNaN(d.getTime())) parsedPayDate = d;
+        }
+
+        let methodStr = String(body['Payment Method'] || body.paymentMethod || 'Bank Transfer').trim();
+        const validMethods = ['Cash', 'UPI', 'PhonePe', 'GPay', 'Bank Transfer', 'Cheque', 'Other'];
+        if (body['Cheque Number'] || methodStr.toLowerCase().includes('cheque') || methodStr.toLowerCase().includes('chq')) {
+          methodStr = 'Cheque';
+        } else if (!validMethods.includes(methodStr)) {
+          methodStr = 'Bank Transfer';
+        }
+        const chequeNo = String(body['Cheque Number'] || body.chequeNumber || '').trim();
+
+        // Build detailed paymentRecords for payment history view details
+        body.paymentRecords = [];
+        if (advanceAmt > 0) {
+          body.paymentRecords.push({
+            amount: advanceAmt,
+            method: methodStr,
+            chequeNumber: chequeNo,
+            notes: 'Advance Payment',
+            receivedAt: parsedAdvDate,
+            verifiedAt: parsedAdvDate,
+            status: 'Verified',
+            receivedBy: req.user._id,
+            verifiedBy: req.user._id
+          });
+        }
+
+        const remainingPaid = parseFloat((paidTotal - advanceAmt).toFixed(2));
+        if (remainingPaid > 0) {
+          body.paymentRecords.push({
+            amount: remainingPaid,
+            method: methodStr,
+            chequeNumber: chequeNo,
+            notes: 'Balance Payment',
+            receivedAt: parsedPayDate,
+            verifiedAt: parsedPayDate,
+            status: 'Verified',
+            receivedBy: req.user._id,
+            verifiedBy: req.user._id
+          });
+        } else if (body.paymentRecords.length === 0 && (paidTotal > 0 || chequeNo || body['Payment Method'])) {
+          body.paymentRecords.push({
+            amount: paidTotal > 0 ? paidTotal : finalAmt,
+            method: methodStr,
+            chequeNumber: chequeNo,
+            notes: 'Historical Payment Record',
+            receivedAt: parsedPayDate,
+            verifiedAt: parsedPayDate,
+            status: 'Verified',
+            receivedBy: req.user._id,
+            verifiedBy: req.user._id
+          });
+        }
+
+        body.orderType = body['Client Type'] || body['Order Type'] || body.orderType || 'Historical';
+        const rawStatus = String(body['Order Status'] || body.status || body['Status'] || 'Completed').trim();
         body.status = rawStatus;
-        if (body['Order Number'] || body.orderNumber) {
-          body.orderNumber = String(body['Order Number'] || body.orderNumber).trim();
+        if (body['Order ID'] || body['Order Number'] || body.orderNumber) {
+          body.orderNumber = String(body['Order ID'] || body['Order Number'] || body.orderNumber).trim();
         }
 
         const isCompleted = ['completed', 'delivered'].includes(rawStatus.toLowerCase()) || body.orderType === 'Historical';

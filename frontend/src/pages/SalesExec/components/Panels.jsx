@@ -28,6 +28,7 @@ import { requirementTypes } from "../data/mockData";
 import { useAuth } from "../../../context/AuthContext";
 import { appointmentApi, orderApi, productApi } from "../../../services/api";
 import { ProductCatalogueModal } from "./ProductCatalogueModal";
+import { exportOrdersToExcel } from "../../../utils/orderExcel";
 
 // ─── Appointment Hub ──────────────────────────────────────────────────────────
 export const AppointmentHub = ({ appointments = [], onSchedule }) => (
@@ -192,6 +193,10 @@ export const OrderList = ({
     );
   });
 
+  const handleExportExcel = () => {
+    exportOrdersToExcel(filteredOrders, `GMS_Orders_Export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   return (
     <div className="space-y-4">
       {/* Filters and Controls */}
@@ -267,6 +272,7 @@ export const OrderList = ({
 
           <div className="flex gap-3">
             <button
+              onClick={handleExportExcel}
               className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm"
               style={{ background: "#4caf50" }}
             >
@@ -282,6 +288,7 @@ export const OrderList = ({
               </button>
             )}
             <button
+              onClick={() => window.print()}
               className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90"
               style={{ background: "#00acc1" }}
             >
@@ -3304,7 +3311,7 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
                               ₹{p.amount?.toLocaleString("en-IN")}
                             </p>
                             <p className="text-[10px] text-slate-400 font-medium">
-                              {p.method} ·{" "}
+                              {p.method} {p.chequeNumber ? `· Chq: ${p.chequeNumber}` : ''} {p.notes ? `· ${p.notes}` : ''} ·{" "}
                               {new Date(
                                 p.receivedAt || p.createdAt,
                               ).toLocaleDateString()}
