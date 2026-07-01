@@ -219,268 +219,324 @@ exports.bulkImport = async (req, res) => {
       }
     }
 
-    // Cache user lookups to avoid redundant database queries
-    const userCache = new Map();
+    // Pre-fetch all users into memory for instant O(1) employee lookups
+    const allUsers = await User.find({}).select('_id name email phone');
+    const userMap = new Map();
+    for (const u of allUsers) {
+      if (u.email) userMap.set(String(u.email).toLowerCase().trim(), u._id);
+      if (u.phone) userMap.set(String(u.phone).trim(), u._id);
+      if (u.name) userMap.set(String(u.name).toLowerCase().trim(), u._id);
+    }
 
-    for (const record of records) {
-      try {
-        const body = { ...record };
+    // Pre-fetch all matching prospects into memory
+    const prospectPhones = new Set();
+    const prospectEmails = new Set();
+    const prospectGsts = new Set();
+    const prospectCompanies = new Set();
+    for (const r of records) {
+      const p = r['Contact Number'] || r.phone || r['Phone'] || r.clientSnapshot?.phone;
+      const e = r.email || r['Email'] || r.clientSnapshot?.email;
+      const g = r['GST Number'] || r.gstNumber || r.clientSnapshot?.gstNumber;
+      const c = r['Business Name'] || r.company || r['Company Name'] || r['Company'] || r.clientSnapshot?.company;
+      if (p) prospectPhones.add(String(p).trim());
+      if (e) prospectEmails.add(String(e).trim().toLowerCase());
+      if (g) prospectGsts.add(String(g).trim().toLowerCase());
+      if (c) prospectCompanies.add(String(c).trim().toLowerCase());
+    }
 
-        // Extract employee identifier (who closed the order)
-        const empInput = body['Employee Name'] || body.salesExec || body.employeeName || body.closedBy || body['Closed By'] || body['Sales Person'] || body['Assigned To'] || body['Sales Exec'];
-        let resolvedUserId = null;
+    const pOrConditions = [];
+    if (prospectPhones.size > 0) pOrConditions.push({ phone: { $in: Array.from(prospectPhones) } });
+    if (prospectEmails.size > 0) pOrConditions.push({ email: { $in: Array.from(prospectEmails) } });
+    if (prospectGsts.size > 0) pOrConditions.push({ gstNumber: { $in: Array.from(prospectGsts) } });
 
-        if (empInput) {
-          const empStr = String(empInput).trim();
-          if (mongoose.Types.ObjectId.isValid(empStr) && String(new mongoose.Types.ObjectId(empStr)) === empStr) {
-            resolvedUserId = empStr;
-          } else if (userCache.has(empStr.toLowerCase())) {
-            resolvedUserId = userCache.get(empStr.toLowerCase());
-          } else {
-            let matchedUser = await User.findOne({
-              $or: [
-                { email: { $regex: new RegExp(`^${empStr}$`, 'i') } },
-                { phone: empStr },
-                { name: { $regex: new RegExp(`^${empStr}$`, 'i') } }
-              ]
-            }).select('_id');
+    const prospectMapPhone = new Map();
+    const prospectMapEmail = new Map();
+    const prospectMapGst = new Map();
+    const prospectMapCompany = new Map();
 
-            if (!matchedUser) {
-              matchedUser = await User.findOne({
-                name: { $regex: new RegExp(empStr, 'i') }
-              }).select('_id');
-            }
-
-            if (matchedUser) {
-              resolvedUserId = matchedUser._id;
-              userCache.set(empStr.toLowerCase(), matchedUser._id);
-            }
-          }
-        }
-
-        body.salesExec = resolvedUserId || req.user?._id;
-
-        // Resolve Prospect matching
-        const phone = body['Contact Number'] || body.phone || body['Phone'] || body.clientSnapshot?.phone;
-        const email = body.email || body['Email'] || body.clientSnapshot?.email;
-        const gstNumber = body['GST Number'] || body.gstNumber || body.clientSnapshot?.gstNumber;
-        const company = body['Business Name'] || body.company || body['Company Name'] || body['Company'] || body.clientSnapshot?.company;
-        const clientName = body['Client Name'] || body.clientName || body['Contact Person'] || body.name || body.clientSnapshot?.name || 'Historical Client';
-
-        let prospectId = body.prospect;
-        if (!prospectId) {
-          let matchedProspect = null;
-          if (phone) matchedProspect = await Prospect.findOne({ phone: String(phone).trim(), 'softDelete.isDeleted': { $ne: true } }).select('_id');
-          if (!matchedProspect && email) matchedProspect = await Prospect.findOne({ email: String(email).trim(), 'softDelete.isDeleted': { $ne: true } }).select('_id');
-          if (!matchedProspect && gstNumber) matchedProspect = await Prospect.findOne({ gstNumber: String(gstNumber).trim(), 'softDelete.isDeleted': { $ne: true } }).select('_id');
-          if (!matchedProspect && company) matchedProspect = await Prospect.findOne({ company: { $regex: new RegExp(`^${String(company).trim()}$`, 'i') }, 'softDelete.isDeleted': { $ne: true } }).select('_id');
-
-          if (matchedProspect) prospectId = matchedProspect._id;
-        }
-
-        body.prospect = prospectId;
-        body.clientSnapshot = {
-          name: String(clientName).trim(),
-          phone: phone ? String(phone).trim() : '',
-          company: company ? String(company).trim() : '',
-          email: email ? String(email).trim() : ''
-        };
-
-        const orderTotal = parseNum(body['Total'] || body.grandTotal || body['Grand Total'] || body.totalAmount || body['Total Amount'] || body.amount || body['Amount'], 0);
-        const finalAmt = parseNum(body['Final Amount'] || body.grandTotal || body['Grand Total'] || orderTotal, 0);
-        const advanceAmt = parseNum(body['Advance'] || body.advancePaid || body['Advance Paid'], 0);
-        const pendingBalStr = body['Pending Balance'];
-        const pendingBal = (pendingBalStr !== undefined && pendingBalStr !== '') ? parseNum(pendingBalStr, 0) : Math.max(0, finalAmt - advanceAmt);
-        const paidTotal = Math.max(0, finalAmt - pendingBal);
-
-        // Add default or normalize line items
-        if (!body.lineItems || !Array.isArray(body.lineItems) || body.lineItems.length === 0) {
-          body.lineItems = [{
-            description: body['Requirements'] || body['Requirement'] || body.description || body['Client Type'] || body['Order Type'] || body.orderType || 'Historical Order Data',
-            quantity: Math.max(1, parseNum(body['Qty'] || body['Quantity'], 1)),
-            unitPrice: Math.max(0, parseNum(body['Rate'], finalAmt || orderTotal)),
-            gstRate: 0,
-            discount: 0
-          }];
-        } else {
-          const lineSum = body.lineItems.reduce((acc, li) => acc + (li.quantity * li.unitPrice), 0);
-          if (lineSum === 0 && finalAmt > 0 && body.lineItems[0]) {
-            body.lineItems[0].unitPrice = finalAmt / (body.lineItems[0].quantity || 1);
-          }
-        }
-
-        body.lineItems.forEach(li => {
-          if (li.discount > 100) li.discount = 0;
-        });
-
-        // Parse historical date
-        const rawDate = body['Order Date'] || body.createdAt || body.date || body['Date'];
-        let parsedDate = null;
-        if (rawDate) {
-          const d = new Date(rawDate);
-          if (!isNaN(d.getTime())) parsedDate = d;
-        }
-
-        const rawAdvDate = body['Advance Date'] || body.advanceDate;
-        let parsedAdvDate = parsedDate || new Date();
-        if (rawAdvDate) {
-          const d = new Date(rawAdvDate);
-          if (!isNaN(d.getTime())) parsedAdvDate = d;
-        }
-
-        const rawPayDate = body['Payment Date'] || body.paymentDate;
-        let parsedPayDate = parsedAdvDate || parsedDate || new Date();
-        if (rawPayDate) {
-          const d = new Date(rawPayDate);
-          if (!isNaN(d.getTime())) parsedPayDate = d;
-        }
-
-        let methodStr = String(body['Payment Method'] || body.paymentMethod || 'Bank Transfer').trim();
-        const methodLower = methodStr.toLowerCase();
-        if (methodLower.includes('cash')) methodStr = 'Cash';
-        else if (methodLower.includes('upi') || methodLower.includes('paytm') || methodLower.includes('bhim')) methodStr = 'UPI';
-        else if (methodLower.includes('phonepe')) methodStr = 'PhonePe';
-        else if (methodLower.includes('gpay') || methodLower.includes('google')) methodStr = 'GPay';
-        else if (methodLower.includes('cheque') || methodLower.includes('chq')) methodStr = 'Cheque';
-        else if (methodLower.includes('bank') || methodLower.includes('neft') || methodLower.includes('rtgs') || methodLower.includes('imps') || methodLower.includes('transfer')) methodStr = 'Bank Transfer';
-        else methodStr = 'Other';
-
-        const chequeNo = String(body['Cheque Number'] || body.chequeNumber || '').trim();
-
-        // Build detailed paymentRecords for payment history view details
-        body.paymentRecords = [];
-        if (advanceAmt > 0) {
-          body.paymentRecords.push({
-            amount: advanceAmt,
-            method: methodStr,
-            chequeNumber: chequeNo,
-            notes: 'Advance Payment',
-            receivedAt: parsedAdvDate,
-            verifiedAt: parsedAdvDate,
-            status: 'Verified',
-            receivedBy: req.user?._id,
-            verifiedBy: req.user?._id
-          });
-        }
-
-        const remainingPaid = parseFloat((paidTotal - advanceAmt).toFixed(2));
-        if (remainingPaid > 0) {
-          body.paymentRecords.push({
-            amount: remainingPaid,
-            method: methodStr,
-            chequeNumber: chequeNo,
-            notes: 'Balance Payment',
-            receivedAt: parsedPayDate,
-            verifiedAt: parsedPayDate,
-            status: 'Verified',
-            receivedBy: req.user?._id,
-            verifiedBy: req.user?._id
-          });
-        } else if (body.paymentRecords.length === 0 && (paidTotal > 0 || chequeNo || body['Payment Method'])) {
-          body.paymentRecords.push({
-            amount: paidTotal > 0 ? paidTotal : finalAmt,
-            method: methodStr,
-            chequeNumber: chequeNo,
-            notes: 'Historical Payment Record',
-            receivedAt: parsedPayDate,
-            verifiedAt: parsedPayDate,
-            status: 'Verified',
-            receivedBy: req.user?._id,
-            verifiedBy: req.user?._id
-          });
-        }
-
-        body.orderType = body['Client Type'] || body['Order Type'] || body.orderType || 'Historical';
-        const rawStatusStr = String(body['Order Status'] || body.status || body['Status'] || 'Completed').trim().toLowerCase();
-        let normalizedStatus = 'Completed';
-        if (rawStatusStr.includes('cancel')) normalizedStatus = 'Cancelled';
-        else if (rawStatusStr.includes('draft')) normalizedStatus = 'Draft';
-        else if (rawStatusStr.includes('confirm')) normalizedStatus = 'Confirmed';
-        else if (rawStatusStr.includes('production') || rawStatusStr.includes('progress')) normalizedStatus = 'In_Production';
-        else if (rawStatusStr.includes('review')) normalizedStatus = 'Design_Review';
-        else if (rawStatusStr.includes('deliver')) normalizedStatus = 'Delivered';
-        else if (rawStatusStr.includes('pending') && !rawStatusStr.includes('balance')) normalizedStatus = 'Pending_Approval';
-        else normalizedStatus = 'Completed';
-
-        body.status = normalizedStatus;
-
-        if (body['Order ID'] || body['Order Number'] || body.orderNumber) {
-          body.orderNumber = String(body['Order ID'] || body['Order Number'] || body.orderNumber).trim();
-        }
-
-        const isCompleted = normalizedStatus === 'Completed' || body.orderType === 'Historical';
-        if (isCompleted) {
-          body.status = 'Completed';
-          body.designStatus = 'Completed';
-          body.verificationStatus = 'Verified';
-          body.paymentStatus = 'Paid';
-
-          if (Array.isArray(body.lineItems)) {
-            body.lineItems = body.lineItems.map(item => ({
-              ...item,
-              designerStatus: 'Completed',
-              designerWorkflow: {
-                ...(item.designerWorkflow || {}),
-                workflowType: item.designerWorkflow?.workflowType || 'DESIGN_CREATED',
-                currentStatus: 'Completed',
-                statusHistory: [
-                  ...(item.designerWorkflow?.statusHistory || []),
-                  { status: 'Completed', changedAt: parsedDate || new Date(), note: 'Historical order auto-completed and disabled' }
-                ]
-              },
-              productionWorkflow: {
-                ...(item.productionWorkflow || {}),
-                status: 'Completed',
-                handoverStatus: 'Handed Over',
-                producedQuantity: item.quantity || 1,
-                qcStatus: 'Approved',
-                startedAt: parsedDate || new Date(),
-                actualCompletion: parsedDate || new Date()
-              },
-              serviceWorkflow: {
-                ...(item.serviceWorkflow || {}),
-                status: 'Service Completed',
-                startedAt: parsedDate || new Date(),
-                completedAt: parsedDate || new Date()
-              },
-              operationStatus: 'completed',
-              serviceStatus: 'completed'
-            }));
-          }
-        }
-
-        let order = null;
-        if (body.orderNumber) {
-          order = await Order.findOne({ orderNumber: body.orderNumber });
-        }
-
-        if (order) {
-          Object.assign(order, body);
-          if (parsedDate) {
-            order.createdAt = parsedDate;
-            order.updatedAt = parsedDate;
-          }
-          await order.save();
-          if (parsedDate) {
-            await Order.updateOne({ _id: order._id }, { $set: { createdAt: parsedDate, updatedAt: parsedDate } }, { timestamps: false });
-          }
-        } else {
-          order = new Order(body);
-          if (parsedDate) {
-            order.createdAt = parsedDate;
-            order.updatedAt = parsedDate;
-          }
-          await order.save();
-          if (parsedDate) {
-            await Order.updateOne({ _id: order._id }, { $set: { createdAt: parsedDate, updatedAt: parsedDate } }, { timestamps: false });
-          }
-        }
-
-        successCount++;
-      } catch (err) {
-        failedCount++;
-        errors.push({ orderNumber: record.orderNumber || record['Order Number'] || record['Order ID'] || 'Unknown', error: err.message });
+    if (pOrConditions.length > 0) {
+      const existingProspects = await Prospect.find({
+        $or: pOrConditions,
+        'softDelete.isDeleted': { $ne: true }
+      }).select('_id phone email gstNumber company');
+      for (const p of existingProspects) {
+        if (p.phone) prospectMapPhone.set(String(p.phone).trim(), p._id);
+        if (p.email) prospectMapEmail.set(String(p.email).trim().toLowerCase(), p._id);
+        if (p.gstNumber) prospectMapGst.set(String(p.gstNumber).trim().toLowerCase(), p._id);
+        if (p.company) prospectMapCompany.set(String(p.company).trim().toLowerCase(), p._id);
       }
+    }
+
+    // Pre-fetch existing orders by Order Number
+    const orderNumKeys = records
+      .map(r => r['Order ID'] || r['Order Number'] || r.orderNumber)
+      .filter(Boolean)
+      .map(s => String(s).trim());
+
+    const existingOrdersMap = new Map();
+    if (orderNumKeys.length > 0) {
+      const foundOrders = await Order.find({ orderNumber: { $in: orderNumKeys } });
+      for (const o of foundOrders) {
+        existingOrdersMap.set(o.orderNumber, o);
+      }
+    }
+
+    let currentOrderCount = await Order.countDocuments();
+    const currentYear = new Date().getFullYear();
+
+    // Prepare all record objects in memory
+    const preparedRecords = [];
+    for (const record of records) {
+      const body = { ...record };
+
+      // Extract employee identifier
+      const empInput = body['Employee Name'] || body.salesExec || body.employeeName || body.closedBy || body['Closed By'] || body['Sales Person'] || body['Assigned To'] || body['Sales Exec'];
+      let resolvedUserId = null;
+      if (empInput) {
+        const empStr = String(empInput).trim();
+        if (mongoose.Types.ObjectId.isValid(empStr) && String(new mongoose.Types.ObjectId(empStr)) === empStr) {
+          resolvedUserId = empStr;
+        } else if (userMap.has(empStr.toLowerCase())) {
+          resolvedUserId = userMap.get(empStr.toLowerCase());
+        } else {
+          const matchedUser = allUsers.find(u => u.name && String(u.name).toLowerCase().includes(empStr.toLowerCase()));
+          if (matchedUser) {
+            resolvedUserId = matchedUser._id;
+            userMap.set(empStr.toLowerCase(), matchedUser._id);
+          }
+        }
+      }
+      body.salesExec = resolvedUserId || req.user?._id;
+
+      // Resolve Prospect matching
+      const phone = body['Contact Number'] || body.phone || body['Phone'] || body.clientSnapshot?.phone;
+      const email = body.email || body['Email'] || body.clientSnapshot?.email;
+      const gstNumber = body['GST Number'] || body.gstNumber || body.clientSnapshot?.gstNumber;
+      const company = body['Business Name'] || body.company || body['Company Name'] || body['Company'] || body.clientSnapshot?.company;
+      const clientName = body['Client Name'] || body.clientName || body['Contact Person'] || body.name || body.clientSnapshot?.name || 'Historical Client';
+
+      let prospectId = body.prospect;
+      if (!prospectId) {
+        if (phone && prospectMapPhone.has(String(phone).trim())) {
+          prospectId = prospectMapPhone.get(String(phone).trim());
+        } else if (email && prospectMapEmail.has(String(email).trim().toLowerCase())) {
+          prospectId = prospectMapEmail.get(String(email).trim().toLowerCase());
+        } else if (gstNumber && prospectMapGst.has(String(gstNumber).trim().toLowerCase())) {
+          prospectId = prospectMapGst.get(String(gstNumber).trim().toLowerCase());
+        } else if (company && prospectMapCompany.has(String(company).trim().toLowerCase())) {
+          prospectId = prospectMapCompany.get(String(company).trim().toLowerCase());
+        }
+      }
+
+      body.prospect = prospectId;
+      body.clientSnapshot = {
+        name: String(clientName).trim(),
+        phone: phone ? String(phone).trim() : '',
+        company: company ? String(company).trim() : '',
+        email: email ? String(email).trim() : ''
+      };
+
+      const orderTotal = parseNum(body['Total'] || body.grandTotal || body['Grand Total'] || body.totalAmount || body['Total Amount'] || body.amount || body['Amount'], 0);
+      const finalAmt = parseNum(body['Final Amount'] || body.grandTotal || body['Grand Total'] || orderTotal, 0);
+      const advanceAmt = parseNum(body['Advance'] || body.advancePaid || body['Advance Paid'], 0);
+      const pendingBalStr = body['Pending Balance'];
+      const pendingBal = (pendingBalStr !== undefined && pendingBalStr !== '') ? parseNum(pendingBalStr, 0) : Math.max(0, finalAmt - advanceAmt);
+      const paidTotal = Math.max(0, finalAmt - pendingBal);
+
+      if (!body.lineItems || !Array.isArray(body.lineItems) || body.lineItems.length === 0) {
+        body.lineItems = [{
+          description: body['Requirements'] || body['Requirement'] || body.description || body['Client Type'] || body['Order Type'] || body.orderType || 'Historical Order Data',
+          quantity: Math.max(1, parseNum(body['Qty'] || body['Quantity'], 1)),
+          unitPrice: Math.max(0, parseNum(body['Rate'], finalAmt || orderTotal)),
+          gstRate: 0,
+          discount: 0
+        }];
+      } else {
+        const lineSum = body.lineItems.reduce((acc, li) => acc + (li.quantity * li.unitPrice), 0);
+        if (lineSum === 0 && finalAmt > 0 && body.lineItems[0]) {
+          body.lineItems[0].unitPrice = finalAmt / (body.lineItems[0].quantity || 1);
+        }
+      }
+
+      body.lineItems.forEach(li => {
+        if (li.discount > 100) li.discount = 0;
+      });
+
+      const rawDate = body['Order Date'] || body.createdAt || body.date || body['Date'];
+      let parsedDate = null;
+      if (rawDate) {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) parsedDate = d;
+      }
+
+      const rawAdvDate = body['Advance Date'] || body.advanceDate;
+      let parsedAdvDate = parsedDate || new Date();
+      if (rawAdvDate) {
+        const d = new Date(rawAdvDate);
+        if (!isNaN(d.getTime())) parsedAdvDate = d;
+      }
+
+      const rawPayDate = body['Payment Date'] || body.paymentDate;
+      let parsedPayDate = parsedAdvDate || parsedDate || new Date();
+      if (rawPayDate) {
+        const d = new Date(rawPayDate);
+        if (!isNaN(d.getTime())) parsedPayDate = d;
+      }
+
+      let methodStr = String(body['Payment Method'] || body.paymentMethod || 'Bank Transfer').trim();
+      const methodLower = methodStr.toLowerCase();
+      if (methodLower.includes('cash')) methodStr = 'Cash';
+      else if (methodLower.includes('upi') || methodLower.includes('paytm') || methodLower.includes('bhim')) methodStr = 'UPI';
+      else if (methodLower.includes('phonepe')) methodStr = 'PhonePe';
+      else if (methodLower.includes('gpay') || methodLower.includes('google')) methodStr = 'GPay';
+      else if (methodLower.includes('cheque') || methodLower.includes('chq')) methodStr = 'Cheque';
+      else if (methodLower.includes('bank') || methodLower.includes('neft') || methodLower.includes('rtgs') || methodLower.includes('imps') || methodLower.includes('transfer')) methodStr = 'Bank Transfer';
+      else methodStr = 'Other';
+
+      const chequeNo = String(body['Cheque Number'] || body.chequeNumber || '').trim();
+
+      body.paymentRecords = [];
+      if (advanceAmt > 0) {
+        body.paymentRecords.push({
+          amount: advanceAmt,
+          method: methodStr,
+          chequeNumber: chequeNo,
+          notes: 'Advance Payment',
+          receivedAt: parsedAdvDate,
+          verifiedAt: parsedAdvDate,
+          status: 'Verified',
+          receivedBy: req.user?._id,
+          verifiedBy: req.user?._id
+        });
+      }
+
+      const remainingPaid = parseFloat((paidTotal - advanceAmt).toFixed(2));
+      if (remainingPaid > 0) {
+        body.paymentRecords.push({
+          amount: remainingPaid,
+          method: methodStr,
+          chequeNumber: chequeNo,
+          notes: 'Balance Payment',
+          receivedAt: parsedPayDate,
+          verifiedAt: parsedPayDate,
+          status: 'Verified',
+          receivedBy: req.user?._id,
+          verifiedBy: req.user?._id
+        });
+      } else if (body.paymentRecords.length === 0 && (paidTotal > 0 || chequeNo || body['Payment Method'])) {
+        body.paymentRecords.push({
+          amount: paidTotal > 0 ? paidTotal : finalAmt,
+          method: methodStr,
+          chequeNumber: chequeNo,
+          notes: 'Historical Payment Record',
+          receivedAt: parsedPayDate,
+          verifiedAt: parsedPayDate,
+          status: 'Verified',
+          receivedBy: req.user?._id,
+          verifiedBy: req.user?._id
+        });
+      }
+
+      body.orderType = body['Client Type'] || body['Order Type'] || body.orderType || 'Historical';
+      const rawStatusStr = String(body['Order Status'] || body.status || body['Status'] || 'Completed').trim().toLowerCase();
+      let normalizedStatus = 'Completed';
+      if (rawStatusStr.includes('cancel')) normalizedStatus = 'Cancelled';
+      else if (rawStatusStr.includes('draft')) normalizedStatus = 'Draft';
+      else if (rawStatusStr.includes('confirm')) normalizedStatus = 'Confirmed';
+      else if (rawStatusStr.includes('production') || rawStatusStr.includes('progress')) normalizedStatus = 'In_Production';
+      else if (rawStatusStr.includes('review')) normalizedStatus = 'Design_Review';
+      else if (rawStatusStr.includes('deliver')) normalizedStatus = 'Delivered';
+      else if (rawStatusStr.includes('pending') && !rawStatusStr.includes('balance')) normalizedStatus = 'Pending_Approval';
+      else normalizedStatus = 'Completed';
+
+      body.status = normalizedStatus;
+
+      if (body['Order ID'] || body['Order Number'] || body.orderNumber) {
+        body.orderNumber = String(body['Order ID'] || body['Order Number'] || body.orderNumber).trim();
+      } else {
+        currentOrderCount++;
+        body.orderNumber = `ORD-${currentYear}-${String(currentOrderCount).padStart(4, '0')}`;
+      }
+
+      const isCompleted = normalizedStatus === 'Completed' || body.orderType === 'Historical';
+      if (isCompleted) {
+        body.status = 'Completed';
+        body.designStatus = 'Completed';
+        body.verificationStatus = 'Verified';
+        body.paymentStatus = 'Paid';
+
+        if (Array.isArray(body.lineItems)) {
+          body.lineItems = body.lineItems.map(item => ({
+            ...item,
+            designerStatus: 'Completed',
+            designerWorkflow: {
+              ...(item.designerWorkflow || {}),
+              workflowType: item.designerWorkflow?.workflowType || 'DESIGN_CREATED',
+              currentStatus: 'Completed',
+              statusHistory: [
+                ...(item.designerWorkflow?.statusHistory || []),
+                { status: 'Completed', changedAt: parsedDate || new Date(), note: 'Historical order auto-completed and disabled' }
+              ]
+            },
+            productionWorkflow: {
+              ...(item.productionWorkflow || {}),
+              status: 'Completed',
+              handoverStatus: 'Handed Over',
+              producedQuantity: item.quantity || 1,
+              qcStatus: 'Approved',
+              startedAt: parsedDate || new Date(),
+              actualCompletion: parsedDate || new Date()
+            },
+            serviceWorkflow: {
+              ...(item.serviceWorkflow || {}),
+              status: 'Service Completed',
+              startedAt: parsedDate || new Date(),
+              completedAt: parsedDate || new Date()
+            },
+            operationStatus: 'completed',
+            serviceStatus: 'completed'
+          }));
+        }
+      }
+
+      preparedRecords.push({ body, parsedDate });
+    }
+
+    // Save in concurrent batches of 25 for massive speedup
+    const BATCH_SIZE = 25;
+    for (let i = 0; i < preparedRecords.length; i += BATCH_SIZE) {
+      const batch = preparedRecords.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async ({ body, parsedDate }) => {
+        try {
+          let order = existingOrdersMap.get(body.orderNumber);
+          if (order) {
+            Object.assign(order, body);
+            if (parsedDate) {
+              order.createdAt = parsedDate;
+              order.updatedAt = parsedDate;
+            }
+            await order.save();
+            if (parsedDate) {
+              await Order.updateOne({ _id: order._id }, { $set: { createdAt: parsedDate, updatedAt: parsedDate } }, { timestamps: false });
+            }
+          } else {
+            order = new Order(body);
+            if (parsedDate) {
+              order.createdAt = parsedDate;
+              order.updatedAt = parsedDate;
+            }
+            await order.save();
+            if (parsedDate) {
+              await Order.updateOne({ _id: order._id }, { $set: { createdAt: parsedDate, updatedAt: parsedDate } }, { timestamps: false });
+            }
+            existingOrdersMap.set(body.orderNumber, order);
+          }
+          successCount++;
+        } catch (err) {
+          failedCount++;
+          errors.push({ orderNumber: body.orderNumber || 'Unknown', error: err.message });
+        }
+      }));
     }
 
     res.status(201).json({ success: true, successCount, failedCount, errors });

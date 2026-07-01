@@ -1,6 +1,7 @@
 import React from 'react';
 import { TrendingUp, Users, Target, DollarSign, RefreshCw } from 'lucide-react';
 import useApi from '../../../hooks/useApi';
+import { formatINRConcise } from '../../../utils/numberFormatters';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   LineChart, Line, PieChart, Pie, Cell, Legend, AreaChart, Area
@@ -13,8 +14,8 @@ const BusinessIntelligence = () => {
   const stats = apiData?.data || {};
 
   const kpis = [
-    { label: 'Cumulative Revenue', value: `₹${(stats.kpis?.totalRevenue || 0).toLocaleString()}`, change: '+18%', up: true, icon: DollarSign, color: 'emerald' },
-    { label: 'Strategic Ad Spend', value: `₹${(stats.kpis?.totalSpend || 0).toLocaleString()}`, change: '+12%', up: false, icon: TrendingUp, color: 'blue' },
+    { label: 'Cumulative Revenue', value: formatINRConcise(stats.kpis?.totalRevenue || 0), change: '+18%', up: true, icon: DollarSign, color: 'emerald' },
+    { label: 'Strategic Ad Spend', value: formatINRConcise(stats.kpis?.totalSpend || 0), change: '+12%', up: false, icon: TrendingUp, color: 'blue' },
     { label: 'Acquisition Yield', value: (stats.kpis?.totalLeads || 0).toString(), change: '+24%', up: true, icon: Users, color: 'indigo' },
     { label: 'Conversion Efficiency', value: stats.kpis?.avgConversion || '0%', change: '+0.8%', up: true, icon: Target, color: 'amber' },
   ];

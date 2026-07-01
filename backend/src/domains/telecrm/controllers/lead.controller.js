@@ -1,6 +1,19 @@
 const LeadService = require('../services/lead.service');
 const DistributionService = require('../services/distribution.service');
 const TelephonyService = require('../services/telephony.service');
+const auditService = require('../services/audit.service');
+const configurationService = require('../services/configuration.service');
+const callTrackingService = require('../services/callTracking.service');
+const queueManagementService = require('../services/queueManagement.service');
+const retryEngineService = require('../services/retryEngine.service');
+const slaManagementService = require('../services/slaManagement.service');
+const escalationService = require('../services/escalation.service');
+const liveStatusService = require('../services/liveStatus.service');
+const analyticsService = require('../services/analytics.service');
+const reportingService = require('../services/reporting.service');
+const qaService = require('../services/qa.service');
+const recordingService = require('../services/recording.service');
+const fraudDetectionService = require('../services/fraudDetection.service');
 const Lead = require('../models/lead.model');
 const LeadCall = require('../models/leadCall.model');
 const LeadFollowup = require('../models/leadFollowup.model');
@@ -228,6 +241,14 @@ class LeadController {
   async initiateCall(req, res, next) {
     try {
       const { calleePhone, leadId } = req.body;
+
+      // Lock lead if possible
+      try {
+        if (leadId) await queueManagementService.lockLead(leadId, req.user._id);
+      } catch (lErr) {
+        // Log or continue
+      }
+
       const callRes = await TelephonyService.initiateCall({
         callerPhone: req.user.phone || '9999999999',
         calleePhone,
@@ -235,10 +256,17 @@ class LeadController {
         callerId: req.user._id
       });
 
-      await Lead.updateOne(
-        { _id: leadId },
-        { $set: { currentStatus: 'Calling' } }
-      );
+      if (leadId) {
+        await Lead.updateOne(
+          { _id: leadId },
+          { $set: { currentStatus: 'Calling', firstCalledAt: new Date() } }
+        );
+      }
+
+      // Update executive live status
+      try {
+        await liveStatusService.updateStatus(req.user._id, req.user.name, 'Calling');
+      } catch (sErr) {}
 
       res.json({ success: true, data: callRes });
     } catch (err) {
@@ -249,7 +277,7 @@ class LeadController {
   // POST /api/telecrm/calls/popup (After Call Disposition Popup)
   async saveCallDisposition(req, res, next) {
     try {
-      const { leadId, callStatus, durationSeconds, remarks, followupDate, followupTime, interested, needMeeting, needQuotation, convertToProspect } = req.body;
+      const { leadId, callStatus, durationSeconds, remarks, followupDate, followupTime, interested, needMeeting, needQuotation, convertToProspect, businessDisposition, acwSeconds, recordingUrl } = req.body;
 
       const lead = await Lead.findById(leadId);
       if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
@@ -260,20 +288,28 @@ class LeadController {
         return res.status(403).json({ success: false, message: 'Access denied: You do not own this lead record.' });
       }
 
+      const talkDur = durationSeconds || 30;
+      const bDisp = businessDisposition || callStatus || 'Connected';
+
       // 1. Create Call Log
-      await LeadCall.create({
+      const callRecord = await LeadCall.create({
         leadId,
         callerId: req.user._id,
         callerName: req.user.name,
         calleePhone: lead.phone,
         companyName: lead.companyName,
         callStatus: callStatus || 'Connected',
-        durationSeconds: durationSeconds || 30,
+        durationSeconds: talkDur,
+        talkDuration: talkDur,
+        acwSeconds: acwSeconds || 0,
         remarks,
         interested,
         needMeeting,
         needQuotation,
-        convertedToProspect: convertToProspect || false
+        convertedToProspect: convertToProspect || false,
+        businessDisposition: bDisp,
+        recordingUrl: recordingUrl || null,
+        endTime: new Date()
       });
 
       // 2. Schedule Followup if date provided
@@ -306,21 +342,32 @@ class LeadController {
         }
       }
 
-      // 3. Update Lead Status
+      // 3. Update Lead Status & Timeline
       lead.lastRemark = remarks;
-      if (interested) lead.currentStatus = 'Interested';
+      if (interested || bDisp.toLowerCase().includes('interested')) lead.currentStatus = 'Interested';
       if (callStatus === 'Busy') lead.currentStatus = 'Busy';
       if (callStatus === 'Not Reachable') lead.currentStatus = 'Not Reachable';
-      if (callStatus === 'Rejected') lead.currentStatus = 'Not Interested';
+      if (callStatus === 'Rejected' || bDisp.toLowerCase().includes('lost')) lead.currentStatus = 'Not Interested';
 
       lead.timeline.push({
         type: 'CALL',
-        title: `Call Ended: ${callStatus || 'Connected'}`,
+        title: `Call Ended: ${bDisp} (${callStatus || 'Connected'})`,
         description: remarks,
         performedBy: req.user._id,
         performedByName: req.user.name
       });
       await lead.save();
+
+      // Enterprise workflows asynchronously
+      try {
+        await retryEngineService.evaluateOutcome(leadId, callStatus, bDisp);
+        await queueManagementService.categorizeLead(leadId, bDisp, callStatus, followupDate);
+        await queueManagementService.unlockLead(leadId, req.user._id);
+        await fraudDetectionService.inspectCompletedCall(callRecord, req.user);
+        await liveStatusService.updateStatus(req.user._id, req.user.name, acwSeconds > 0 ? 'After Call Work' : 'Available');
+      } catch (opErr) {
+        console.error('[EnterpriseOps] Error in post-disposition operations:', opErr.message);
+      }
 
       // 4. Trigger conversion bridge if requested
       if (convertToProspect) {
@@ -461,6 +508,121 @@ class LeadController {
     } catch (err) {
       next(err);
     }
+  }
+
+  // Additive Enterprise Methods
+  async getLiveWallboard(req, res, next) {
+    try {
+      const data = await liveStatusService.getWallboard();
+      res.json({ success: true, data });
+    } catch (err) { next(err); }
+  }
+
+  async updateWorkingStatus(req, res, next) {
+    try {
+      const { status } = req.body;
+      const data = await liveStatusService.updateStatus(req.user._id, req.user.name, status);
+      res.json({ success: true, data });
+    } catch (err) { next(err); }
+  }
+
+  async getEnterpriseConfig(req, res, next) {
+    try {
+      const data = await configurationService.getConfig();
+      res.json({ success: true, data });
+    } catch (err) { next(err); }
+  }
+
+  async saveEnterpriseConfig(req, res, next) {
+    try {
+      const data = await configurationService.updateConfig(req.body, req.user._id);
+      res.json({ success: true, data, message: 'Enterprise settings updated successfully.' });
+    } catch (err) { next(err); }
+  }
+
+  async submitQaScore(req, res, next) {
+    try {
+      const { callId } = req.params;
+      const data = await qaService.submitReview({
+        callId,
+        reviewerId: req.user._id,
+        reviewerName: req.user.name,
+        ...req.body
+      });
+      res.json({ success: true, data, message: 'QA review submitted.' });
+    } catch (err) { next(err); }
+  }
+
+  async listQaReviews(req, res, next) {
+    try {
+      const { executiveId } = req.query;
+      const data = await qaService.getReviewsForExecutive(executiveId || req.user._id);
+      res.json({ success: true, data });
+    } catch (err) { next(err); }
+  }
+
+  async getEodAnalytics(req, res, next) {
+    try {
+      const { date, format } = req.query;
+      const report = await reportingService.generateEodReport(date);
+      if (format === 'csv') {
+        const csv = reportingService.generateCsv(report.data);
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="EOD_Report_${report.date}.csv"`);
+        return res.send(csv);
+      }
+      res.json({ success: true, data: report });
+    } catch (err) { next(err); }
+  }
+
+  async getAuditTrail(req, res, next) {
+    try {
+      const data = await auditService.getLogs(req.query);
+      res.json({ success: true, data });
+    } catch (err) { next(err); }
+  }
+
+  async listFraudAlerts(req, res, next) {
+    try {
+      const data = await fraudDetectionService.getOpenAlerts();
+      res.json({ success: true, data });
+    } catch (err) { next(err); }
+  }
+
+  async getCeoFunnel(req, res, next) {
+    try {
+      const data = await analyticsService.getCeoAndManagerAnalytics();
+      res.json({ success: true, data });
+    } catch (err) { next(err); }
+  }
+
+  async getExecutiveScorecard(req, res, next) {
+    try {
+      const targetId = req.query.executiveId || req.user._id;
+      const data = await analyticsService.getExecutiveMetrics(targetId);
+      res.json({ success: true, data });
+    } catch (err) { next(err); }
+  }
+
+  async runBulkActions(req, res, next) {
+    try {
+      const { action, leadIds, targetUserId, reason } = req.body;
+      if (!Array.isArray(leadIds) || leadIds.length === 0) {
+        return res.status(400).json({ success: false, message: 'leadIds array required' });
+      }
+      if (action === 'transfer' || action === 'assign') {
+        await queueManagementService.transferOwnership({
+          leadIds,
+          toUserId: targetUserId,
+          fromUserId: req.user._id,
+          reason: reason || `Bulk ${action} by ${req.user.name}`,
+          user: req.user
+        });
+      } else if (action === 'retry') {
+        await Lead.updateMany({ _id: { $in: leadIds } }, { $set: { queueCategory: 'Retry', nextRetryDate: new Date() } });
+      }
+      res.json({ success: true, message: `Bulk action ${action} completed for ${leadIds.length} leads.` });
+    } catch (err) { next(err); }
   }
 }
 

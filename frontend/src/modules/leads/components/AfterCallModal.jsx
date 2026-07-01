@@ -17,6 +17,8 @@ export const AfterCallModal = ({ isOpen, lead, onClose, onSave }) => {
   const [needMeeting, setNeedMeeting] = useState(false);
   const [needQuotation, setNeedQuotation] = useState(false);
   const [convertToProspect, setConvertToProspect] = useState(false);
+  const [businessDisposition, setBusinessDisposition] = useState('');
+  const [acwSeconds, setAcwSeconds] = useState(15);
 
   const statuses = [
     'Connected', 'Busy', 'Call Waiting', 'Not Reachable', 
@@ -29,13 +31,15 @@ export const AfterCallModal = ({ isOpen, lead, onClose, onSave }) => {
       leadId: lead._id,
       callStatus,
       durationSeconds: Math.floor(Math.random() * 60) + 20, // simulated
-      remarks: remarks || `Call outcome: ${callStatus}`,
+      remarks: remarks || `Call outcome: ${businessDisposition || callStatus}`,
       followupDate,
       followupTime,
       interested,
       needMeeting,
       needQuotation,
-      convertToProspect
+      convertToProspect,
+      businessDisposition: businessDisposition || callStatus,
+      acwSeconds
     });
   };
 
@@ -74,6 +78,30 @@ export const AfterCallModal = ({ isOpen, lead, onClose, onSave }) => {
                   }`}
                 >
                   {st}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Business Disposition Pills */}
+          <div>
+            <label className="block text-xs font-bold text-muted-foreground uppercase mb-2">Business Disposition (Enterprise)</label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {['Highly Interested', 'Meeting Scheduled', 'Send Quotation', 'Callback Requested', 'Manager Review Required', 'Not Interested / Lost'].map(b => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => {
+                    setBusinessDisposition(b);
+                    if (b === 'Highly Interested') setInterested(true);
+                    if (b === 'Meeting Scheduled') setNeedMeeting(true);
+                    if (b === 'Send Quotation') setNeedQuotation(true);
+                  }}
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold border transition-all truncate ${
+                    businessDisposition === b ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-muted/40 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {b}
                 </button>
               ))}
             </div>

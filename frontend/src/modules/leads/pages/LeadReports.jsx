@@ -39,8 +39,14 @@ export default function LeadReports() {
           <h1 className="text-2xl font-bold tracking-tight">Enterprise Lead Analytics & Reports</h1>
           <p className="text-xs text-muted-foreground">Deep dive audit charts and executive acquisition BI.</p>
         </div>
-        <button className="px-3.5 py-2 border rounded-xl text-xs font-semibold hover:bg-muted flex items-center gap-1.5">
-          <Download className="h-4 w-4" /> Export Report Data
+        <button
+          onClick={() => {
+            const dateStr = new Date().toISOString().split('T')[0];
+            window.open(`http://localhost:5000/api/telecrm/eod-report?format=csv&date=${dateStr}`, '_blank');
+          }}
+          className="px-3.5 py-2 border rounded-xl text-xs font-semibold hover:bg-muted flex items-center gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600"
+        >
+          <Download className="h-4 w-4" /> Export EOD Report (CSV)
         </button>
       </div>
 

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-require('dotenv').config({ path: '../../.env.development' });
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env.development') });
 const Order = require('../domains/orders/order.model');
 const User = require('../domains/users/user.model');
 const orderWorkflow = require('../workflows/order.workflow');
@@ -65,7 +66,7 @@ async function runTest() {
     console.log(`Line item 0 service workflow:`, serviceOrder.lineItems[0].serviceWorkflow);
 
     // 6. Complete Service -> pushes to Delivered
-    serviceOrder.lineItems[0].serviceWorkflow = { status: 'Completed' };
+    serviceOrder.lineItems[0].serviceWorkflow = { status: 'Service Completed' };
     await serviceOrder.save();
     await orderWorkflow.updateOrderStatus(order._id, 'Delivered', admin, {}, { ipAddress: '127.0.0.1' });
     

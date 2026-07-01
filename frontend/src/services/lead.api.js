@@ -29,6 +29,20 @@ export const leadApi = {
   
   // Reports
   getReports: (type, token) => api.get(`/telecrm/reports/${type}`, token),
+
+  // Additive Enterprise APIs
+  getLiveWallboard: (token) => api.get('/telecrm/live-status', token),
+  updateLiveStatus: (status, token) => api.post('/telecrm/live-status', { status }, token),
+  getConfig: (token) => api.get('/telecrm/config', token),
+  saveConfig: (data, token) => api.put('/telecrm/config', data, token),
+  submitQaReview: (callId, data, token) => api.post(`/telecrm/qa/${callId}`, data, token),
+  listQaReviews: (params, token) => api.get(`/telecrm/qa?${new URLSearchParams(params)}`, token),
+  getEodReport: (params, token) => api.get(`/telecrm/eod-report?${new URLSearchParams(params)}`, token),
+  getAuditTrail: (params, token) => api.get(`/telecrm/audit?${new URLSearchParams(params)}`, token),
+  listFraudAlerts: (token) => api.get('/telecrm/fraud-alerts', token),
+  getCeoFunnel: (token) => api.get('/telecrm/ceo-funnel', token),
+  getScorecard: (params, token) => api.get(`/telecrm/scorecard?${new URLSearchParams(params)}`, token),
+  runBulkActions: (data, token) => api.post('/telecrm/bulk-actions', data, token),
 };
 
 export default leadApi;

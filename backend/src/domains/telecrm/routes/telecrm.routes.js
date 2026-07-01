@@ -41,4 +41,18 @@ router.get('/reports/:type', (req, res, next) => {
   return res.status(403).json({ message: 'Access denied to telecrm reports.' });
 }, ctrl.getReports);
 
+// Additive Enterprise Routes
+router.get('/live-status', ctrl.getLiveWallboard);
+router.post('/live-status', ctrl.updateWorkingStatus);
+router.get('/config', ctrl.getEnterpriseConfig);
+router.put('/config', ctrl.saveEnterpriseConfig);
+router.post('/qa/:callId', ctrl.submitQaScore);
+router.get('/qa', ctrl.listQaReviews);
+router.get('/eod-report', ctrl.getEodAnalytics);
+router.get('/audit', ctrl.getAuditTrail);
+router.get('/fraud-alerts', ctrl.listFraudAlerts);
+router.get('/ceo-funnel', ctrl.getCeoFunnel);
+router.get('/scorecard', ctrl.getExecutiveScorecard);
+router.post('/bulk-actions', ctrl.runBulkActions);
+
 module.exports = router;

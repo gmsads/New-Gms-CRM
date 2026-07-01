@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import useApi from '../../../hooks/useApi';
+import { formatINRConcise } from '../../../utils/numberFormatters';
 import {
   TrendingUp, CheckCircle, Clock, ShieldCheck, 
   Target, MapPin, Package, CreditCard, Activity, 
@@ -83,7 +84,7 @@ const AdminDashboard = () => {
         <div className="relative overflow-hidden rounded-3xl bg-blue-600 p-6 text-white shadow-xl shadow-blue-200">
           <TrendingUp className="absolute -right-4 -top-4 h-24 w-24 opacity-10" />
           <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Total Sales Value</p>
-          <h3 className="mt-2 text-2xl font-black">₹{(financials.totalSales || 0).toLocaleString()}</h3>
+          <h3 className="mt-2 text-2xl font-black">{formatINRConcise(financials.totalSales || 0)}</h3>
           <div className="mt-4 flex items-center gap-2 text-[10px] font-bold bg-white/20 w-fit px-2 py-0.5 rounded-full">
             <Package className="h-3 w-3" /> {financials.orderCount || 0} Orders
           </div>
@@ -101,7 +102,7 @@ const AdminDashboard = () => {
         <div className="relative overflow-hidden rounded-3xl bg-emerald-600 p-6 text-white shadow-xl shadow-emerald-200">
           <CheckCircle className="absolute -right-4 -top-4 h-24 w-24 opacity-10" />
           <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Total Payments</p>
-          <h3 className="mt-2 text-2xl font-black">₹{(financials.totalPaid || 0).toLocaleString()}</h3>
+          <h3 className="mt-2 text-2xl font-black">{formatINRConcise(financials.totalPaid || 0)}</h3>
           <div className="mt-4 flex items-center gap-2 text-[10px] font-bold bg-white/20 w-fit px-2 py-0.5 rounded-full">
             <CreditCard className="h-3 w-3" /> Verified
           </div>
@@ -110,7 +111,7 @@ const AdminDashboard = () => {
         <div className="relative overflow-hidden rounded-3xl bg-rose-600 p-6 text-white shadow-xl shadow-rose-200">
           <Clock className="absolute -right-4 -top-4 h-24 w-24 opacity-10" />
           <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Pending Balance</p>
-          <h3 className="mt-2 text-2xl font-black">₹{(financials.totalPending || 0).toLocaleString()}</h3>
+          <h3 className="mt-2 text-2xl font-black">{formatINRConcise(financials.totalPending || 0)}</h3>
           <div className="mt-4 flex items-center gap-2 text-[10px] font-bold bg-white/20 w-fit px-2 py-0.5 rounded-full">
             <AlertCircle className="h-3 w-3" /> Outstanding
           </div>

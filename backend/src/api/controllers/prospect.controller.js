@@ -141,19 +141,22 @@ exports.bulkImport = async (req, res) => {
     let failedCount = 0;
     const errors = [];
 
-    // Process one by one to use the workflow & handle individual failures
-    for (const record of records) {
-      try {
-        const data = { ...record };
-        if (!data.assignedTo) {
-          data.assignedTo = req.user._id;
+    const BATCH_SIZE = 25;
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const batch = records.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (record) => {
+        try {
+          const data = { ...record };
+          if (!data.assignedTo) {
+            data.assignedTo = req.user._id;
+          }
+          await prospectWorkflow.createProspect(data, req.user._id, getReqContext(req));
+          successCount++;
+        } catch (err) {
+          failedCount++;
+          errors.push({ name: record.name, phone: record.phone, error: err.message });
         }
-        await prospectWorkflow.createProspect(data, req.user._id, getReqContext(req));
-        successCount++;
-      } catch (err) {
-        failedCount++;
-        errors.push({ name: record.name, phone: record.phone, error: err.message });
-      }
+      }));
     }
 
     res.status(201).json({ success: true, successCount, failedCount, errors });

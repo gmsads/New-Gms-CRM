@@ -179,6 +179,9 @@ mountModule('/api/vehicles', './api/routes/vehicle.routes');
 // ── Enterprise Lead Management & Tele Sales Module ──────────────────────────────
 mountModule('/api/telecrm', './domains/telecrm/routes/telecrm.routes');
 
+// ── Enterprise Communication Center Webhooks ──────────────────────────────────
+mountModule('/api/webhooks', './api/routes/notificationWebhook.routes');
+
 
 // ── 404 catch ────────────────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ message: `Route ${req.method} ${req.path} not found` }));

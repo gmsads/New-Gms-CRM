@@ -5,6 +5,7 @@ import LeadCard from '../components/LeadCard';
 import AfterCallModal from '../components/AfterCallModal';
 import CreateLeadModal from '../components/CreateLeadModal';
 import LeadDetailsDrawer from '../components/LeadDetailsDrawer';
+import { LiveSessionBar } from '../components/EnterpriseTelePanels';
 import { PhoneCall, Flame, Clock, CheckCircle2, Search, Filter, RefreshCw, Zap, Plus, X, SlidersHorizontal, Users, UserCheck } from 'lucide-react';
 
 /**
@@ -44,7 +45,9 @@ export default function MyLeads() {
     { id: 'all', label: 'All Active' },
     { id: 'new', label: 'New' },
     { id: 'today', label: "Today's" },
+    { id: 'tomorrow', label: 'Tomorrow Queue' },
     { id: 'followup', label: 'Follow-ups' },
+    { id: 'retry', label: 'Retry Queue' },
     { id: 'interested', label: 'Interested' },
     { id: 'hot', label: 'Hot Priority' }
   ];
@@ -155,6 +158,7 @@ export default function MyLeads() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 pb-20">
+      {user?.token && <LiveSessionBar token={user.token} />}
       
       {/* ── PAGE HEADER REQUIRED BY PROMPT ─────────────────────────── */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b pb-4">

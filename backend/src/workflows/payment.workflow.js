@@ -14,6 +14,8 @@
 
 const Payment  = require('../domains/payments/payment.model');
 const Order    = require('../domains/orders/order.model');
+const eventBus = require('../core/events/eventBus.service');
+const domainEvents = require('../core/events/domainEvents');
 
 // ─── Step 1: Record a payment ─────────────────────────────────────────────────
 /**
@@ -143,6 +145,14 @@ const verifyPayment = async (paymentId, user) => {
 
     await order.save();
   }
+
+  // Non-blocking domain event emission for Enterprise Communication Center
+  eventBus.publish(domainEvents.PAYMENT_VERIFIED, {
+    ...payment.toObject(),
+    order: order ? order.toObject() : undefined
+  }).catch(err => {
+    console.error('[PaymentWorkflow] Error publishing PAYMENT_VERIFIED event:', err.message);
+  });
 
   return { payment, order };
 };

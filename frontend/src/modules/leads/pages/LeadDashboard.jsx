@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import leadApi from '../../../services/lead.api';
-import { Users, PhoneCall, CheckCircle2, Clock, Flame, Megaphone, Activity, TrendingUp, AlertCircle } from 'lucide-react';
+import { CeoFunnelWidget, EnterpriseConfigModal } from '../components/EnterpriseTelePanels';
+import { Users, PhoneCall, CheckCircle2, Clock, Flame, Megaphone, Activity, TrendingUp, AlertCircle, Settings } from 'lucide-react';
 
 /**
  * LeadDashboard.jsx
@@ -12,6 +13,7 @@ export default function LeadDashboard() {
   const [stats, setStats] = useState(null);
   const [topExecs, setTopExecs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showConfigModal, setShowConfigModal] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -48,7 +50,15 @@ export default function LeadDashboard() {
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Lead Management & Tele Sales Dashboard</h1>
           <p className="text-xs text-muted-foreground">Real-time enterprise acquisition KPIs and calling telemetry.</p>
         </div>
+        <button
+          onClick={() => setShowConfigModal(true)}
+          className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-sm flex items-center gap-1.5"
+        >
+          <Settings className="w-4 h-4" /> Enterprise Rules
+        </button>
       </div>
+
+      <CeoFunnelWidget token={user?.token} />
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -100,6 +110,8 @@ export default function LeadDashboard() {
           </div>
         </div>
       </div>
+
+      <EnterpriseConfigModal isOpen={showConfigModal} onClose={() => setShowConfigModal(false)} token={user?.token} />
     </div>
   );
 }

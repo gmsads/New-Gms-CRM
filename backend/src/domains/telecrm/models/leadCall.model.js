@@ -38,7 +38,20 @@ const leadCallSchema = new mongoose.Schema(
     interested: { type: Boolean, default: false },
     needMeeting: { type: Boolean, default: false },
     needQuotation: { type: Boolean, default: false },
-    convertedToProspect: { type: Boolean, default: false }
+    convertedToProspect: { type: Boolean, default: false },
+
+    // Enterprise Lifecycle & Metrics (Additive)
+    ringStart: { type: Date },
+    connectedTime: { type: Date },
+    talkDuration: { type: Number, default: 0 },
+    ringDuration: { type: Number, default: 0 },
+    acwSeconds: { type: Number, default: 0 },
+    direction: { type: String, enum: ['Inbound', 'Outbound'], default: 'Outbound' },
+    device: { type: String, default: 'Web/Mobile App' },
+    networkType: { type: String, default: '4G/WiFi' },
+    callCost: { type: Number, default: 0 },
+    providerConfirmed: { type: Boolean, default: false },
+    businessDisposition: { type: String, trim: true }
   },
   { timestamps: true }
 );

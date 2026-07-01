@@ -56,7 +56,41 @@ const leadSchema = new mongoose.Schema(
     }],
     
     convertedToProspectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Prospect', default: null },
-    convertedAt: { type: Date, default: null }
+    convertedAt: { type: Date, default: null },
+
+    // Enterprise Queue & Operations (Additive)
+    queueCategory: {
+      type: String,
+      enum: ['New', 'Today', 'Tomorrow', 'Retry', 'Follow-up', 'Hot Leads', 'Meeting', 'Manager Review', 'Lost'],
+      default: 'New'
+    },
+    lockedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    lockedUntil: { type: Date, default: null },
+    
+    nextRetryDate: { type: Date, default: null },
+    retryCount: { type: Number, default: 0 },
+    maxRetries: { type: Number, default: 3 },
+    
+    slaStatus: { type: String, enum: ['ON_TIME', 'AT_RISK', 'BREACHED'], default: 'ON_TIME' },
+    firstCalledAt: { type: Date, default: null },
+    
+    agingDays: { type: Number, default: 0 },
+    agingBucket: {
+      type: String,
+      enum: ['Today', '1 Day', '2 Days', '3 Days', '4-7 Days', '8-15 Days', '15+ Days'],
+      default: 'Today'
+    },
+    
+    pan: { type: String, trim: true },
+    gst: { type: String, trim: true },
+    website: { type: String, trim: true },
+    
+    transferHistory: [{
+      fromUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      toUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      transferredAt: { type: Date, default: Date.now },
+      reason: String
+    }]
   },
   { timestamps: true, optimisticConcurrency: true }
 );

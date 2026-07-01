@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import leadApi from '../../../services/lead.api';
-import { Phone, Play, Pause, Clock, CheckCircle2, AlertCircle, Filter, Volume2 } from 'lucide-react';
+import { QaReviewModal } from '../components/EnterpriseTelePanels';
+import { Phone, Play, Pause, Clock, CheckCircle2, AlertCircle, Filter, Volume2, Star } from 'lucide-react';
 
 /**
  * CallHistory.jsx
@@ -14,6 +15,7 @@ export default function CallHistory() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [playingUrl, setPlayingUrl] = useState(null);
+  const [qaCall, setQaCall] = useState(null);
 
   const fetchHistory = (pg = 1) => {
     if (!user) return;
@@ -87,14 +89,19 @@ export default function CallHistory() {
                     <td className="p-3"><span className={`px-2 py-0.5 rounded font-semibold ${cl.callStatus === 'Connected' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'}`}>{cl.callStatus}</span></td>
                     <td className="p-3 font-mono font-bold">{cl.durationSeconds}s</td>
                     <td className="p-3">
-                      {cl.recordingUrl ? (
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        {cl.recordingUrl ? (
                           <button onClick={() => toggleAudio(cl.recordingUrl)} className="p-1.5 rounded-full bg-primary text-primary-foreground hover:scale-105 transition-all">
                             {playingUrl === cl.recordingUrl ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
                           </button>
-                          <span className="text-[10px] text-muted-foreground">Audio QA</span>
-                        </div>
-                      ) : <span className="text-muted-foreground italic">No Audio</span>}
+                        ) : null}
+                        <button
+                          onClick={() => setQaCall(cl)}
+                          className="px-2 py-1 rounded bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 text-xs font-semibold flex items-center gap-1"
+                        >
+                          <Star className="w-3 h-3 fill-current" /> QA Review
+                        </button>
+                      </div>
                     </td>
                     <td className="p-3 text-muted-foreground max-w-[200px] truncate">{cl.remarks}</td>
                   </tr>
@@ -105,6 +112,7 @@ export default function CallHistory() {
         </div>
       </div>
       {playingUrl && <audio autoPlay src={playingUrl} onEnded={() => setPlayingUrl(null)} className="hidden" />}
+      <QaReviewModal isOpen={!!qaCall} onClose={() => setQaCall(null)} call={qaCall} token={user?.token} />
     </div>
   );
 }

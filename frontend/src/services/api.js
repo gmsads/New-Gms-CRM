@@ -87,6 +87,62 @@ export const employeeApi = {
   delete:         (id, token)       => api.delete(`/employees/${id}`, token),
 };
 
+// Helper to chunk bulk import payloads into batches of 100 to prevent 504 Gateway Timeouts
+const chunkOrderRecords = (records, targetChunkSize = 100) => {
+  if (!Array.isArray(records) || records.length <= targetChunkSize) return [records];
+  const chunks = [];
+  let currentChunk = [];
+  
+  for (let i = 0; i < records.length; i++) {
+    const row = records[i];
+    currentChunk.push(row);
+    if (currentChunk.length >= targetChunkSize) {
+      const currentOrderId = String(row['Order ID'] || row['Order Number'] || row.orderNumber || row['Serial Number'] || '').trim().toLowerCase();
+      const nextRow = records[i + 1];
+      const nextOrderId = nextRow ? String(nextRow['Order ID'] || nextRow['Order Number'] || nextRow.orderNumber || nextRow['Serial Number'] || '').trim().toLowerCase() : null;
+      if (!currentOrderId || !nextOrderId || currentOrderId !== nextOrderId) {
+        chunks.push(currentChunk);
+        currentChunk = [];
+      }
+    }
+  }
+  if (currentChunk.length > 0) chunks.push(currentChunk);
+  return chunks;
+};
+
+const runChunkedImport = async (endpoint, data, token, isOrder = false) => {
+  if (!Array.isArray(data) || data.length <= 100) {
+    return api.post(endpoint, data, token);
+  }
+  const chunks = isOrder ? chunkOrderRecords(data, 100) : (() => {
+    const res = [];
+    for (let i = 0; i < data.length; i += 100) res.push(data.slice(i, i + 100));
+    return res;
+  })();
+
+  let totalSuccess = 0;
+  let totalFailed = 0;
+  const allErrors = [];
+
+  for (const chunk of chunks) {
+    const res = await api.post(endpoint, chunk, token);
+    if (res && res.success) {
+      totalSuccess += res.successCount || 0;
+      totalFailed += res.failedCount || 0;
+      if (Array.isArray(res.errors)) allErrors.push(...res.errors);
+    } else {
+      throw new Error(res?.message || 'Bulk import failed on chunk');
+    }
+  }
+
+  return {
+    success: true,
+    successCount: totalSuccess,
+    failedCount: totalFailed,
+    errors: allErrors
+  };
+};
+
 // Prospects (Sales)
 export const prospectApi = {
   list:        (params, token)   => api.get(`/prospects?${new URLSearchParams(params)}`, token),
@@ -97,7 +153,7 @@ export const prospectApi = {
   },
   searchPhone: (params, token)   => api.get(`/prospects/search?${new URLSearchParams(params)}`, token),
   create:      (data, token)     => api.post('/prospects', data, token),
-  bulkImport:  (data, token)     => api.post('/prospects/bulk', data, token),
+  bulkImport:  (data, token)     => runChunkedImport('/prospects/bulk', data, token),
   update:      (id, data, token) => api.patch(`/prospects/${id}`, data, token),
   moveStage:   (id, data, token) => api.patch(`/prospects/${id}/stage`, data, token),
   addInteraction: (id, data, token) => api.post(`/prospects/${id}/interactions`, data, token),
@@ -123,7 +179,7 @@ export const orderApi = {
     return api.get(`/orders/stats?${new URLSearchParams(params)}`, token);
   },
   create:         (data, token)     => api.post('/orders', data, token),
-  bulkImport:     (data, token)     => api.post('/orders/bulk', data, token),
+  bulkImport:     (data, token)     => runChunkedImport('/orders/bulk', data, token, true),
   confirm:        (id, token)       => api.post(`/orders/${id}/confirm`, {}, token),
   updateStatus:   (id, data, token) => api.patch(`/orders/${id}/status`, data, token),
   approveAdvance: (id, token)       => api.post(`/orders/${id}/approve-advance`, {}, token),
@@ -221,7 +277,7 @@ export const productApi = {
 export const quotationApi = {
   list:           (params, token) => api.get(`/quotations?${new URLSearchParams(params)}`, token),
   create:         (data, token)   => api.post('/quotations', data, token),
-  bulkImport:     (data, token)   => api.post('/quotations/bulk', data, token),
+  bulkImport:     (data, token)   => runChunkedImport('/quotations/bulk', data, token),
   getTemplate:    (token)         => api.get('/quotations/template', token),
   updateTemplate: (data, token)   => api.post('/quotations/template', data, token),
   getById:        (id, token)     => api.get(`/quotations/${id}`, token),

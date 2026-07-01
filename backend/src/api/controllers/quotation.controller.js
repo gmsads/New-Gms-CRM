@@ -101,30 +101,34 @@ exports.bulkImport = async (req, res) => {
     let failedCount = 0;
     const errors = [];
 
-    for (const record of records) {
-      try {
-        const body = { ...record };
-        if (!body.executive) {
-          body.executive = req.user._id;
-        }
+    const BATCH_SIZE = 25;
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const batch = records.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(async (record) => {
+        try {
+          const body = { ...record };
+          if (!body.executive) {
+            body.executive = req.user._id;
+          }
 
-        // Add dummy line item for total calculation if missing
-        if (!body.lineItems || body.lineItems.length === 0) {
-          body.lineItems = [{
-            description: 'Historical Quotation Data',
-            quantity: 1,
-            unitPrice: body.totalAmount || 0,
-            gstRate: 0,
-            discount: 0
-          }];
-        }
+          // Add dummy line item for total calculation if missing
+          if (!body.lineItems || body.lineItems.length === 0) {
+            body.lineItems = [{
+              description: 'Historical Quotation Data',
+              quantity: 1,
+              unitPrice: body.totalAmount || 0,
+              gstRate: 0,
+              discount: 0
+            }];
+          }
 
-        await quotationWorkflow.createQuotation(body, req.user._id, getReqContext(req));
-        successCount++;
-      } catch (err) {
-        failedCount++;
-        errors.push({ quotationId: record.quotationId || 'Unknown', error: err.message });
-      }
+          await quotationWorkflow.createQuotation(body, req.user._id, getReqContext(req));
+          successCount++;
+        } catch (err) {
+          failedCount++;
+          errors.push({ quotationId: record.quotationId || 'Unknown', error: err.message });
+        }
+      }));
     }
 
     res.status(201).json({ success: true, successCount, failedCount, errors });

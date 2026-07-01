@@ -15,6 +15,8 @@ const Order = require('../domains/orders/order.model');
 const Prospect = require('../domains/sales/prospects/prospect.model');
 const OrderApproval = require('../domains/approvals/approval.model');
 const { assignRoundRobin } = require('../domains/hr/assignment.service');
+const eventBus = require('../core/events/eventBus.service');
+const domainEvents = require('../core/events/domainEvents');
 
 // ─── Valid order status transitions ──────────────────────────────────────────
 const ORDER_TRANSITIONS = {
@@ -182,6 +184,12 @@ const confirmOrder = async (orderId, user) => {
   await cancelActiveAppointments(order, user);
 
   await order.save();
+
+  // Non-blocking domain event emission for Enterprise Communication Center
+  eventBus.publish(domainEvents.ORDER_CREATED, order.toObject()).catch(err => {
+    console.error('[OrderWorkflow] Error publishing ORDER_CREATED event:', err.message);
+  });
+
   return order;
 };
 

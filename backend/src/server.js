@@ -38,6 +38,17 @@ const startServer = async () => {
   const notificationWorkflow = require('./services/workflows/notificationWorkflow.service');
   notificationWorkflow.setSocketIo(io);
 
+  // 4. Initialize Enterprise Communication Center Workers
+  try {
+    const { startEventBusWorker } = require('./services/workers/eventBusWorker');
+    const { startCommunicationWorker } = require('./services/workers/communicationWorker');
+    startEventBusWorker();
+    startCommunicationWorker();
+    console.log('✅ Enterprise Communication Center workers initialized');
+  } catch (workerErr) {
+    console.error('⚠️ Could not start Communication Center workers:', workerErr.message);
+  }
+
   // Handle port already in use
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
