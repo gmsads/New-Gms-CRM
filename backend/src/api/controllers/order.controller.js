@@ -171,6 +171,56 @@ exports.bulkImport = async (req, res) => {
       return isNaN(num) ? def : num;
     };
 
+    const parseFlexibleExcelDate = (rawInput) => {
+      if (!rawInput && rawInput !== 0) return null;
+      if (rawInput instanceof Date && !isNaN(rawInput.getTime())) return rawInput;
+
+      // Check if it's an Excel date serial number (numeric value between 20000 and 100000)
+      const numVal = Number(rawInput);
+      if (!isNaN(numVal) && numVal > 20000 && numVal < 100000 && String(rawInput).trim() === String(numVal)) {
+        const dateObj = new Date(Math.round((numVal - 25569) * 86400 * 1000));
+        if (!isNaN(dateObj.getTime())) return dateObj;
+      }
+
+      const str = String(rawInput).trim();
+      if (!str) return null;
+
+      // Handle Indian DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+      const parts = str.split(/[\/\-\.]/);
+      if (parts.length === 3) {
+        let p1 = parseInt(parts[0], 10);
+        let p2 = parseInt(parts[1], 10);
+        let p3 = parseInt(parts[2], 10);
+
+        if (p3 < 100) p3 += (p3 >= 50 ? 1900 : 2000);
+
+        if (p3 >= 1900 && p3 <= 2100) {
+          let day = p1;
+          let month = p2;
+          if (p1 <= 12 && p2 > 12) {
+            month = p1;
+            day = p2;
+          }
+          if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            const d = new Date(p3, month - 1, day, 12, 0, 0);
+            if (!isNaN(d.getTime())) return d;
+          }
+        } else if (p1 >= 1900 && p1 <= 2100) {
+          const year = p1;
+          const month = p2;
+          const day = p3;
+          if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+            const d = new Date(year, month - 1, day, 12, 0, 0);
+            if (!isNaN(d.getTime())) return d;
+          }
+        }
+      }
+
+      const fallback = new Date(str);
+      if (!isNaN(fallback.getTime())) return fallback;
+      return null;
+    };
+
     let successCount = 0;
     let failedCount = 0;
     const errors = [];
@@ -363,25 +413,13 @@ exports.bulkImport = async (req, res) => {
       });
 
       const rawDate = body['Order Date'] || body.createdAt || body.date || body['Date'];
-      let parsedDate = null;
-      if (rawDate) {
-        const d = new Date(rawDate);
-        if (!isNaN(d.getTime())) parsedDate = d;
-      }
+      let parsedDate = parseFlexibleExcelDate(rawDate);
 
       const rawAdvDate = body['Advance Date'] || body.advanceDate;
-      let parsedAdvDate = parsedDate || new Date();
-      if (rawAdvDate) {
-        const d = new Date(rawAdvDate);
-        if (!isNaN(d.getTime())) parsedAdvDate = d;
-      }
+      let parsedAdvDate = parseFlexibleExcelDate(rawAdvDate) || parsedDate || new Date();
 
       const rawPayDate = body['Payment Date'] || body.paymentDate;
-      let parsedPayDate = parsedAdvDate || parsedDate || new Date();
-      if (rawPayDate) {
-        const d = new Date(rawPayDate);
-        if (!isNaN(d.getTime())) parsedPayDate = d;
-      }
+      let parsedPayDate = parseFlexibleExcelDate(rawPayDate) || parsedAdvDate || parsedDate || new Date();
 
       let methodStr = String(body['Payment Method'] || body.paymentMethod || 'Bank Transfer').trim();
       const methodLower = methodStr.toLowerCase();
@@ -455,7 +493,8 @@ exports.bulkImport = async (req, res) => {
         body.orderNumber = String(body['Order ID'] || body['Order Number'] || body.orderNumber).trim();
       } else {
         currentOrderCount++;
-        body.orderNumber = `ORD-${currentYear}-${String(currentOrderCount).padStart(4, '0')}`;
+        const orderYear = parsedDate ? parsedDate.getFullYear() : currentYear;
+        body.orderNumber = `ORD-${orderYear}-${String(currentOrderCount).padStart(4, '0')}`;
       }
 
       const isCompleted = normalizedStatus === 'Completed' || body.orderType === 'Historical';
