@@ -12,15 +12,15 @@ export const formatINRConcise = (value, prefix = '₹') => {
 
   if (absNum >= 10000000) {
     const formatted = (absNum / 10000000).toFixed(2).replace(/\.?0+$/, '');
-    return `${sign}${prefix}${formatted}Cr`;
+    return `${sign}${prefix}${formatted} Cr`;
   }
   if (absNum >= 100000) {
     const formatted = (absNum / 100000).toFixed(2).replace(/\.?0+$/, '');
-    return `${sign}${prefix}${formatted}L`;
+    return `${sign}${prefix}${formatted} L`;
   }
   if (absNum >= 1000) {
     const formatted = (absNum / 1000).toFixed(2).replace(/\.?0+$/, '');
-    return `${sign}${prefix}${formatted}k`;
+    return `${sign}${prefix}${formatted} K`;
   }
   return `${sign}${prefix}${absNum.toLocaleString('en-IN')}`;
 };
