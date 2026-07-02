@@ -16,13 +16,14 @@ const getReqContext = (req) => ({
 // ── GET /api/orders ───────────────────────────────────────────────────────────
 exports.list = async (req, res) => {
   try {
-    const { status, salesExec, paymentStatus, designStatus, search, verificationStatus } = req.query;
+    const { status, salesExec, salesExecName, paymentStatus, designStatus, search, verificationStatus, orderType, month, year, hideCompleted, limit, skip, countOnly } = req.query;
     const filter = {};
 
-    if (status)             filter.status             = status;
-    if (paymentStatus)      filter.paymentStatus      = paymentStatus;
-    if (designStatus)       filter.designStatus       = designStatus;
-    if (verificationStatus) filter.verificationStatus = verificationStatus;
+    if (status && status !== 'All')             filter.status             = status;
+    if (paymentStatus && paymentStatus !== 'All')      filter.paymentStatus      = paymentStatus;
+    if (designStatus && designStatus !== 'All')       filter.designStatus       = designStatus;
+    if (verificationStatus && verificationStatus !== 'All') filter.verificationStatus = verificationStatus;
+    if (orderType && orderType !== 'All')            filter.orderType          = orderType;
 
     // Role-based visibility
     const accessibleIds = await getAccessibleUserIds(req.user);
@@ -30,28 +31,64 @@ exports.list = async (req, res) => {
     if (req.user.role === 'DESIGNER') {
       filter.$or = [
         { designAssignedTo: new mongoose.Types.ObjectId(req.user._id) },
-        // Also allow viewing if they want to pick up unassigned work, but usually assigned via Round Robin
       ];
-      // Designers shouldn't need to see orders that aren't design-related at all.
       filter.designRequired = true;
     } else if (accessibleIds) {
       if (salesExec) {
         const reqIds = typeof salesExec === 'string' ? salesExec.split(',').map(id => id.trim()) : (Array.isArray(salesExec) ? salesExec : [salesExec]);
         const allowedIds = reqIds.filter(id => accessibleIds.includes(id.toString()));
         if (allowedIds.length === 0) {
-          return res.json({ success: true, count: 0, data: [] });
+          return res.json({ success: true, count: 0, totalCount: 0, hasMore: false, data: [] });
         }
         filter.salesExec = { $in: allowedIds.map(id => new mongoose.Types.ObjectId(id)) };
+      } else if (salesExecName && salesExecName !== 'All Employees') {
+        const matchingUsers = await User.find({ name: salesExecName, _id: { $in: accessibleIds } }).select('_id').lean();
+        if (matchingUsers.length > 0) {
+          filter.salesExec = { $in: matchingUsers.map(u => u._id) };
+        } else {
+          return res.json({ success: true, count: 0, totalCount: 0, hasMore: false, data: [] });
+        }
       } else {
         filter.salesExec = { $in: accessibleIds.map(id => new mongoose.Types.ObjectId(id)) };
       }
       
-      // Executives hide pending approval if no status requested, but managers can see them
       if (!status && (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC')) {
         filter.status = { $ne: 'Pending_Approval' };
       }
     } else if (salesExec) {
       filter.salesExec = new mongoose.Types.ObjectId(salesExec);
+    }
+
+    if (hideCompleted === 'true') {
+      if (filter.status && typeof filter.status === 'object' && filter.status.$ne) {
+        filter.status = { $nin: ['Completed', 'Cancelled', filter.status.$ne] };
+      } else if (!filter.status) {
+        filter.status = { $nin: ['Completed', 'Cancelled'] };
+      }
+    }
+
+    const monthsMap = { January: 0, February: 1, March: 2, April: 3, May: 4, June: 5, July: 6, August: 7, September: 8, October: 9, November: 10, December: 11 };
+    if (year && year !== 'All Years' && !isNaN(parseInt(year, 10))) {
+      const y = parseInt(year, 10);
+      if (month && month !== 'All Months' && monthsMap[month] !== undefined) {
+        const m = monthsMap[month];
+        filter.createdAt = {
+          $gte: new Date(y, m, 1),
+          $lt: new Date(y, m + 1, 1)
+        };
+      } else {
+        filter.createdAt = {
+          $gte: new Date(y, 0, 1),
+          $lt: new Date(y + 1, 0, 1)
+        };
+      }
+    } else if (month && month !== 'All Months' && monthsMap[month] !== undefined) {
+      const m = monthsMap[month];
+      const y = new Date().getFullYear();
+      filter.createdAt = {
+        $gte: new Date(y, m, 1),
+        $lt: new Date(y, m + 1, 1)
+      };
     }
 
     if (search) {
@@ -62,12 +99,25 @@ exports.list = async (req, res) => {
       ];
     }
 
-    let orders = await Order.find(filter)
+    const totalCount = await Order.countDocuments(filter);
+    if (countOnly === 'true') {
+      return res.json({ success: true, count: totalCount, totalCount, hasMore: false, data: [] });
+    }
+
+    const limitVal = limit !== undefined && limit !== '' ? parseInt(limit, 10) : null;
+    const skipVal = skip !== undefined && skip !== '' ? parseInt(skip, 10) : 0;
+
+    let query = Order.find(filter)
       .populate('salesExec', 'name email role')
       .populate('salesManager', 'name email')
       .populate('designAssignedTo', 'name email')
-      .sort({ createdAt: -1 })
-      .lean();
+      .sort({ createdAt: -1 });
+
+    if (limitVal && !isNaN(limitVal) && limitVal > 0) {
+      query = query.skip(skipVal || 0).limit(limitVal);
+    }
+
+    let orders = await query.lean();
 
     // Sanitize financial data for Designers
     if (req.user.role === 'DESIGNER') {
@@ -84,7 +134,13 @@ exports.list = async (req, res) => {
       });
     }
 
-    res.json({ success: true, count: orders.length, data: orders });
+    res.json({
+      success: true,
+      count: orders.length,
+      totalCount: totalCount,
+      hasMore: limitVal ? (skipVal + orders.length) < totalCount : false,
+      data: orders
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

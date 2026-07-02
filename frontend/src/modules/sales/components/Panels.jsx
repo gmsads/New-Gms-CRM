@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toTitleCase } from '../../../utils/stringUtils';
 import {
   Calendar, CheckCircle, Clock, MapPin, ShieldCheck,
-  Plus, X, Upload, Printer, IndianRupee, AlertCircle, FileText, MessageCircle, Image, Link, Edit, Trash2, XCircle, AlertTriangle, Quote, User, Phone, Eye, ShoppingBag
+  Plus, X, Upload, Printer, IndianRupee, AlertCircle, FileText, MessageCircle, Image, Link, Edit, Trash2, XCircle, AlertTriangle, Quote, User, Phone, Eye, ShoppingBag, RefreshCw
 } from 'lucide-react';
 import { calculateDeliveryPriority } from '../../../utils/deliveryUtils';
 import { requirementTypes } from '../data/constants';
@@ -76,7 +76,22 @@ const getStatusBadgeStyle = (statusStr) => {
   return 'bg-blue-50 text-blue-600 border-blue-200';
 };
 
-export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewDetails, onLineItemUpdated, compact, hideCompleted, hideVerification }) => {
+export const OrderList = ({
+  orders = [],
+  onCreateOrder,
+  onUploadPayment,
+  onViewDetails,
+  onLineItemUpdated,
+  compact,
+  hideCompleted,
+  hideVerification,
+  onLoadMore,
+  hasMore = false,
+  loadingMore = false,
+  totalCount,
+  serverSideFiltering = false,
+  onFilterChange,
+}) => {
   const { user } = useAuth();
   const [updatingLineItem, setUpdatingLineItem] = useState(null);
   const [verificationTab, setVerificationTab] = useState('All');
@@ -98,12 +113,23 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
   };
 
   const [clientTypes, setClientTypes] = useState([]);
+  const [employeeList, setEmployeeList] = useState([]);
   
   useEffect(() => {
     if (user?.token) {
       productApi.getClientTypes(user.token)
         .then(res => { if (res.data) setClientTypes(res.data); })
         .catch(console.error);
+
+      if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role)) {
+        employeeApi.list({ role: 'SALES_EXEC,SR_SALES_EXEC,FIELD_EXEC' }, user.token)
+          .then(res => {
+            if (res.success && res.data) {
+              setEmployeeList(res.data.map(e => e.name).filter(Boolean));
+            }
+          })
+          .catch(console.error);
+      }
     }
   }, [user]);
 
@@ -114,15 +140,32 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
   const [typeFilter, setTypeFilter] = useState('All');
   const [paymentFilter, setPaymentFilter] = useState('All');
   const [monthFilter, setMonthFilter] = useState('All Months');
+  const [yearFilter, setYearFilter] = useState('All Years');
   const [employeeFilter, setEmployeeFilter] = useState('All Employees');
   const months = ['All Months', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  const uniqueEmployees = Array.from(new Set(
-    (orders || []).map(o => o.salesExec?.name || o.salesExec)
-                  .filter(name => name)
-  )).sort();
+  const uniqueEmployees = Array.from(new Set([
+    ...employeeList,
+    ...(orders || []).map(o => o.salesExec?.name || o.salesExec).filter(name => typeof name === 'string' && name)
+  ])).sort();
 
-  const filteredOrders = (orders || []).filter(o => {
+  useEffect(() => {
+    onFilterChange?.({
+      search,
+      orderType: typeFilter,
+      paymentStatus: paymentFilter,
+      month: monthFilter,
+      year: yearFilter,
+      employee: employeeFilter,
+      verificationStatus: verificationTab,
+      hideCompleted
+    });
+  }, [search, typeFilter, paymentFilter, monthFilter, yearFilter, employeeFilter, verificationTab, hideCompleted]);
+
+  const filteredOrders = serverSideFiltering ? (orders || []).filter(o => {
+    const isSalesExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(user?.role);
+    return !(isSalesExec && o.status === 'Pending_Approval');
+  }) : (orders || []).filter(o => {
     // Hide Pending_Approval orders from general lists for Sales Execs
     const isSalesExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(user?.role);
     if (isSalesExec && o.status === 'Pending_Approval') return false;
@@ -142,6 +185,19 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
     return matchSearch && matchType && matchPayment && matchMonth && matchEmployee && matchHide && matchVerification;
   });
 
+  const observer = useRef();
+  const triggerIndex = filteredOrders.length >= 20 ? filteredOrders.length - 5 : filteredOrders.length - 1;
+  const lastOrderElementRef = useCallback(node => {
+    if (loadingMore) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        onLoadMore?.();
+      }
+    }, { threshold: 0.1 });
+    if (node) observer.current.observe(node);
+  }, [loadingMore, hasMore, onLoadMore]);
+
   const handleExportExcel = () => {
     exportOrdersToExcel(filteredOrders, `GMS_Orders_Export_${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
@@ -158,9 +214,10 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
           <div className="flex gap-4 mb-4">
             <div className="flex flex-col gap-1 w-48">
               <label className="text-sm font-medium text-slate-700">Year:</label>
-              <select className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
+              <select value={yearFilter} onChange={e => setYearFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
                 <option>All Years</option>
                 <option>2026</option>
+                <option>2025</option>
               </select>
             </div>
             <div className="flex flex-col gap-1 w-48">
@@ -277,7 +334,7 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
         ) : (
           <div className="divide-y divide-border">
             {filteredOrders.map((order, i) => (
-              <div key={order._id || order.id || i} className="p-4 hover:bg-green-50/20 transition-colors">
+              <div key={order._id || order.id || i} ref={i === triggerIndex ? lastOrderElementRef : null} className="p-4 hover:bg-green-50/20 transition-colors">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -418,6 +475,12 @@ export const OrderList = ({ orders = [], onCreateOrder, onUploadPayment, onViewD
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {loadingMore && (
+          <div className="p-4 py-6 text-center text-slate-500 flex items-center justify-center gap-2 font-semibold bg-slate-50/50 border-t border-slate-100">
+            <RefreshCw className="h-5 w-5 animate-spin text-blue-600" />
+            Loading remaining orders... ({filteredOrders.length} loaded{totalCount ? ` of ${totalCount}` : ''})
           </div>
         )}
       </div>

@@ -326,8 +326,8 @@ const Sidebar = ({ isOpen, setOpen }) => {
 
       // ── Order Verifications
       if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user.role)) {
-        orderApi.list({ verificationStatus: 'Pending' }, token).then(res => {
-          if (res.success) setOrderVerificationCount(res.data?.length || 0);
+        orderApi.list({ verificationStatus: 'Pending', countOnly: 'true' }, token).then(res => {
+          if (res.success) setOrderVerificationCount(res.totalCount ?? res.count ?? res.data?.length ?? 0);
         }).catch(console.error);
       }
 
@@ -351,8 +351,8 @@ const Sidebar = ({ isOpen, setOpen }) => {
           if (res.success) setProspectCount(res.data.filter(p => p.nextFollowUpDate && p.stage !== 'Won' && p.stage !== 'Lost' && p.status !== 'Canceled' && p.status !== 'Order Confirmed' && p.status !== 'Sale Confirmed').length);
         }).catch(console.error);
         
-        orderApi.list({}, token).then(res => {
-          if (res.success) setOrderCount(res.data.length);
+        orderApi.list({ countOnly: 'true' }, token).then(res => {
+          if (res.success) setOrderCount(res.totalCount ?? res.count ?? res.data?.length ?? 0);
         }).catch(console.error);
 
         appointmentApi.list(token).then(res => {

@@ -780,11 +780,19 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
   const { user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [localFilters, setLocalFilters] = useState({});
   const [showImportModal, setShowImportModal] = useState(false);
 
-  const fetch = async () => { 
+  const fetchOrders = async (isReset = true, currentOrders = orders, customFilters = localFilters) => { 
     if (!user?.token) return;
-    setLoading(true);
+    if (isReset) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
     try {
       let params = {};
       if (!isTeamMode && ['SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role)) {
@@ -795,15 +803,36 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
         if (globalFilters.employee) params.salesExec = globalFilters.employee;
         if (globalFilters.search) params.search = globalFilters.search;
       }
-      const res = await orderApi.list(params, user.token); 
-      if (res.success) setOrders(res.data); 
+      if (customFilters.search) params.search = customFilters.search;
+      if (customFilters.orderType && customFilters.orderType !== 'All') params.orderType = customFilters.orderType;
+      if (customFilters.paymentStatus && customFilters.paymentStatus !== 'All') params.paymentStatus = customFilters.paymentStatus;
+      if (customFilters.month && customFilters.month !== 'All Months') params.month = customFilters.month;
+      if (customFilters.year && customFilters.year !== 'All Years') params.year = customFilters.year;
+      if (customFilters.employee && customFilters.employee !== 'All Employees') params.salesExecName = customFilters.employee;
+      if (customFilters.verificationStatus && customFilters.verificationStatus !== 'All') params.verificationStatus = customFilters.verificationStatus;
+      if (customFilters.hideCompleted) params.hideCompleted = 'true';
+
+      const skip = isReset ? 0 : currentOrders.length;
+      const limit = 25;
+
+      const res = await orderApi.list({ ...params, limit, skip }, user.token); 
+      if (res.success) {
+        const newOrders = isReset ? res.data : [...currentOrders, ...res.data];
+        setOrders(newOrders);
+        setTotalCount(res.totalCount || 0);
+        setHasMore(res.hasMore !== undefined ? res.hasMore : (res.data.length === limit && (res.totalCount ? newOrders.length < res.totalCount : true)));
+      } 
     } finally {
-      setLoading(false);
+      if (isReset) setLoading(false);
+      else setLoadingMore(false);
     }
   };
 
-  useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
-  const oFlow = useOrderFlow(user, fetch);
+  useEffect(() => { 
+    fetchOrders(true, [], localFilters); 
+  }, [JSON.stringify(globalFilters), JSON.stringify(localFilters)]);
+
+  const oFlow = useOrderFlow(user, () => fetchOrders(true, [], localFilters));
 
   const downloadOrderTemplate = () => {
     downloadTemplateHelper('GMS_Historical_Orders_Template.xlsx');
@@ -820,10 +849,10 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
     } else {
       alert(`Successfully imported ${res.successCount || data.length} orders!`);
     }
-    fetch();
+    fetchOrders(true, [], localFilters);
   };
   
-  if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
+  if (loading && orders.length === 0) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
   return (
     <div className="space-y-6">
@@ -852,8 +881,18 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
         orders={orders} 
         onUploadPayment={oFlow.setPaymentOrder} 
         onViewDetails={oFlow.setSelectedOrder} 
-        onLineItemUpdated={fetch}
+        onLineItemUpdated={() => fetchOrders(true, [], localFilters)}
         hideVerification={isTeamMode}
+        onLoadMore={() => {
+          if (!loading && !loadingMore && hasMore) {
+            fetchOrders(false, orders, localFilters);
+          }
+        }}
+        hasMore={hasMore}
+        loadingMore={loadingMore}
+        totalCount={totalCount}
+        onFilterChange={setLocalFilters}
+        serverSideFiltering={true}
       />
       <ModalsRenderer prospectFlow={{}} orderFlow={oFlow} user={user} hideVerification={isTeamMode} />
       <ImportExcelModal
@@ -979,7 +1018,7 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
       const pRes = await prospectApi.list(params, user.token); 
       if (pRes.success) setProspects(pRes.data.filter(p => p.nextFollowUpDate && p.stage !== 'Won' && p.stage !== 'Lost' && p.status !== 'Canceled' && p.status !== 'Order Confirmed' && p.status !== 'Sale Confirmed')); 
 
-      const oRes = await orderApi.list(params, user.token);
+      const oRes = await orderApi.list({ ...params, limit: 25 }, user.token);
       if (oRes.success) setOrders(oRes.data);
 
       const aRes = await appointmentApi.list(params, user.token);
