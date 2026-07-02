@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { prospectApi, orderApi, appointmentApi, analyticsApi, paymentApi, targetApi } from '../services/api';
+import { formatINRConcise } from '../utils/numberFormatters';
 import { 
   Users, Package, CheckCircle, Clock, Calendar, Briefcase, TrendingUp, ShieldCheck,
   AlertCircle, Target, Filter, DollarSign, Activity, Award, ArrowUpRight, Sparkles, Layers, Inbox, BarChart2
@@ -376,7 +377,7 @@ const UnifiedDashboard = () => {
           </div>
           <div className="px-3 text-center flex-1 sm:flex-initial">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Avg Order Value</span>
-            <span className="text-sm sm:text-base font-black text-slate-800">₹{summaryStats.avgOrderValue.toLocaleString('en-IN')}</span>
+            <span className="text-sm sm:text-base font-black text-slate-800">{formatINRConcise(summaryStats.avgOrderValue)}</span>
           </div>
         </div>
       </div>
@@ -542,7 +543,7 @@ const UnifiedDashboard = () => {
                 </div>
                 <span className="text-[9px] sm:text-[10px] font-black uppercase bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-100 truncate max-w-[120px]">{periodLabel}</span>
               </div>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter relative z-10 truncate">₹{summaryStats.totalRevenue.toLocaleString('en-IN')}</h3>
+              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter relative z-10 truncate">{formatINRConcise(summaryStats.totalRevenue)}</h3>
               <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 relative z-10 truncate">Total Revenue Generated</p>
             </div>
 
@@ -554,7 +555,7 @@ const UnifiedDashboard = () => {
                 </div>
                 <span className="text-[9px] sm:text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-100 truncate max-w-[120px]">{periodLabel}</span>
               </div>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter relative z-10 truncate">₹{summaryStats.paidCollection.toLocaleString('en-IN')}</h3>
+              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter relative z-10 truncate">{formatINRConcise(summaryStats.paidCollection)}</h3>
               <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 relative z-10 truncate">Verified Collection (Paid)</p>
             </div>
 
@@ -566,7 +567,7 @@ const UnifiedDashboard = () => {
                 </div>
                 <span className="text-[9px] sm:text-[10px] font-black uppercase bg-rose-50 text-rose-700 px-2.5 py-1 rounded-full border border-rose-100 truncate max-w-[120px]">{periodLabel}</span>
               </div>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter relative z-10 truncate">₹{summaryStats.pendingBalance.toLocaleString('en-IN')}</h3>
+              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter relative z-10 truncate">{formatINRConcise(summaryStats.pendingBalance)}</h3>
               <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 relative z-10 truncate">Outstanding Receivables</p>
             </div>
 
@@ -732,7 +733,7 @@ const UnifiedDashboard = () => {
                   </div>
                   <div className="text-right pr-2 sm:pr-4 border-l border-slate-200 min-w-0 pl-4 sm:pl-8">
                     <span className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest block">TOTAL AMOUNT</span>
-                    <span className="text-2xl sm:text-4xl font-black text-emerald-600 tracking-tight mt-1 block truncate">₹{clientOverviewData.totalAmount.toLocaleString('en-IN')}</span>
+                    <span className="text-2xl sm:text-4xl font-black text-emerald-600 tracking-tight mt-1 block truncate">{formatINRConcise(clientOverviewData.totalAmount)}</span>
                   </div>
                 </div>
 
