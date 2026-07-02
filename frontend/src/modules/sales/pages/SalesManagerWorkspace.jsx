@@ -60,17 +60,17 @@ const SalesManagerWorkspace = () => {
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 pb-12">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 pb-12 min-w-0">
       {/* Header */}
-      <div className="bg-slate-900 rounded-[3rem] p-10 relative overflow-hidden shadow-2xl">
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl" />
-        <div className="relative z-10">
-          <h1 className="text-4xl font-black text-white tracking-tight">Manager Workspace</h1>
-          <p className="text-lg text-slate-400 font-medium mt-2">
+      <div className="bg-slate-900 rounded-[1.8rem] sm:rounded-[3rem] p-5 sm:p-8 lg:p-10 relative overflow-hidden shadow-2xl min-w-0">
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl pointer-events-none" />
+        <div className="relative z-10 min-w-0">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight truncate">Manager Workspace</h1>
+          <p className="text-xs sm:text-sm lg:text-lg text-slate-400 font-medium mt-2 break-words">
             Welcome, <span className="text-blue-400">{user?.name}</span>. Here is your enterprise snapshot.
           </p>
           <div className="flex items-center gap-3 mt-4">
-            <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-bold text-slate-300 uppercase tracking-widest border border-white/5">
+            <span className="bg-white/10 px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-widest border border-white/5 truncate">
               {(user?.role || '').replace(/_/g, ' ')}
             </span>
           </div>
@@ -78,7 +78,7 @@ const SalesManagerWorkspace = () => {
       </div>
 
       {/* KPI Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 min-w-0">
         <StatWidget 
           title="Team Revenue" 
           value={`₹${(orderStats.totalRevenue || 0).toLocaleString()}`} 
@@ -117,12 +117,12 @@ const SalesManagerWorkspace = () => {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 min-w-0">
         
         {/* Target Progress */}
-        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-xl">
-          <h3 className="text-xl font-black text-slate-900 tracking-tight">Monthly Target</h3>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">Progress Snapshot</p>
+        <div className="bg-white border border-slate-100 rounded-[1.8rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-xl min-w-0">
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight truncate">Monthly Target</h3>
+          <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">Progress Snapshot</p>
           <div className="h-[250px] relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -145,9 +145,9 @@ const SalesManagerWorkspace = () => {
         </div>
 
         {/* Team Performance */}
-        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-xl lg:col-span-2">
-          <h3 className="text-xl font-black text-slate-900 tracking-tight">Team Performance</h3>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">Revenue vs Targets</p>
+        <div className="bg-white border border-slate-100 rounded-[1.8rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-xl lg:col-span-2 min-w-0">
+          <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight truncate">Team Performance</h3>
+          <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">Revenue vs Targets</p>
           <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={teamPerfData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -165,30 +165,30 @@ const SalesManagerWorkspace = () => {
       </div>
 
       {/* Alerts & Actionables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 min-w-0">
         
         {/* Escalations */}
-        <div className="bg-rose-50 border border-rose-100 rounded-[2.5rem] p-8 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600">
+        <div className="bg-rose-50 border border-rose-100 rounded-[1.8rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm min-w-0">
+          <div className="flex items-center gap-3 mb-6 min-w-0">
+            <div className="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
               <AlertTriangle className="h-5 w-5" />
             </div>
-            <div>
-              <h3 className="text-xl font-black text-rose-900 tracking-tight">Escalation Alerts</h3>
-              <p className="text-xs font-bold text-rose-400 uppercase tracking-wider">Requires Branch Head Auth</p>
+            <div className="min-w-0">
+              <h3 className="text-lg sm:text-xl font-black text-rose-900 tracking-tight truncate">Escalation Alerts</h3>
+              <p className="text-[10px] sm:text-xs font-bold text-rose-400 uppercase tracking-wider truncate">Requires Branch Head Auth</p>
             </div>
           </div>
           <div className="space-y-3">
             {escalatedApprovals.length === 0 ? (
-              <p className="text-sm font-semibold text-rose-400">No active escalations.</p>
+              <p className="text-xs sm:text-sm font-semibold text-rose-400">No active escalations.</p>
             ) : (
               escalatedApprovals.slice(0, 3).map(app => (
-                <div key={app._id} className="bg-white p-4 rounded-2xl flex items-center justify-between border border-rose-100/50">
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">{app.orderNumber || 'Order'}</p>
-                    <p className="text-xs font-semibold text-slate-500">Requested by: {app.requestedBy?.name || 'Manager'}</p>
+                <div key={app._id} className="bg-white p-4 rounded-2xl flex items-center justify-between border border-rose-100/50 min-w-0 gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">{app.orderNumber || 'Order'}</p>
+                    <p className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">Requested by: {app.requestedBy?.name || 'Manager'}</p>
                   </div>
-                  <span className="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-bold uppercase tracking-widest">
+                  <span className="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-[10px] sm:text-xs font-bold uppercase tracking-widest shrink-0">
                     Escalated
                   </span>
                 </div>
@@ -198,23 +198,23 @@ const SalesManagerWorkspace = () => {
         </div>
 
         {/* Payment Collections */}
-        <div className="bg-amber-50 border border-amber-100 rounded-[2.5rem] p-8 shadow-sm">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+        <div className="bg-amber-50 border border-amber-100 rounded-[1.8rem] sm:rounded-[2.5rem] p-5 sm:p-8 shadow-sm min-w-0">
+          <div className="flex items-center gap-3 mb-6 min-w-0">
+            <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
               <IndianRupee className="h-5 w-5" />
             </div>
-            <div>
-              <h3 className="text-xl font-black text-amber-900 tracking-tight">Payment Collections</h3>
-              <p className="text-xs font-bold text-amber-400 uppercase tracking-wider">Overdue & Pending</p>
+            <div className="min-w-0">
+              <h3 className="text-lg sm:text-xl font-black text-amber-900 tracking-tight truncate">Payment Collections</h3>
+              <p className="text-[10px] sm:text-xs font-bold text-amber-400 uppercase tracking-wider truncate">Overdue & Pending</p>
             </div>
           </div>
           <div className="space-y-3">
-            <div className="bg-white p-4 rounded-2xl flex items-center justify-between border border-amber-100/50">
-              <div>
-                <p className="text-sm font-bold text-slate-800">Pending Verification</p>
-                <p className="text-xs font-semibold text-slate-500">Check with accounts</p>
+            <div className="bg-white p-4 rounded-2xl flex items-center justify-between border border-amber-100/50 min-w-0 gap-2">
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">Pending Verification</p>
+                <p className="text-[10px] sm:text-xs font-semibold text-slate-500 truncate">Check with accounts</p>
               </div>
-              <span className="text-lg font-black text-amber-600">5 Orders</span>
+              <span className="text-base sm:text-lg font-black text-amber-600 shrink-0">5 Orders</span>
             </div>
           </div>
         </div>

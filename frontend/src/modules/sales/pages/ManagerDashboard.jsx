@@ -18,8 +18,8 @@ const ManagerDashboard = () => {
   const quotes    = quoteData?.data || [];
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Prospects" value={Array.isArray(prospects)?prospects.length:(prospectData?.total||0)} icon={Users} color="primary" loading={l1} />
         <StatCard title="Order Revenue" value={stats.totalRevenue?`₹${stats.totalRevenue.toLocaleString()}`:'₹0'} icon={TrendingUp} color="green" loading={l2} />
         <StatCard 

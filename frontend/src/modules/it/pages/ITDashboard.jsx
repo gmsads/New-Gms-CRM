@@ -25,46 +25,46 @@ const statusBadge = {
 const priorityStyle = { High: 'text-red-500', Medium: 'text-yellow-500', Low: 'text-blue-500' };
 
 const ITDashboard = () => (
-  <div className="space-y-6">
-    <div className="flex flex-col gap-1">
-      <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">IT & Systems</h1>
-      <p className="text-sm sm:text-base font-semibold text-slate-500 mt-1">Infrastructure pulse and support terminal.</p>
+  <div className="space-y-4 sm:space-y-6 min-w-0">
+    <div className="flex flex-col gap-1 min-w-0">
+      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight truncate">IT & Systems</h1>
+      <p className="text-xs sm:text-sm lg:text-base font-semibold text-slate-500 mt-1 break-words">Infrastructure pulse and support terminal.</p>
     </div>
 
     {/* KPI Row */}
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 min-w-0">
       {[
         { label: 'Open Tickets', value: tickets.filter(t => t.status !== 'Resolved').length, icon: Ticket, color: 'emerald' },
         { label: 'Systems Online', value: `${systems.filter(s => s.status === 'Healthy').length}/${systems.length}`, icon: Server, color: 'blue' },
         { label: 'Avg. Response', value: '1.8h', icon: Clock, color: 'amber' },
         { label: 'Avg. Uptime', value: '98.9%', icon: Wifi, color: 'indigo' },
       ].map(({ label, value, icon: Icon, color }) => (
-        <div key={label} className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-            <div className={`h-10 w-10 rounded-xl flex items-center justify-center bg-${color}-50 text-${color}-600`}>
+        <div key={label} className="rounded-[1.5rem] sm:rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm hover:shadow-md transition-all min-w-0">
+          <div className="flex items-center justify-between mb-4 min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 truncate">{label}</p>
+            <div className={`h-10 w-10 rounded-xl flex items-center justify-center bg-${color}-50 text-${color}-600 shrink-0`}>
               <Icon className="h-5 w-5" />
             </div>
           </div>
-          <p className="text-3xl font-black text-slate-900">{value}</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 truncate">{value}</p>
         </div>
       ))}
     </div>
 
     {/* System Health */}
-    <div className="rounded-[2rem] border border-slate-100 bg-white p-8 shadow-sm">
-      <h3 className="text-xl font-black text-slate-900 mb-6">Real-time Infrastructure Health</h3>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="rounded-[1.5rem] sm:rounded-[2rem] border border-slate-100 bg-white p-4 sm:p-8 shadow-sm min-w-0">
+      <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-4 sm:mb-6 truncate">Real-time Infrastructure Health</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 min-w-0">
         {systems.map((sys, i) => (
-          <div key={i} className="flex items-center justify-between rounded-2xl border border-slate-50 bg-slate-50/50 p-4 hover:border-blue-200 hover:bg-white transition-all cursor-pointer group">
-            <div className="flex items-center gap-3">
-              <div className={`h-2.5 w-2.5 rounded-full shadow-[0_0_8px] ${sys.status === 'Healthy' ? 'bg-emerald-500 shadow-emerald-200' : 'bg-amber-500 shadow-amber-200'}`} />
-              <div>
-                <p className="text-sm font-bold text-slate-700">{sys.name}</p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Load: {sys.load}</p>
+          <div key={i} className="flex items-center justify-between rounded-2xl border border-slate-50 bg-slate-50/50 p-4 hover:border-blue-200 hover:bg-white transition-all cursor-pointer group min-w-0 gap-2">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`h-2.5 w-2.5 rounded-full shadow-[0_0_8px] shrink-0 ${sys.status === 'Healthy' ? 'bg-emerald-500 shadow-emerald-200' : 'bg-amber-500 shadow-amber-200'}`} />
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-slate-700 truncate">{sys.name}</p>
+                <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate">Load: {sys.load}</p>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-col items-end gap-1 shrink-0">
               <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{sys.uptime}</span>
               <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-tighter ${sys.status === 'Healthy' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{sys.status}</span>
             </div>

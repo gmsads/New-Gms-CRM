@@ -38,27 +38,25 @@ const Dashboard = () => {
         return <OperationsDashboard />;
       default:
         return (
-          <div className="rounded-[2.5rem] border border-slate-100 bg-white p-20 text-center shadow-sm">
-            <div className="mx-auto mb-6 h-20 w-20 rounded-3xl bg-blue-50 flex items-center justify-center border border-blue-100 shadow-inner">
-              <Zap className="h-10 w-10 text-blue-600" />
+          <div className="rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 bg-white p-6 sm:p-12 lg:p-20 text-center shadow-sm">
+            <div className="mx-auto mb-6 h-16 w-16 sm:h-20 sm:w-20 rounded-3xl bg-blue-50 flex items-center justify-center border border-blue-100 shadow-inner">
+              <Zap className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Welcome, {user?.name}</h3>
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Welcome, {user?.name}</h3>
             <p className="text-slate-500 font-semibold mt-2 uppercase tracking-widest text-[10px]">Portal Access: {role.replace(/_/g,' ')}</p>
-            <p className="text-sm text-slate-400 mt-6 max-w-xs mx-auto">Your specialized module interface is ready. Use the navigation terminal to begin operations.</p>
+            <p className="text-xs sm:text-sm text-slate-400 mt-6 max-w-xs mx-auto">Your specialized module interface is ready. Use the navigation terminal to begin operations.</p>
           </div>
         );
     }
   };
 
-  
-  
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-4xl font-black text-slate-900 tracking-tight">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700">
+      <div className="flex flex-col gap-1 sm:gap-2">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight break-words">
           {role.toLowerCase().split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Dashboard
         </h1>
-        <h2 className="text-xl font-bold text-slate-500">
+        <h2 className="text-base sm:text-lg lg:text-xl font-bold text-slate-500 break-words">
           Welcome back, <span className="text-blue-600">{user?.name}</span>
         </h2>
       </div>

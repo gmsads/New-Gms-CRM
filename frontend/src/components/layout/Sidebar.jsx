@@ -815,7 +815,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
           <Link to={getRoleDashboardPath(user?.role)} onClick={() => setOpen(false)} className="flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity">
             <img src="/logo.png" alt="GMS Logo" className="h-18 pt-2.5 w-auto object-contain" />
           </Link>
-          <button onClick={() => setOpen(false)} className="lg:hidden absolute right-4 text-muted-foreground hover:text-foreground">
+          <button onClick={() => setOpen(false)} className="md:hidden absolute right-4 text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>

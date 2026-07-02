@@ -47,103 +47,103 @@ const HRDashboard = ({ employees = [] }) => {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 min-w-0">
+      <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 truncate">
             Human Resources
           </h1>
-          <p className="text-sm sm:text-lg text-slate-500 font-medium mt-1 sm:mt-2 italic">
+          <p className="text-xs sm:text-sm lg:text-lg text-slate-500 font-medium mt-1 sm:mt-2 italic break-words">
             "People are the heartbeat of our company. Keep the pulse strong."
           </p>
         </div>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 min-w-0">
         {[
           { label: 'Total Workforce', value: stats.workforce.total, icon: Users, color: 'blue' },
           { label: 'Active Employees', value: stats.workforce.active, icon: UserCheck, color: 'emerald' },
           { label: 'Attrition Rate', value: stats.workforce.attrition, icon: TrendingDown, color: 'rose' },
           { label: 'Open Positions', value: stats.recruitment.openRoles, icon: Briefcase, color: 'amber' },
         ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm hover:shadow-md transition-all">
-             <div className={`h-12 w-12 rounded-2xl flex items-center justify-center bg-${color}-50 text-${color}-600 border border-${color}-100 shadow-inner mb-4`}>
+          <div key={label} className="rounded-[1.8rem] sm:rounded-[2rem] border border-slate-100 bg-white p-4 sm:p-6 shadow-sm hover:shadow-md transition-all min-w-0">
+             <div className={`h-12 w-12 rounded-2xl flex items-center justify-center bg-${color}-50 text-${color}-600 border border-${color}-100 shadow-inner mb-4 shrink-0`}>
                <Icon className="h-6 w-6" />
              </div>
-             <p className="text-3xl font-black text-slate-900 leading-none mb-1">{value}</p>
-             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+             <p className="text-2xl sm:text-3xl font-black text-slate-900 leading-none mb-1 truncate">{value}</p>
+             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 truncate">{label}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-         <div className="rounded-[2rem] bg-gradient-to-br from-indigo-500 to-blue-600 p-8 text-white shadow-lg shadow-blue-200">
-            <h3 className="text-sm font-black uppercase tracking-widest text-blue-100 mb-6">Workforce Summary</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 min-w-0">
+         <div className="rounded-[1.8rem] sm:rounded-[2rem] bg-gradient-to-br from-indigo-500 to-blue-600 p-5 sm:p-8 text-white shadow-lg shadow-blue-200 min-w-0">
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-blue-100 mb-6 truncate">Workforce Summary</h3>
             <div className="space-y-4">
-              <div className="flex justify-between items-center border-b border-white/20 pb-4">
+              <div className="flex justify-between items-center border-b border-white/20 pb-4 text-xs sm:text-sm">
                 <span className="font-medium text-blue-50">Total Employees</span>
-                <span className="text-2xl font-black">{stats.workforce.total}</span>
+                <span className="text-xl sm:text-2xl font-black">{stats.workforce.total}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-white/20 pb-4">
+              <div className="flex justify-between items-center border-b border-white/20 pb-4 text-xs sm:text-sm">
                 <span className="font-medium text-blue-50">Active Operational</span>
-                <span className="text-2xl font-black">{stats.workforce.active}</span>
+                <span className="text-xl sm:text-2xl font-black">{stats.workforce.active}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className="font-medium text-blue-50">Monthly Attrition</span>
-                <span className="text-2xl font-black">{stats.workforce.attrition}</span>
+                <span className="text-xl sm:text-2xl font-black">{stats.workforce.attrition}</span>
               </div>
             </div>
          </div>
 
-         <div className="rounded-[2rem] bg-gradient-to-br from-emerald-500 to-teal-600 p-8 text-white shadow-lg shadow-emerald-200">
-            <h3 className="text-sm font-black uppercase tracking-widest text-emerald-100 mb-6">Recruitment Summary</h3>
+         <div className="rounded-[1.8rem] sm:rounded-[2rem] bg-gradient-to-br from-emerald-500 to-teal-600 p-5 sm:p-8 text-white shadow-lg shadow-emerald-200 min-w-0">
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-emerald-100 mb-6 truncate">Recruitment Summary</h3>
             <div className="space-y-4">
-              <div className="flex justify-between items-center border-b border-white/20 pb-4">
+              <div className="flex justify-between items-center border-b border-white/20 pb-4 text-xs sm:text-sm">
                 <span className="font-medium text-emerald-50">Open Requisitions</span>
-                <span className="text-2xl font-black">{stats.recruitment.openRoles}</span>
+                <span className="text-xl sm:text-2xl font-black">{stats.recruitment.openRoles}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-white/20 pb-4">
+              <div className="flex justify-between items-center border-b border-white/20 pb-4 text-xs sm:text-sm">
                 <span className="font-medium text-emerald-50">Recent Joinees</span>
-                <span className="text-2xl font-black">{stats.recruitment.newJoinees}</span>
+                <span className="text-xl sm:text-2xl font-black">{stats.recruitment.newJoinees}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className="font-medium text-emerald-50">Offer Acceptance</span>
-                <span className="text-2xl font-black">92%</span>
+                <span className="text-xl sm:text-2xl font-black">92%</span>
               </div>
             </div>
          </div>
 
-         <div className="rounded-[2rem] bg-gradient-to-br from-amber-500 to-orange-600 p-8 text-white shadow-lg shadow-amber-200">
-            <h3 className="text-sm font-black uppercase tracking-widest text-amber-100 mb-6">Compensation Summary</h3>
+         <div className="rounded-[1.8rem] sm:rounded-[2rem] bg-gradient-to-br from-amber-500 to-orange-600 p-5 sm:p-8 text-white shadow-lg shadow-amber-200 sm:col-span-2 lg:col-span-1 min-w-0">
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-amber-100 mb-6 truncate">Compensation Summary</h3>
             <div className="space-y-4">
-              <div className="flex justify-between items-center border-b border-white/20 pb-4">
+              <div className="flex justify-between items-center border-b border-white/20 pb-4 text-xs sm:text-sm">
                 <span className="font-medium text-amber-50">Monthly Payroll</span>
-                <span className="text-2xl font-black">{stats.compensation.payroll}</span>
+                <span className="text-xl sm:text-2xl font-black">{stats.compensation.payroll}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-white/20 pb-4">
+              <div className="flex justify-between items-center border-b border-white/20 pb-4 text-xs sm:text-sm">
                 <span className="font-medium text-amber-50">Active Incentives</span>
-                <span className="text-2xl font-black">{stats.compensation.incentives}</span>
+                <span className="text-xl sm:text-2xl font-black">{stats.compensation.incentives}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center text-xs sm:text-sm">
                 <span className="font-medium text-amber-50">Pending Claims</span>
-                <span className="text-2xl font-black">18</span>
+                <span className="text-xl sm:text-2xl font-black">18</span>
               </div>
             </div>
          </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <div className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm">
-           <h3 className="text-xl font-black text-slate-900 mb-2">Departmental Allocation</h3>
-           <p className="text-sm font-semibold text-slate-400 mb-8">Structural distribution across functional domains.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 min-w-0">
+        <div className="rounded-[1.8rem] sm:rounded-[2.5rem] border border-slate-100 bg-white p-5 sm:p-8 shadow-sm min-w-0">
+           <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-2 truncate">Departmental Allocation</h3>
+           <p className="text-xs sm:text-sm font-semibold text-slate-400 mb-6 sm:mb-8 break-words">Structural distribution across functional domains.</p>
            <div className="space-y-6">
               {Object.entries(deptCount).map(([dept, count]) => {
                 const pct = Math.round((count / employees.length) * 100) || 0;
                 return (
                   <div key={dept} className="group">
                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-2">
-                      <span className="text-slate-500 group-hover:text-blue-600 transition-colors">{dept}</span>
-                      <span className="text-slate-400">{count} Units ({pct}%)</span>
+                      <span className="text-slate-500 group-hover:text-blue-600 transition-colors truncate">{dept}</span>
+                      <span className="text-slate-400 shrink-0">{count} Units ({pct}%)</span>
                     </div>
                     <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
                       <div className="h-full bg-blue-500 rounded-full transition-all duration-1000 ease-out shadow-[0_0_8px_rgba(59,130,246,0.5)]" style={{ width: `${pct}%` }} />
@@ -160,7 +160,7 @@ const HRDashboard = ({ employees = [] }) => {
            </div>
         </div>
 
-        <div className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm flex flex-col">
+        <div className="rounded-[1.8rem] sm:rounded-[2.5rem] border border-slate-100 bg-white p-5 sm:p-8 shadow-sm flex flex-col min-w-0">
            <div className="flex items-center justify-between mb-8">
               <div>
                 <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">

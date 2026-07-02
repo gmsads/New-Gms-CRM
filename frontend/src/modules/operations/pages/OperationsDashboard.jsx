@@ -243,23 +243,23 @@ const OperationsDashboard = () => {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 relative">
-      <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative min-w-0">
+      <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 truncate">
             Field Operations
           </h1>
-          <p className="text-sm sm:text-lg text-slate-500 font-medium mt-1 sm:mt-2">
+          <p className="text-xs sm:text-sm lg:text-lg text-slate-500 font-medium mt-1 sm:mt-2 break-words">
             Manage and track your field visits and operational activities.
           </p>
         </div>
-        <div className="flex gap-3">
-           <button onClick={() => refetch()} className="h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 text-sm font-bold shadow-sm hover:bg-slate-50 transition-all flex items-center gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-3 w-full md:w-auto shrink-0">
+           <button onClick={() => refetch()} className="flex-1 sm:flex-none h-10 px-4 rounded-xl border border-slate-200 bg-white text-slate-600 text-xs sm:text-sm font-bold shadow-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
              Sync
            </button>
-           <button onClick={() => { setSearchPhone(''); setSearchCompany(''); setSearchModalOpen(true); }} className="h-10 px-6 rounded-xl text-white text-sm font-bold shadow-lg shadow-blue-900/20 hover:opacity-90 transition-all active:scale-95 flex items-center gap-2" style={{ background: "linear-gradient(135deg, #003366 0%, #004080 100%)" }}>
-             <Plus className="h-4 w-4" /> Add Visit
+           <button onClick={() => { setSearchPhone(''); setSearchCompany(''); setSearchModalOpen(true); }} className="flex-1 sm:flex-none h-10 px-4 sm:px-6 rounded-xl text-white text-xs sm:text-sm font-bold shadow-lg shadow-blue-900/20 hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg, #003366 0%, #004080 100%)" }}>
+             <Plus className="h-4 w-4 shrink-0" /> Add Visit
            </button>
         </div>
       </div>
@@ -269,8 +269,8 @@ const OperationsDashboard = () => {
       ) : error ? (
         <div className="p-6 text-sm text-red-500 bg-red-50 rounded-xl border border-red-200">Error loading operations: {error}</div>
       ) : (
-        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50/50">
+        <div className="bg-white rounded-[1.8rem] sm:rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden flex flex-col min-w-0">
+          <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-50/50 min-w-0">
             <div>
               <h2 className="text-xl font-black text-slate-900 tracking-tight">Visit Collections</h2>
               <p className="text-sm font-medium text-slate-500 mt-1">Manage and track your field operations</p>

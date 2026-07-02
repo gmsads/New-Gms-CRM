@@ -442,67 +442,67 @@ const ExecDashboard = () => {
       )}
 
       {/* Enhanced Target Card (Hero Section) */}
-      <div className="relative overflow-hidden rounded-[3rem] bg-slate-900 p-10 text-white shadow-2xl">
+      <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[3rem] bg-slate-900 p-5 sm:p-8 lg:p-10 text-white shadow-2xl min-w-0">
         {/* Background Decor */}
-        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
-        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 grid gap-12 lg:grid-cols-2 lg:items-center">
-          <div className="space-y-8">
-            <div>
-              <h3 className="text-3xl font-black tracking-tight mb-2">Keep Pushing, <span className="text-blue-400">{user?.name?.split(' ')[0]}!</span></h3>
-              <p className="text-lg text-slate-400 font-medium tracking-tight italic">"{getRoleBasedQuote(user?.role)}"</p>
+        <div className="relative z-10 grid gap-8 lg:gap-12 lg:grid-cols-2 lg:items-center min-w-0">
+          <div className="space-y-6 sm:space-y-8 min-w-0">
+            <div className="min-w-0">
+              <h3 className="text-2xl sm:text-3xl font-black tracking-tight mb-2 truncate">Keep Pushing, <span className="text-blue-400">{user?.name?.split(' ')[0]}!</span></h3>
+              <p className="text-base sm:text-lg text-slate-400 font-medium tracking-tight italic break-words">"{getRoleBasedQuote(user?.role)}"</p>
             </div>
             
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 min-w-0">
               <button 
                 onClick={() => prospectFlow.setShowPhoneSearch(true)} 
-                className="flex-1 bg-blue-600 px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all hover:bg-blue-700 hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20"
+                className="w-full sm:flex-1 bg-blue-600 px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all hover:bg-blue-700 hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20 text-sm sm:text-base"
               >
-                <Plus className="h-5 w-5" /> New Prospect
+                <Plus className="h-5 w-5 shrink-0" /> New Prospect
               </button>
               <button 
                 onClick={() => orderFlow.setShowOrderSearch(true)} 
-                className="flex-1 bg-white/10 px-8 py-4 rounded-2xl font-black flex items-center justify-center gap-2 backdrop-blur-md hover:bg-white/20 transition-all shadow-xl"
+                className="w-full sm:flex-1 bg-white/10 px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-2 backdrop-blur-md hover:bg-white/20 transition-all shadow-xl text-sm sm:text-base"
               >
-                <Plus className="h-5 w-5" /> New Order
+                <Plus className="h-5 w-5 shrink-0" /> New Order
               </button>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-8 rounded-[2.5rem] border border-slate-700 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-all duration-700 group-hover:bg-blue-500/20" />
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-5 sm:p-8 rounded-[1.8rem] sm:rounded-[2.5rem] border border-slate-700 shadow-2xl relative overflow-hidden group min-w-0">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl -mr-10 -mt-10 transition-all duration-700 group-hover:bg-blue-500/20 pointer-events-none" />
             
-            <div className="flex justify-between items-center relative z-10">
-              <div>
-                <span className="text-xs font-black uppercase tracking-[0.2em] text-blue-400">Current Assigned Target</span>
+            <div className="flex justify-between items-center relative z-10 gap-2 min-w-0">
+              <div className="min-w-0">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-blue-400 block truncate">Current Assigned Target</span>
                 {stats.realTarget && (
-                  <h4 className="text-lg font-bold text-white mt-1">
-                    {stats.realTarget.title} <span className="text-sm font-medium text-slate-400 ml-2 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">{stats.realTarget.period}</span>
+                  <h4 className="text-base sm:text-lg font-bold text-white mt-1 truncate">
+                    {stats.realTarget.title} <span className="text-xs sm:text-sm font-medium text-slate-400 ml-1.5 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">{stats.realTarget.period}</span>
                   </h4>
                 )}
-                {!stats.realTarget && <h4 className="text-lg font-bold text-white mt-1">Revenue Target</h4>}
+                {!stats.realTarget && <h4 className="text-base sm:text-lg font-bold text-white mt-1 truncate">Revenue Target</h4>}
               </div>
-              <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center border border-blue-500/30">
-                <Target className="text-blue-400 h-6 w-6" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center border border-blue-500/30 shrink-0">
+                <Target className="text-blue-400 h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             </div>
             
-            <div className="flex items-baseline gap-4 mt-8 relative z-10">
-              <span className="text-7xl font-black tracking-tighter text-white drop-shadow-lg">
-                {progressPercent}<span className="text-4xl text-slate-400">%</span>
+            <div className="flex items-baseline gap-3 sm:gap-4 mt-6 sm:mt-8 relative z-10">
+              <span className="text-5xl sm:text-7xl font-black tracking-tighter text-white drop-shadow-lg">
+                {progressPercent}<span className="text-3xl sm:text-4xl text-slate-400">%</span>
               </span>
-              <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Achieved</span>
+              <span className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest">Achieved</span>
             </div>
 
-            <div className="space-y-4 mt-8 relative z-10">
+            <div className="space-y-3 sm:space-y-4 mt-6 sm:mt-8 relative z-10">
               <div className="h-4 w-full bg-slate-950 rounded-full overflow-hidden p-1 shadow-inner border border-slate-800">
                 <div 
                   className={`h-full rounded-full transition-all duration-1000 ease-out ${getProgressBarColor(progressPercent)}`} 
                   style={{ width: `${progressPercent}%` }} 
                 />
               </div>
-              <div className="flex justify-between text-sm font-bold text-slate-300">
+              <div className="flex flex-col sm:flex-row justify-between text-xs sm:text-sm font-bold text-slate-300 gap-1">
                 <span>
                   {stats.realTarget 
                     ? (stats.realTarget.targetType === 'Revenue Target' || stats.realTarget.targetType === 'Collection Target' ? '₹' : '') + stats.realTarget.achievedValue.toLocaleString('en-IN')

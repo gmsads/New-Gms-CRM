@@ -44,15 +44,15 @@ export default function LeadDashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Lead Management & Tele Sales Dashboard</h1>
-          <p className="text-xs text-muted-foreground">Real-time enterprise acquisition KPIs and calling telemetry.</p>
+    <div className="space-y-4 sm:space-y-6 min-w-0">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 min-w-0">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight truncate">Lead Management & Tele Sales Dashboard</h1>
+          <p className="text-xs text-muted-foreground break-words">Real-time enterprise acquisition KPIs and calling telemetry.</p>
         </div>
         <button
           onClick={() => setShowConfigModal(true)}
-          className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-sm flex items-center gap-1.5"
+          className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-sm flex items-center justify-center gap-1.5 shrink-0"
         >
           <Settings className="w-4 h-4" /> Enterprise Rules
         </button>
@@ -61,14 +61,14 @@ export default function LeadDashboard() {
       <CeoFunnelWidget token={user?.token} />
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 min-w-0">
         {cards.map((c, i) => (
-          <div key={i} className="bg-card border border-border rounded-xl p-4 shadow-sm flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase">{c.label}</p>
-              <h3 className="text-2xl font-black text-foreground mt-1 font-mono">{c.value}</h3>
+          <div key={i} className="bg-card border border-border rounded-xl p-4 shadow-sm flex items-center justify-between min-w-0 gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-muted-foreground uppercase truncate">{c.label}</p>
+              <h3 className="text-xl sm:text-2xl font-black text-foreground mt-1 font-mono truncate">{c.value}</h3>
             </div>
-            <div className={`p-3 rounded-xl ${c.color}`}>
+            <div className={`p-3 rounded-xl ${c.color} shrink-0`}>
               <c.icon className="h-6 w-6" />
             </div>
           </div>
@@ -76,7 +76,7 @@ export default function LeadDashboard() {
       </div>
 
       {/* Leaderboard & Campaign Performance */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0">
         <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
           <h3 className="font-bold text-base flex items-center gap-2">
             🏆 Top Performing Sales Executives
