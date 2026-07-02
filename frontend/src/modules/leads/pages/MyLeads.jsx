@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import leadApi from '../../../services/lead.api';
 import LeadCard from '../components/LeadCard';
@@ -22,6 +22,8 @@ export default function MyLeads() {
   const [workflowTab, setWorkflowTab] = useState('all');
   
   const [leads, setLeads] = useState([]);
+  const [displayLimit, setDisplayLimit] = useState(25);
+  const sentinelRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [campaigns, setCampaigns] = useState([]);
@@ -80,6 +82,7 @@ export default function MyLeads() {
             );
           }
           setLeads(rawLeads);
+          setDisplayLimit(25);
         }
       })
       .catch(console.error)
@@ -93,6 +96,20 @@ export default function MyLeads() {
       .then(res => { if (res.success) setCampaigns(res.data || []); })
       .catch(() => {});
   }, [user, ownerTab, workflowTab, filters]);
+
+  // Scroll trigger observer for rendering batches (0-25 -> 25-50 -> 50-75)
+  useEffect(() => {
+    if (loading || leads.length <= displayLimit) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        setDisplayLimit(prev => Math.min(prev + 25, leads.length));
+      }
+    }, { threshold: 0.1 });
+
+    const currentSentinel = sentinelRef.current;
+    if (currentSentinel) observer.observe(currentSentinel);
+    return () => { if (currentSentinel) observer.unobserve(currentSentinel); };
+  }, [loading, leads.length, displayLimit]);
 
   // Create Lead Save Handler
   const handleCreateSave = async (formData, callImmediately) => {
@@ -265,6 +282,20 @@ export default function MyLeads() {
         </div>
       </div>
 
+      {/* Count Range Indicator */}
+      {!loading && leads.length > 0 && (
+        <div className="bg-muted/30 border rounded-xl p-3 flex flex-wrap items-center justify-between text-xs gap-2">
+          <span className="font-bold text-foreground bg-primary/10 text-primary px-3 py-1 rounded-lg">
+            Showing 0 to {Math.min(displayLimit, leads.length)} of {leads.length} entries
+          </span>
+          {displayLimit > 25 && (
+            <span className="text-[11px] bg-secondary text-secondary-foreground px-2 py-0.5 rounded font-semibold">
+              Latest Scroll Batch: {displayLimit - 25} to {Math.min(displayLimit, leads.length)}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Responsive Lead Cards List Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {loading ? (
@@ -281,7 +312,7 @@ export default function MyLeads() {
             </p>
           </div>
         ) : (
-          leads.map(ld => (
+          leads.slice(0, displayLimit).map(ld => (
             <LeadCard
               key={ld._id}
               lead={ld}
@@ -293,6 +324,11 @@ export default function MyLeads() {
             />
           ))
         )}
+      </div>
+
+      {/* Scroll Trigger Sentinel */}
+      <div ref={sentinelRef} className="py-2 w-full flex items-center justify-center bg-transparent">
+        {displayLimit < leads.length && <div className="text-xs text-primary font-bold animate-pulse py-2">⚡ Scroll Trigger: Showing next batch ({displayLimit} to {Math.min(displayLimit + 25, leads.length)})...</div>}
       </div>
 
       {/* ── CREATE LEAD MODAL ──────────────────────────────────────── */}

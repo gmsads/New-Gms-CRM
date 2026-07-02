@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import leadApi from '../../../services/lead.api';
 import { Search, Filter, Download, Plus, Trash2, Eye, RefreshCw, ChevronLeft, ChevronRight, Users } from 'lucide-react';
@@ -12,8 +12,10 @@ export default function LeadPool() {
   const { user } = useAuth();
   const [leads, setLeads] = useState([]);
   const [users, setUsers] = useState([]);
-  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, pages: 1 });
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
@@ -52,7 +54,7 @@ export default function LeadPool() {
         if (res.success) {
           alert(res.message || 'Leads distributed successfully.');
           setSelectedIds([]);
-          fetchLeads(pagination.page);
+          fetchLeads(1, false);
         } else {
           alert(res.message || 'Failed to distribute leads.');
         }
@@ -60,24 +62,57 @@ export default function LeadPool() {
       .catch(err => alert('Error distributing leads: ' + err.message));
   };
 
-  const fetchLeads = (pg = 1) => {
+  const fetchLeads = (pg = 1, isAppend = false) => {
     if (!user) return;
-    setLoading(true);
-    const params = { page: pg, limit: 20, search, status: statusFilter, source: sourceFilter };
+    if (isAppend) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+    const params = { page: pg, limit: 25, search, status: statusFilter, source: sourceFilter };
     leadApi.list(params, user.token)
       .then(res => {
         if (res.success) {
-          setLeads(res.leads);
-          setPagination(res.pagination);
+          if (isAppend) {
+            setLeads(prev => {
+              const existingIds = new Set(prev.map(l => l._id));
+              const newLeads = (res.leads || []).filter(l => !existingIds.has(l._id));
+              return [...prev, ...newLeads];
+            });
+          } else {
+            setLeads(res.leads || []);
+          }
+          if (res.pagination) setPagination(res.pagination);
         }
       })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setLoadingMore(false);
+      });
   };
 
   useEffect(() => {
-    fetchLeads(1);
+    fetchLeads(1, false);
   }, [user, statusFilter, sourceFilter]);
+
+  // Scroll trigger observer for infinite scroll batches (0-25 -> 25-50 -> 50-75)
+  useEffect(() => {
+    if (loading || loadingMore || !user) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && pagination.page < pagination.pages) {
+        fetchLeads(pagination.page + 1, true);
+      }
+    }, { threshold: 0.1 });
+
+    const currentSentinel = sentinelRef.current;
+    if (currentSentinel) {
+      observer.observe(currentSentinel);
+    }
+    return () => {
+      if (currentSentinel) observer.unobserve(currentSentinel);
+    };
+  }, [loading, loadingMore, pagination.page, pagination.pages, user]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -246,12 +281,38 @@ export default function LeadPool() {
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        <div className="p-3 bg-muted/30 border-t flex items-center justify-between text-xs text-muted-foreground">
-          <span>Showing page {pagination.page} of {pagination.pages} ({pagination.total} total)</span>
-          <div className="flex items-center gap-1">
-            <button disabled={pagination.page <= 1} onClick={() => fetchLeads(pagination.page - 1)} className="p-1.5 border rounded hover:bg-muted disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></button>
-            <button disabled={pagination.page >= pagination.pages} onClick={() => fetchLeads(pagination.page + 1)} className="p-1.5 border rounded hover:bg-muted disabled:opacity-40"><ChevronRight className="h-4 w-4" /></button>
+        {/* Scroll Trigger Sentinel */}
+        <div ref={sentinelRef} className="py-2 w-full flex items-center justify-center bg-transparent">
+          {loadingMore && <div className="text-xs text-primary font-bold animate-pulse py-2">⚡ Scroll Trigger: Loading next batch ({pagination.page * 25} to {Math.min((pagination.page + 1) * 25, pagination.total)})...</div>}
+        </div>
+
+        {/* Pagination & Range Count Footer */}
+        <div className="p-3.5 bg-muted/30 border-t flex flex-wrap items-center justify-between text-xs gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-foreground bg-primary/10 text-primary px-3 py-1 rounded-lg">
+              Showing {leads.length === 0 ? 0 : 0} to {leads.length} of {pagination.total} entries
+            </span>
+            {pagination.page >= 1 && (
+              <span className="text-[11px] bg-secondary text-secondary-foreground px-2 py-0.5 rounded font-semibold">
+                Latest Batch: {(pagination.page - 1) * 25} to {Math.min(pagination.page * 25, pagination.total)}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {pagination.page < pagination.pages && (
+              <button
+                onClick={() => fetchLeads(pagination.page + 1, true)}
+                disabled={loadingMore}
+                className="px-3 py-1 bg-primary text-primary-foreground font-bold rounded-lg shadow hover:bg-primary/90 text-xs disabled:opacity-50 flex items-center gap-1"
+              >
+                <span>{loadingMore ? 'Loading Batch...' : `Load Next Batch (${pagination.page * 25} to ${Math.min((pagination.page + 1) * 25, pagination.total)})`}</span>
+              </button>
+            )}
+            <div className="flex items-center gap-1 border-l pl-2">
+              <button disabled={pagination.page <= 1} onClick={() => fetchLeads(pagination.page - 1, false)} className="p-1.5 border rounded hover:bg-muted disabled:opacity-40" title="Previous Page"><ChevronLeft className="h-4 w-4" /></button>
+              <span className="px-2 text-muted-foreground font-medium">Page {pagination.page} / {pagination.pages}</span>
+              <button disabled={pagination.page >= pagination.pages} onClick={() => fetchLeads(pagination.page + 1, false)} className="p-1.5 border rounded hover:bg-muted disabled:opacity-40" title="Next Page"><ChevronRight className="h-4 w-4" /></button>
+            </div>
           </div>
         </div>
       </div>
