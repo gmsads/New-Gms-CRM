@@ -135,12 +135,27 @@ export default function MyLeads() {
 
   // Telephony Click To Call
   const handleInitiateCall = (ld) => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
     leadApi.initiateCall(ld.phone, ld._id, user.token)
       .then(res => {
         setActiveCallLead(ld);
         setShowPostModal(true);
+        if (isMobile && ld.phone) {
+          const cleanNum = (ld.phone || '').replace(/\D/g, '');
+          const fullNum = cleanNum.length === 10 ? `+91${cleanNum}` : cleanNum.startsWith('+') ? cleanNum : `+${cleanNum}`;
+          window.location.href = `tel:${fullNum}`;
+        }
       })
-      .catch(err => alert(err.message || 'Call failed'));
+      .catch(err => {
+        if (isMobile && ld.phone) {
+          const cleanNum = (ld.phone || '').replace(/\D/g, '');
+          const fullNum = cleanNum.length === 10 ? `+91${cleanNum}` : cleanNum.startsWith('+') ? cleanNum : `+${cleanNum}`;
+          window.location.href = `tel:${fullNum}`;
+        } else {
+          alert(err.message || 'Call failed');
+        }
+      });
   };
 
   // WhatsApp Chat Launcher

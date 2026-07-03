@@ -14,6 +14,7 @@ const reportingService = require('../services/reporting.service');
 const qaService = require('../services/qa.service');
 const recordingService = require('../services/recording.service');
 const fraudDetectionService = require('../services/fraudDetection.service');
+const callLifecycle = require('../services/callLifecycle.service');
 const Lead = require('../models/lead.model');
 const LeadCall = require('../models/leadCall.model');
 const LeadFollowup = require('../models/leadFollowup.model');
@@ -256,6 +257,35 @@ class LeadController {
         callerId: req.user._id
       });
 
+      let trackedCall = null;
+      try {
+        const leadDoc = leadId ? await Lead.findById(leadId).select('companyName contactPerson').lean() : null;
+        trackedCall = await LeadCall.create({
+          leadId: leadId || null,
+          callerId: req.user._id,
+          callerName: req.user.name || 'Executive',
+          calleePhone,
+          companyName: leadDoc?.companyName || leadDoc?.contactPerson || 'Customer',
+          provider: callRes?.provider || 'Mock Provider',
+          providerCallId: callRes?.providerCallId || `CALL-${Date.now()}`,
+          callStatus: 'Connected',
+          callLifecycleStage: 'Initiated',
+          stageTimestamps: { initiatedAt: new Date() },
+          callStartTime: new Date()
+        });
+        if (trackedCall && leadId) {
+          await callLifecycle.transitionStage({
+            callId: trackedCall._id,
+            newStage: 'Initiated',
+            timestamp: new Date(),
+            performedBy: req.user._id,
+            performedByName: req.user.name || 'Executive'
+          });
+        }
+      } catch (trackErr) {
+        console.warn('[LeadController] Call tracking initiation note:', trackErr.message);
+      }
+
       if (leadId) {
         await Lead.updateOne(
           { _id: leadId },
@@ -268,7 +298,7 @@ class LeadController {
         await liveStatusService.updateStatus(req.user._id, req.user.name, 'Calling');
       } catch (sErr) {}
 
-      res.json({ success: true, data: callRes });
+      res.json({ success: true, data: { ...callRes, callId: trackedCall?._id || callRes.callId } });
     } catch (err) {
       next(err);
     }

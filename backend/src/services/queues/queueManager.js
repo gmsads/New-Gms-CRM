@@ -45,7 +45,7 @@ const defaultJobOptions = {
 };
 
 // Define Queues
-let notificationQueue, escalationQueue, reminderQueue, exportQueue, cacheWarmingQueue, archiveQueue;
+let notificationQueue, escalationQueue, reminderQueue, exportQueue, cacheWarmingQueue, archiveQueue, telephonyQueue, recordingQueue;
 
 if (Queue && Worker) {
   notificationQueue = new Queue('notificationQueue', { connection, defaultJobOptions });
@@ -54,6 +54,8 @@ if (Queue && Worker) {
   exportQueue = new Queue('exportQueue', { connection, defaultJobOptions });
   cacheWarmingQueue = require('./cacheWarming.job').cacheWarmingQueue;
   archiveQueue = require('./archive.job').archiveQueue;
+  telephonyQueue = new Queue('telephonyQueue', { connection, defaultJobOptions });
+  recordingQueue = new Queue('recordingQueue', { connection, defaultJobOptions });
 
   // Initialize Workers
   const notificationWorker = new Worker('notificationQueue', async job => {
@@ -89,8 +91,43 @@ if (Queue && Worker) {
     // Export logic would go here
   }, { connection });
 
+  const telephonyWorker = new Worker('telephonyQueue', async job => {
+    console.log(`[Queue] Processing telephony webhook job ${job.id}`);
+    const { provider, payload } = job.data;
+    const telephonyAdapters = require('../../domains/telecrm/services/telephonyAdapters.service');
+    const callLifecycle = require('../../domains/telecrm/services/callLifecycle.service');
+    const LeadCall = require('../../domains/telecrm/models/leadCall.model');
+
+    const normalized = telephonyAdapters.normalizeWebhook(provider, payload);
+    let call = null;
+    if (normalized.providerCallId) {
+      call = await LeadCall.findOne({ providerCallId: normalized.providerCallId });
+    }
+    if (!call && normalized.calleePhone) {
+      const cleanPhone = normalized.calleePhone.replace(/\D/g, '').slice(-10);
+      call = await LeadCall.findOne({ calleePhone: { $regex: cleanPhone } }).sort({ createdAt: -1 });
+    }
+    if (call) {
+      await callLifecycle.transitionStage({
+        callId: call._id,
+        newStage: normalized.status || 'Completed',
+        timestamp: new Date(),
+        metadata: {
+          recordingUrl: normalized.recordingUrl,
+          durationSeconds: normalized.durationSeconds,
+          talkDuration: normalized.durationSeconds
+        }
+      });
+    }
+  }, { connection });
+
+  const recordingWorker = new Worker('recordingQueue', async job => {
+    console.log(`[Queue] Processing recording job ${job.id}`);
+    // Background recording processing / S3 sync retry
+  }, { connection });
+
   // Handle worker events
-  [notificationWorker, escalationWorker, reminderWorker, exportWorker].forEach(worker => {
+  [notificationWorker, escalationWorker, reminderWorker, exportWorker, telephonyWorker, recordingWorker].forEach(worker => {
     worker.on('completed', job => console.log(`[Queue] Job ${job.id} completed.`));
     worker.on('failed', (job, err) => console.error(`[Queue] Job ${job.id} failed:`, err));
   });
@@ -105,10 +142,57 @@ if (Queue && Worker) {
       new BullMQAdapter(reminderQueue),
       new BullMQAdapter(exportQueue),
       new BullMQAdapter(cacheWarmingQueue),
-      new BullMQAdapter(archiveQueue)
+      new BullMQAdapter(archiveQueue),
+      new BullMQAdapter(telephonyQueue),
+      new BullMQAdapter(recordingQueue)
     ],
     serverAdapter: serverAdapter,
   });
+} else {
+  const makeMockQueue = (name) => ({
+    name,
+    add: async (jobName, data = {}) => {
+      console.log(`[MockQueue:${name}] Processing job ${jobName} in memory.`);
+      if (name === 'telephonyQueue') {
+        try {
+          const telephonyAdapters = require('../../domains/telecrm/services/telephonyAdapters.service');
+          const callLifecycle = require('../../domains/telecrm/services/callLifecycle.service');
+          const LeadCall = require('../../domains/telecrm/models/leadCall.model');
+          const normalized = telephonyAdapters.normalizeWebhook(data.provider, data.payload);
+          let call = null;
+          if (normalized.providerCallId) call = await LeadCall.findOne({ providerCallId: normalized.providerCallId });
+          if (!call && normalized.calleePhone) {
+            const cleanPhone = normalized.calleePhone.replace(/\D/g, '').slice(-10);
+            call = await LeadCall.findOne({ calleePhone: { $regex: cleanPhone } }).sort({ createdAt: -1 });
+          }
+          if (call) {
+            await callLifecycle.transitionStage({
+              callId: call._id,
+              newStage: normalized.status || 'Completed',
+              timestamp: new Date(),
+              metadata: {
+                recordingUrl: normalized.recordingUrl,
+                durationSeconds: normalized.durationSeconds,
+                talkDuration: normalized.durationSeconds
+              }
+            });
+          }
+        } catch (err) {
+          console.error(`[MockQueue:${name}] Error:`, err.message);
+        }
+      }
+      return { id: `mock-${Date.now()}` };
+    }
+  });
+
+  notificationQueue = makeMockQueue('notificationQueue');
+  escalationQueue = makeMockQueue('escalationQueue');
+  reminderQueue = makeMockQueue('reminderQueue');
+  exportQueue = makeMockQueue('exportQueue');
+  cacheWarmingQueue = makeMockQueue('cacheWarmingQueue');
+  archiveQueue = makeMockQueue('archiveQueue');
+  telephonyQueue = makeMockQueue('telephonyQueue');
+  recordingQueue = makeMockQueue('recordingQueue');
 }
 
 module.exports = {
@@ -118,6 +202,8 @@ module.exports = {
   exportQueue,
   cacheWarmingQueue,
   archiveQueue,
+  telephonyQueue,
+  recordingQueue,
   connection,
   serverAdapter
 };

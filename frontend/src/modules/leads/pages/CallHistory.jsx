@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import leadApi from '../../../services/lead.api';
 import { QaReviewModal } from '../components/EnterpriseTelePanels';
-import { Phone, Play, Pause, Clock, CheckCircle2, AlertCircle, Filter, Volume2, Star } from 'lucide-react';
+import { Phone, Play, Pause, Clock, CheckCircle2, AlertCircle, Filter, Volume2, Star, Download, Loader2 } from 'lucide-react';
 
 /**
  * CallHistory.jsx
@@ -15,7 +15,11 @@ export default function CallHistory() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [playingUrl, setPlayingUrl] = useState(null);
+  const [activePlayId, setActivePlayId] = useState(null);
+  const [audioLoading, setAudioLoading] = useState(false);
   const [qaCall, setQaCall] = useState(null);
+
+  const canDownload = user && (['ADMIN', 'MD_CEO', 'SALES_MANAGER'].includes(user.role) || user.permissions?.some(p => p.key === 'REPORTS_ACCESS'));
 
   const fetchHistory = (pg = 1) => {
     if (!user) return;
@@ -35,9 +39,49 @@ export default function CallHistory() {
     fetchHistory(1);
   }, [user, statusFilter]);
 
-  const toggleAudio = (url) => {
-    if (playingUrl === url) setPlayingUrl(null);
-    else setPlayingUrl(url);
+  const getStreamUrl = (cl) => {
+    if (!cl || !cl.recordingUrl) return null;
+    if (cl.recordingUrl.startsWith('http://') || cl.recordingUrl.startsWith('https://')) {
+      return cl.recordingUrl;
+    }
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    return `${apiBase}/telecrm/calls/${cl._id}/stream`;
+  };
+
+  const toggleAudio = (cl) => {
+    const url = getStreamUrl(cl);
+    if (!url) return;
+    if (activePlayId === cl._id) {
+      setPlayingUrl(null);
+      setActivePlayId(null);
+      setAudioLoading(false);
+    } else {
+      setActivePlayId(cl._id);
+      setPlayingUrl(url);
+      setAudioLoading(true);
+    }
+  };
+
+  const handleDownload = (cl) => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+    const downloadUrl = `${apiBase}/telecrm/calls/${cl._id}/download`;
+    fetch(downloadUrl, {
+      headers: { Authorization: `Bearer ${user?.token}` }
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Download failed or forbidden.');
+        return res.blob();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `call_recording_${cl._id}.mp3`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      })
+      .catch(err => alert(err.message));
   };
 
   return (
@@ -91,9 +135,20 @@ export default function CallHistory() {
                     <td className="p-3">
                       <div className="flex items-center gap-2">
                         {cl.recordingUrl ? (
-                          <button onClick={() => toggleAudio(cl.recordingUrl)} className="p-1.5 rounded-full bg-primary text-primary-foreground hover:scale-105 transition-all">
-                            {playingUrl === cl.recordingUrl ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-                          </button>
+                          <>
+                            <button onClick={() => toggleAudio(cl)} className="p-1.5 rounded-full bg-primary text-primary-foreground hover:scale-105 transition-all">
+                              {activePlayId === cl._id ? (
+                                audioLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Pause className="h-3 w-3" />
+                              ) : (
+                                <Play className="h-3 w-3" />
+                              )}
+                            </button>
+                            {canDownload && (
+                              <button onClick={() => handleDownload(cl)} title="Download Audio" className="p-1.5 rounded bg-muted hover:bg-muted/80 text-foreground transition-all">
+                                <Download className="h-3 w-3" />
+                              </button>
+                            )}
+                          </>
                         ) : null}
                         <button
                           onClick={() => setQaCall(cl)}
@@ -111,7 +166,16 @@ export default function CallHistory() {
           </table>
         </div>
       </div>
-      {playingUrl && <audio autoPlay src={playingUrl} onEnded={() => setPlayingUrl(null)} className="hidden" />}
+      {playingUrl && (
+        <audio
+          autoPlay
+          src={playingUrl}
+          onWaiting={() => setAudioLoading(true)}
+          onCanPlay={() => setAudioLoading(false)}
+          onEnded={() => { setPlayingUrl(null); setActivePlayId(null); setAudioLoading(false); }}
+          className="hidden"
+        />
+      )}
       <QaReviewModal isOpen={!!qaCall} onClose={() => setQaCall(null)} call={qaCall} token={user?.token} />
     </div>
   );

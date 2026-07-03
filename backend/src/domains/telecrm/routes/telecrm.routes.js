@@ -1,9 +1,18 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
 const ctrl = require('../controllers/lead.controller');
+const telephonyEnterpriseCtrl = require('../controllers/telephonyEnterprise.controller');
+const companionCtrl = require('../controllers/companion.controller');
 const { protect, authorize } = require('../../../guards/auth.guard');
 
-// Mount JWT protect guard on all telecrm routes
+// Public Idempotent Webhook Intake for Cloud Telephony Providers (Exotel, Knowlarity, Airtel IQ, etc.)
+router.post('/webhook/:provider', telephonyEnterpriseCtrl.handleProviderWebhook);
+router.get('/webhook/:provider', telephonyEnterpriseCtrl.handleProviderWebhook);
+
+// Mount JWT protect guard on all remaining telecrm routes
 router.use(protect);
 
 // Leads Pool & My Leads work area
@@ -54,5 +63,14 @@ router.get('/fraud-alerts', ctrl.listFraudAlerts);
 router.get('/ceo-funnel', ctrl.getCeoFunnel);
 router.get('/scorecard', ctrl.getExecutiveScorecard);
 router.post('/bulk-actions', ctrl.runBulkActions);
+
+// Additive Enterprise Telephony Calling & Recording Endpoints
+router.get('/calls/:id/stream', telephonyEnterpriseCtrl.streamRecording);
+router.get('/calls/:id/download', telephonyEnterpriseCtrl.downloadRecording);
+router.get('/analytics/calling-kpis', telephonyEnterpriseCtrl.getCallingKpis);
+
+// Additive Android Companion Application Endpoints
+router.post('/companion/register', companionCtrl.registerDevice);
+router.post('/companion/upload', upload.single('recordingFile'), companionCtrl.uploadRecording);
 
 module.exports = router;
