@@ -273,7 +273,7 @@ class LeadController {
           stageTimestamps: { initiatedAt: new Date() },
           callStartTime: new Date()
         });
-        if (trackedCall && leadId) {
+        if (trackedCall) {
           await callLifecycle.transitionStage({
             callId: trackedCall._id,
             newStage: 'Initiated',
@@ -321,26 +321,61 @@ class LeadController {
       const talkDur = durationSeconds || 30;
       const bDisp = businessDisposition || callStatus || 'Connected';
 
-      // 1. Create Call Log
-      const callRecord = await LeadCall.create({
-        leadId,
-        callerId: req.user._id,
-        callerName: req.user.name,
-        calleePhone: lead.phone,
-        companyName: lead.companyName,
-        callStatus: callStatus || 'Connected',
-        durationSeconds: talkDur,
-        talkDuration: talkDur,
-        acwSeconds: acwSeconds || 0,
-        remarks,
-        interested,
-        needMeeting,
-        needQuotation,
-        convertedToProspect: convertToProspect || false,
-        businessDisposition: bDisp,
-        recordingUrl: recordingUrl || null,
-        endTime: new Date()
-      });
+      // 1. Create or Update Call Log
+      let callRecord = req.body.callId ? await LeadCall.findById(req.body.callId) : null;
+      if (!callRecord) {
+        callRecord = await LeadCall.findOne({ leadId, callerId: req.user._id, callLifecycleStage: { $in: ['Initiated', 'Ringing', 'Connected', 'Completed', 'Disposition Pending'] } }).sort({ createdAt: -1 });
+      }
+
+      if (callRecord) {
+        callRecord.callStatus = callStatus || 'Connected';
+        callRecord.durationSeconds = talkDur;
+        callRecord.talkDuration = talkDur;
+        callRecord.acwSeconds = acwSeconds || 0;
+        callRecord.remarks = remarks;
+        callRecord.interested = interested;
+        callRecord.needMeeting = needMeeting;
+        callRecord.needQuotation = needQuotation;
+        callRecord.convertedToProspect = convertToProspect || false;
+        callRecord.businessDisposition = bDisp;
+        if (recordingUrl) callRecord.recordingUrl = recordingUrl;
+        callRecord.endTime = new Date();
+        await callRecord.save();
+      } else {
+        callRecord = await LeadCall.create({
+          leadId,
+          callerId: req.user._id,
+          callerName: req.user.name,
+          calleePhone: lead.phone,
+          companyName: lead.companyName,
+          callStatus: callStatus || 'Connected',
+          durationSeconds: talkDur,
+          talkDuration: talkDur,
+          acwSeconds: acwSeconds || 0,
+          remarks,
+          interested,
+          needMeeting,
+          needQuotation,
+          convertedToProspect: convertToProspect || false,
+          businessDisposition: bDisp,
+          recordingUrl: recordingUrl || null,
+          endTime: new Date()
+        });
+      }
+
+      // State machine transition to Disposed
+      try {
+        await callLifecycle.transitionStage({
+          callId: callRecord._id,
+          newStage: 'Disposed',
+          timestamp: new Date(),
+          metadata: { talkDuration: talkDur, durationSeconds: talkDur },
+          performedBy: req.user._id,
+          performedByName: req.user.name
+        });
+      } catch (lcErr) {
+        console.warn('[LeadController] State machine transition warning:', lcErr.message);
+      }
 
       // 2. Schedule Followup if date provided
       if (followupDate) {
@@ -374,15 +409,16 @@ class LeadController {
 
       // 3. Update Lead Status & Timeline
       lead.lastRemark = remarks;
-      if (interested || bDisp.toLowerCase().includes('interested')) lead.currentStatus = 'Interested';
+      if (req.body.priority) lead.priority = req.body.priority;
+      if (interested || bDisp.toLowerCase().includes('interested') || req.body.interestedLevel?.includes('Hot') || req.body.interestedLevel?.includes('Warm')) lead.currentStatus = 'Interested';
       if (callStatus === 'Busy') lead.currentStatus = 'Busy';
       if (callStatus === 'Not Reachable') lead.currentStatus = 'Not Reachable';
-      if (callStatus === 'Rejected' || bDisp.toLowerCase().includes('lost')) lead.currentStatus = 'Not Interested';
+      if (callStatus === 'Rejected' || bDisp.toLowerCase().includes('lost') || req.body.interestedLevel?.includes('Not Interested')) lead.currentStatus = 'Not Interested';
 
       lead.timeline.push({
         type: 'CALL',
         title: `Call Ended: ${bDisp} (${callStatus || 'Connected'})`,
-        description: remarks,
+        description: `${remarks}${req.body.nextAction ? ` | Next Action: ${req.body.nextAction}` : ''}${req.body.interestedLevel ? ` | Interest: ${req.body.interestedLevel}` : ''}`,
         performedBy: req.user._id,
         performedByName: req.user.name
       });
@@ -617,6 +653,20 @@ class LeadController {
       const data = await fraudDetectionService.getOpenAlerts();
       res.json({ success: true, data });
     } catch (err) { next(err); }
+  }
+
+  // GET /api/telecrm/my-reports
+  async getMyReports(req, res, next) {
+    try {
+      const isExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(req.user.role);
+      if (!isExec && req.user.role !== 'ADMIN' && req.user.role !== 'MD_CEO' && req.user.role !== 'SALES_MANAGER') {
+        return res.status(403).json({ success: false, message: 'Access denied: Insufficient permissions for reports.' });
+      }
+      const data = await analyticsService.getExecutiveMyReports(req.user._id, req.query);
+      res.json({ success: true, data });
+    } catch (err) {
+      next(err);
+    }
   }
 
   async getCeoFunnel(req, res, next) {

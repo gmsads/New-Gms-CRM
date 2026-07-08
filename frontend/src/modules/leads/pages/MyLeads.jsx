@@ -111,6 +111,64 @@ export default function MyLeads() {
     return () => { if (currentSentinel) observer.unobserve(currentSentinel); };
   }, [loading, leads.length, displayLimit]);
 
+  // Socket.IO real-time listener for automated post-call disposition popup
+  useEffect(() => {
+    if (!user?.token) return;
+
+    let socket = null;
+    const initRealtime = () => {
+      if (typeof window !== 'undefined' && window.io) {
+        const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000';
+        socket = window.io(socketUrl, {
+          auth: { token: user.token },
+          transports: ['websocket', 'polling']
+        });
+
+        socket.on('connect', () => {
+          console.log('[MyLeads] Connected to real-time calling server');
+        });
+
+        socket.on('CALL_COMPLETED', (data) => {
+          console.log('[MyLeads] CALL_COMPLETED event received:', data);
+          const targetLead = leads.find(l => l._id === data.leadId || l.phone?.includes(data.calleePhone?.slice(-10))) || activeCallLead || {
+            _id: data.leadId,
+            phone: data.calleePhone,
+            companyName: 'Customer'
+          };
+          
+          if (targetLead) {
+            setActiveCallLead({
+              ...targetLead,
+              callId: data.callId,
+              talkDuration: data.talkDuration,
+              durationSeconds: data.talkDuration,
+              recordingUrl: data.recordingUrl,
+              status: data.status
+            });
+            setShowPostModal(true);
+          }
+        });
+
+        socket.on('CALL_FAILED', (data) => {
+          console.warn('[MyLeads] CALL_FAILED event received:', data);
+        });
+      }
+    };
+
+    if (typeof window !== 'undefined' && !window.io) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.socket.io/4.7.5/socket.io.min.js';
+      script.onload = initRealtime;
+      document.head.appendChild(script);
+    } else {
+      initRealtime();
+    }
+
+    return () => {
+      if (socket) socket.disconnect();
+    };
+  }, [user, leads, activeCallLead]);
+
   // Create Lead Save Handler
   const handleCreateSave = async (formData, callImmediately) => {
     try {
@@ -133,28 +191,18 @@ export default function MyLeads() {
     }
   };
 
-  // Telephony Click To Call
+  // Telephony Click To Call (Strictly No Mobile Dialer tel: Redirects)
   const handleInitiateCall = (ld) => {
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
     leadApi.initiateCall(ld.phone, ld._id, user.token)
       .then(res => {
-        setActiveCallLead(ld);
+        setActiveCallLead({
+          ...ld,
+          callId: res.data?._id || res.call?._id
+        });
         setShowPostModal(true);
-        if (isMobile && ld.phone) {
-          const cleanNum = (ld.phone || '').replace(/\D/g, '');
-          const fullNum = cleanNum.length === 10 ? `+91${cleanNum}` : cleanNum.startsWith('+') ? cleanNum : `+${cleanNum}`;
-          window.location.href = `tel:${fullNum}`;
-        }
       })
       .catch(err => {
-        if (isMobile && ld.phone) {
-          const cleanNum = (ld.phone || '').replace(/\D/g, '');
-          const fullNum = cleanNum.length === 10 ? `+91${cleanNum}` : cleanNum.startsWith('+') ? cleanNum : `+${cleanNum}`;
-          window.location.href = `tel:${fullNum}`;
-        } else {
-          alert(err.message || 'Call failed');
-        }
+        alert(err.message || 'Call failed');
       });
   };
 
@@ -166,11 +214,15 @@ export default function MyLeads() {
   };
 
   const handleSaveDisposition = (dispData) => {
-    leadApi.saveCallDisposition(dispData, user.token)
+    const payload = {
+      ...dispData,
+      callId: activeCallLead?.callId || dispData.callId
+    };
+    leadApi.saveCallDisposition(payload, user.token)
       .then(res => {
         setShowPostModal(false);
         setActiveCallLead(null);
-        fetchMyLeads();
+        fetchMyLeads(); // In-place refresh preserving scroll & search
       })
       .catch(err => alert(err.message || 'Disposition save failed'));
   };

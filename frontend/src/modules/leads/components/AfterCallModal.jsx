@@ -20,6 +20,10 @@ export const AfterCallModal = ({ isOpen, lead, onClose, onSave }) => {
   const [businessDisposition, setBusinessDisposition] = useState('');
   const [acwSeconds, setAcwSeconds] = useState(15);
 
+  const [priority, setPriority] = useState(lead.priority || 'Medium');
+  const [interestedLevel, setInterestedLevel] = useState('Warm (Evaluating)');
+  const [nextAction, setNextAction] = useState('Follow-up Call');
+
   const statuses = [
     'Connected', 'Busy', 'Call Waiting', 'Not Reachable', 
     'Wrong Number', 'Rejected', 'Failed', 'Voicemail'
@@ -30,11 +34,14 @@ export const AfterCallModal = ({ isOpen, lead, onClose, onSave }) => {
     onSave({
       leadId: lead._id,
       callStatus,
-      durationSeconds: Math.floor(Math.random() * 60) + 20, // simulated
+      durationSeconds: lead.talkDuration || lead.durationSeconds || Math.floor(Math.random() * 60) + 20,
       remarks: remarks || `Call outcome: ${businessDisposition || callStatus}`,
       followupDate,
       followupTime,
       interested,
+      interestedLevel,
+      nextAction,
+      priority,
       needMeeting,
       needQuotation,
       convertToProspect,
@@ -104,6 +111,55 @@ export const AfterCallModal = ({ isOpen, lead, onClose, onSave }) => {
                   {b}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Priority & Interested Level & Next Action Grid */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Priority</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="w-full bg-background border rounded-xl p-2 text-xs text-foreground font-semibold focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="Low">🟢 Low</option>
+                <option value="Medium">🟡 Medium</option>
+                <option value="High">🟠 High</option>
+                <option value="Urgent">🔴 Urgent</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Interested Level</label>
+              <select
+                value={interestedLevel}
+                onChange={(e) => {
+                  setInterestedLevel(e.target.value);
+                  if (e.target.value.includes('Hot') || e.target.value.includes('Warm')) setInterested(true);
+                  if (e.target.value.includes('Not')) setInterested(false);
+                }}
+                className="w-full bg-background border rounded-xl p-2 text-xs text-foreground font-semibold focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="Hot (Ready to Buy)">🔥 Hot (Ready to Buy)</option>
+                <option value="Warm (Evaluating)">☀️ Warm (Evaluating)</option>
+                <option value="Cold (Future Interest)">❄️ Cold (Future)</option>
+                <option value="Not Interested">🚫 Not Interested</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Next Action</label>
+              <select
+                value={nextAction}
+                onChange={(e) => setNextAction(e.target.value)}
+                className="w-full bg-background border rounded-xl p-2 text-xs text-foreground font-semibold focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="Follow-up Call">📞 Follow-up Call</option>
+                <option value="Send Email / Brochure">📧 Send Email / Brochure</option>
+                <option value="Schedule Demo">💻 Schedule Demo</option>
+                <option value="Site Visit">🏢 Site Visit</option>
+                <option value="Pricing Negotiation">💰 Pricing Negotiation</option>
+                <option value="Close Deal">🤝 Close Deal</option>
+              </select>
             </div>
           </div>
 

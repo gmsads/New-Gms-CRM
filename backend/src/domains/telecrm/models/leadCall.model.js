@@ -56,10 +56,11 @@ const leadCallSchema = new mongoose.Schema(
     // Enterprise Additive Lifecycle Tracking & Recording Metadata
     callLifecycleStage: {
       type: String,
-      enum: ['Initiated', 'Ringing', 'Connected', 'Busy', 'No Answer', 'Failed', 'Cancelled', 'Missed', 'Completed'],
+      enum: ['Idle', 'Initiated', 'Ringing', 'Connected', 'Busy', 'No Answer', 'Failed', 'Cancelled', 'Missed', 'Completed', 'Disposition Pending', 'Disposed'],
       default: 'Initiated'
     },
     stageTimestamps: {
+      idleAt: { type: Date },
       initiatedAt: { type: Date, default: Date.now },
       ringingAt: { type: Date },
       connectedAt: { type: Date },
@@ -68,7 +69,9 @@ const leadCallSchema = new mongoose.Schema(
       failedAt: { type: Date },
       cancelledAt: { type: Date },
       missedAt: { type: Date },
-      completedAt: { type: Date }
+      completedAt: { type: Date },
+      dispositionPendingAt: { type: Date },
+      disposedAt: { type: Date }
     },
     callStartTime: { type: Date },
     callConnectTime: { type: Date },

@@ -48,6 +48,7 @@ import CampaignManagement from './modules/leads/pages/CampaignManagement';
 import MyLeads from './modules/leads/pages/MyLeads';
 import CallHistory from './modules/leads/pages/CallHistory';
 import LeadReports from './modules/leads/pages/LeadReports';
+import MyReports from './modules/leads/pages/MyReports';
 
 // Sales Exec Sub-pages (imported from ExecDashboard)
 
@@ -140,6 +141,7 @@ const AppRoutes = () => {
             <Route path="import" element={<LeadImport />} />
             <Route path="campaigns" element={<CampaignManagement />} />
             <Route path="my-leads" element={<MyLeads />} />
+            <Route path="my-reports" element={<MyReports />} />
             <Route path="call-history" element={<CallHistory />} />
             <Route path="reports" element={<LeadReports />} />
           </Route>

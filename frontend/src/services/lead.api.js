@@ -42,6 +42,7 @@ export const leadApi = {
   listFraudAlerts: (token) => api.get('/telecrm/fraud-alerts', token),
   getCeoFunnel: (token) => api.get('/telecrm/ceo-funnel', token),
   getScorecard: (params, token) => api.get(`/telecrm/scorecard?${new URLSearchParams(params)}`, token),
+  getMyReports: (params, token) => api.get(`/telecrm/my-reports?${new URLSearchParams(params)}`, token),
   runBulkActions: (data, token) => api.post('/telecrm/bulk-actions', data, token),
 };
 

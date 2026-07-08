@@ -62,6 +62,7 @@ router.get('/audit', ctrl.getAuditTrail);
 router.get('/fraud-alerts', ctrl.listFraudAlerts);
 router.get('/ceo-funnel', ctrl.getCeoFunnel);
 router.get('/scorecard', ctrl.getExecutiveScorecard);
+router.get('/my-reports', ctrl.getMyReports);
 router.post('/bulk-actions', ctrl.runBulkActions);
 
 // Additive Enterprise Telephony Calling & Recording Endpoints

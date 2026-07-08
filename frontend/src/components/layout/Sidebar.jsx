@@ -388,7 +388,8 @@ const Sidebar = ({ isOpen, setOpen }) => {
       icon: PhoneCall, 
       path: '/telecrm/my-leads', 
       subItems: [
-        { title: 'My Leads Desk', path: '/telecrm/my-leads', icon: Zap }
+        { title: 'My Leads Desk', path: '/telecrm/my-leads', icon: Zap },
+        { title: 'My Reports', path: '/telecrm/my-reports', icon: BarChart2 }
       ]
     },
     ...(user.role === 'FIELD_EXEC' ? [{ title: 'Field Visits', icon: Truck, path: '/field', badge: null }] : []),
