@@ -19,11 +19,11 @@ exports.list = async (req, res) => {
     const { status, salesExec, salesExecName, paymentStatus, designStatus, search, verificationStatus, orderType, month, year, hideCompleted, limit, skip, countOnly } = req.query;
     const filter = {};
 
-    if (status && status !== 'All')             filter.status             = { $regex: new RegExp(`^${status}$`, 'i') };
-    if (paymentStatus && paymentStatus !== 'All')      filter.paymentStatus      = { $regex: new RegExp(`^${paymentStatus}$`, 'i') };
-    if (designStatus && designStatus !== 'All')       filter.designStatus       = { $regex: new RegExp(`^${designStatus}$`, 'i') };
-    if (verificationStatus && verificationStatus !== 'All') filter.verificationStatus = { $regex: new RegExp(`^${verificationStatus}$`, 'i') };
-    if (orderType && orderType !== 'All')            filter.orderType          = { $regex: new RegExp(`^${orderType}$`, 'i') };
+    if (status && status !== 'All')             filter.status             = status;
+    if (paymentStatus && paymentStatus !== 'All')      filter.paymentStatus      = paymentStatus;
+    if (designStatus && designStatus !== 'All')       filter.designStatus       = designStatus;
+    if (verificationStatus && verificationStatus !== 'All') filter.verificationStatus = verificationStatus;
+    if (orderType && orderType !== 'All')            filter.orderType          = orderType;
 
     // Role-based visibility
     const accessibleIds = await getAccessibleUserIds(req.user);
@@ -61,9 +61,9 @@ exports.list = async (req, res) => {
 
     if (hideCompleted === 'true') {
       if (filter.status && typeof filter.status === 'object' && filter.status.$ne) {
-        filter.status = { $nin: ['Completed', 'Cancelled', 'completed', 'cancelled', filter.status.$ne] };
-      } else if (!filter.status || (typeof filter.status === 'object' && !filter.status.$regex)) {
-        filter.status = { $nin: ['Completed', 'Cancelled', 'completed', 'cancelled'] };
+        filter.status = { $nin: ['Completed', 'Cancelled', filter.status.$ne] };
+      } else if (!filter.status) {
+        filter.status = { $nin: ['Completed', 'Cancelled'] };
       }
     }
 

@@ -1,0 +1,37 @@
+{
+  "short_name": "Agency CRM",
+  "name": "Agency CRM - Complete Agency Management",
+  "description": "Complete CRM and Management Portal for Agencies",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#7c3aed",
+  "display": "standalone",
+  "orientation": "any",
+  "scope": "/"
+}

@@ -171,23 +171,18 @@ export const OrderList = ({
     if (isSalesExec && o.status === 'Pending_Approval') return false;
 
     const matchSearch = !search || [o.orderNumber, o.id, o.clientSnapshot?.name, o.client].some(v => String(v || '').toLowerCase().includes(search.toLowerCase()));
-    const matchType = typeFilter === 'All' || String(o.orderType || '').toLowerCase().trim() === String(typeFilter || '').toLowerCase().trim();
-    const matchPayment = paymentFilter === 'All' || String(o.paymentStatus || '').toLowerCase().trim() === String(paymentFilter || '').toLowerCase().trim();
+    const matchType = typeFilter === 'All' || o.orderType === typeFilter;
+    const matchPayment = paymentFilter === 'All' || o.paymentStatus === paymentFilter;
     let matchMonth = true;
     if (monthFilter !== 'All Months') {
       const oMonth = new Date(o.createdAt || o.date || new Date()).toLocaleString('default', { month: 'long' });
       matchMonth = oMonth === monthFilter;
     }
-    let matchYear = true;
-    if (yearFilter !== 'All Years') {
-      const oYear = new Date(o.createdAt || o.date || new Date()).getFullYear().toString();
-      matchYear = oYear === yearFilter;
-    }
     const empName = o.salesExec?.name || o.salesExec;
     const matchEmployee = employeeFilter === 'All Employees' || empName === employeeFilter;
-    const matchHide = hideCompleted ? !['Completed', 'Cancelled', 'completed', 'cancelled'].includes(o.status) : true;
+    const matchHide = hideCompleted ? !['Completed', 'Cancelled'].includes(o.status) : true;
     const matchVerification = verificationTab === 'All' || o.verificationStatus === 'Pending';
-    return matchSearch && matchType && matchPayment && matchMonth && matchYear && matchEmployee && matchHide && matchVerification;
+    return matchSearch && matchType && matchPayment && matchMonth && matchEmployee && matchHide && matchVerification;
   });
 
   const observer = useRef();
