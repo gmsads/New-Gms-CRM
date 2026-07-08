@@ -215,10 +215,12 @@ class AnalyticsService {
     let totalWorkingSeconds = 0;
     let breakSeconds = 0;
     let breakCount = 0;
+    let actualCallWorkSeconds = 0;
 
     sessions.forEach(s => {
       const d = s.durations || {};
       totalWorkingSeconds += (d.Available || 0) + (d.Calling || 0) + (d.AfterCallWork || 0) + (d.Break || 0) + (d.Meeting || 0);
+      actualCallWorkSeconds += (d.Calling || 0) + (d.AfterCallWork || 0) + (d.Meeting || 0);
       breakSeconds += (d.Break || 0) + (d.Lunch || 0);
       if (s.activityHistory && Array.isArray(s.activityHistory)) {
         s.activityHistory.forEach(act => {
@@ -236,14 +238,16 @@ class AnalyticsService {
       return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     };
 
+    const hasRealActivity = calls.length > 0 || actualCallWorkSeconds > 0;
+
     const firstCallTime = calls.length > 0 ? formatTimeOnly(calls[calls.length - 1].startTime || calls[calls.length - 1].createdAt) : '--:--';
     const lastCallTime = calls.length > 0 ? formatTimeOnly(calls[0].startTime || calls[0].createdAt) : '--:--';
 
     const activitySummary = {
       firstCallTime,
       lastCallTime,
-      totalSessionTime: formatSeconds(totalWorkingSeconds),
-      acwBreakTime: formatSeconds(breakSeconds)
+      totalSessionTime: hasRealActivity ? formatSeconds(totalWorkingSeconds) : '00h 00m',
+      acwBreakTime: hasRealActivity ? formatSeconds(breakSeconds) : '00m'
     };
 
     // 7. Message Activity
@@ -263,11 +267,11 @@ class AnalyticsService {
     // 8. Login Activity
     const loginSessions = await WorkingSession.find({ userId }).sort({ loginTime: -1 }).limit(1).lean();
     const latestLogin = loginSessions[0] || {};
-    const checkInTime = formatTimeOnly(latestLogin.loginTime || latestLogin.createdAt);
-    const checkOutTime = latestLogin.logoutTime ? formatTimeOnly(latestLogin.logoutTime) : '--:--';
+    const checkInTime = hasRealActivity && (latestLogin.loginTime || latestLogin.createdAt) ? formatTimeOnly(latestLogin.loginTime || latestLogin.createdAt) : '--:--';
+    const checkOutTime = hasRealActivity && latestLogin.logoutTime ? formatTimeOnly(latestLogin.logoutTime) : '--:--';
     
     let activeSecs = 0;
-    if (latestLogin.loginTime) {
+    if (hasRealActivity && latestLogin.loginTime) {
       const endT = latestLogin.logoutTime ? new Date(latestLogin.logoutTime).getTime() : Date.now();
       activeSecs = Math.max(0, Math.floor((endT - new Date(latestLogin.loginTime).getTime()) / 1000));
     }
@@ -275,8 +279,8 @@ class AnalyticsService {
     const loginActivity = {
       checkInTime,
       checkOutTime,
-      activeDuration: formatSeconds(activeSecs),
-      currentState: latestLogin.status || 'Available'
+      activeDuration: hasRealActivity ? formatSeconds(activeSecs) : '00h 00m',
+      currentState: latestLogin.currentStatus || latestLogin.status || 'Available'
     };
 
     return {
