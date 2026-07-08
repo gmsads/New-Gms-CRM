@@ -210,9 +210,9 @@ export default function MyLeads() {
       .then(res => {
         setActiveCallLead({
           ...ld,
-          callId: res.data?._id || res.call?._id
+          callId: res.data?._id || res.call?._id || res.data?.callId,
+          callStartTime: Date.now()
         });
-        setShowPostModal(true);
       })
       .catch(err => {
         alert(err.message || 'Call failed');
@@ -418,6 +418,33 @@ export default function MyLeads() {
         onSave={handleCreateSave}
         campaigns={campaigns}
       />
+
+      {/* ── ACTIVE CALL LIVE IN-PROGRESS BANNER ────────────────────── */}
+      {activeCallLead && !showPostModal && (
+        <div className="fixed bottom-6 right-6 z-50 bg-card border-2 border-primary/50 shadow-2xl rounded-2xl p-4 flex items-center justify-between gap-4 animate-in fade-in slide-in-from-bottom-5 max-w-md w-[calc(100%-3rem)]">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-3 w-3 rounded-full bg-emerald-500 animate-ping shrink-0" />
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-1">
+                <PhoneCall className="h-3 w-3 animate-pulse" /> Call Connected
+              </div>
+              <div className="font-extrabold text-foreground truncate text-sm">
+                {activeCallLead.contactPerson || activeCallLead.companyName || activeCallLead.phone}
+              </div>
+              <div className="text-[11px] text-muted-foreground truncate font-mono">
+                {activeCallLead.phone}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowPostModal(true)}
+            className="px-4 py-2 bg-destructive text-destructive-foreground font-extrabold rounded-xl shadow-lg hover:opacity-90 active:scale-95 transition-all text-xs flex items-center gap-1.5 shrink-0"
+            title="End Call & Dispose"
+          >
+            <CheckCircle2 className="h-4 w-4" /> End & Dispose
+          </button>
+        </div>
+      )}
 
       {/* ── AFTER CALL POST-DISPOSITION POPUP ──────────────────────── */}
       <AfterCallModal
