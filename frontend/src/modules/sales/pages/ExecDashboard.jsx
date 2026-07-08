@@ -1000,7 +1000,54 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
   const [loading, setLoading] = useState(true);
   const [showRemark, setShowRemark] = useState(null);
 
-  
+  const [loadingMoreOrders, setLoadingMoreOrders] = useState(false);
+  const [hasMoreOrders, setHasMoreOrders] = useState(true);
+  const [totalOrderCount, setTotalOrderCount] = useState(0);
+  const [localOrderFilters, setLocalOrderFilters] = useState({});
+
+  const fetchOrders = async (isReset = false, currentOrders = [], customFilters = {}) => {
+    if (!user?.token) return;
+    if (isReset) setLoading(true);
+    else setLoadingMoreOrders(true);
+
+    try {
+      let params = {};
+      if (!isTeamMode && ['SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role)) {
+        params.salesExec = user._id;
+        params.assignedTo = user._id;
+      }
+      if (isTeamMode) {
+        if (globalFilters.employee) params.salesExec = globalFilters.employee;
+        if (globalFilters.search) params.search = globalFilters.search;
+      }
+      if (customFilters.search) params.search = customFilters.search;
+      if (customFilters.orderType && customFilters.orderType !== 'All') params.orderType = customFilters.orderType;
+      if (customFilters.paymentStatus && customFilters.paymentStatus !== 'All') params.paymentStatus = customFilters.paymentStatus;
+      if (customFilters.month && customFilters.month !== 'All Months') params.month = customFilters.month;
+      if (customFilters.year && customFilters.year !== 'All Years') params.year = customFilters.year;
+      if (customFilters.employee && customFilters.employee !== 'All Employees') params.salesExecName = customFilters.employee;
+      if (customFilters.verificationStatus && customFilters.verificationStatus !== 'All') params.verificationStatus = customFilters.verificationStatus;
+      if (customFilters.hideCompleted !== undefined) {
+        if (customFilters.hideCompleted) params.hideCompleted = 'true';
+      } else {
+        params.hideCompleted = 'true';
+      }
+
+      const skip = isReset ? 0 : currentOrders.length;
+      const limit = 25;
+
+      const res = await orderApi.list({ ...params, limit, skip }, user.token);
+      if (res.success) {
+        const newOrders = isReset ? res.data : [...currentOrders, ...res.data];
+        setOrders(newOrders);
+        setTotalOrderCount(res.totalCount || 0);
+        setHasMoreOrders(res.hasMore !== undefined ? res.hasMore : (res.data.length === limit && (res.totalCount ? newOrders.length < res.totalCount : true)));
+      }
+    } finally {
+      if (isReset) setLoading(false);
+      else setLoadingMoreOrders(false);
+    }
+  };
 
   const fetch = async () => { 
     setLoading(true);
@@ -1018,9 +1065,6 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
       const pRes = await prospectApi.list(params, user.token); 
       if (pRes.success) setProspects(pRes.data.filter(p => p.nextFollowUpDate && p.stage !== 'Won' && p.stage !== 'Lost' && p.status !== 'Canceled' && p.status !== 'Order Confirmed' && p.status !== 'Sale Confirmed')); 
 
-      const oRes = await orderApi.list({ ...params, limit: 25 }, user.token);
-      if (oRes.success) setOrders(oRes.data);
-
       const aRes = await appointmentApi.list(params, user.token);
       if (aRes.success) {
         setAppointments(aRes.data.filter(a => a.status !== 'SALE_CONFIRMED' && a.status !== 'LOST' && a.status !== 'CANCELLED'));
@@ -1032,11 +1076,17 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
     }
   };
   
-  useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
+  useEffect(() => { 
+    if (activeTab === 'orders') {
+      fetchOrders(true, [], localOrderFilters);
+    } else {
+      fetch();
+    }
+  }, [activeTab, JSON.stringify(globalFilters), JSON.stringify(localOrderFilters)]);
   const pFlow = useProspectFlow(user, fetch);
-  const oFlow = useOrderFlow(user, fetch);
+  const oFlow = useOrderFlow(user, () => fetchOrders(true, [], localOrderFilters));
 
-  if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
+  if (loading && orders.length === 0 && prospects.length === 0 && appointments.length === 0) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
 
   
   return (
@@ -1078,7 +1128,17 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
           onCreateOrder={() => oFlow.setShowOrderSearch(true)} 
           onUploadPayment={oFlow.setPaymentOrder} 
           onViewDetails={oFlow.setSelectedOrder} 
-          onLineItemUpdated={fetch}
+          onLineItemUpdated={() => fetchOrders(true, [], localOrderFilters)}
+          onLoadMore={() => {
+            if (!loading && !loadingMoreOrders && hasMoreOrders) {
+              fetchOrders(false, orders, localOrderFilters);
+            }
+          }}
+          hasMore={hasMoreOrders}
+          loadingMore={loadingMoreOrders}
+          totalCount={totalOrderCount}
+          onFilterChange={setLocalOrderFilters}
+          serverSideFiltering={true}
         />
       ) : (
         <div className="rounded-xl border bg-white shadow-sm overflow-hidden">

@@ -351,7 +351,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
           if (res.success) setProspectCount(res.data.filter(p => p.nextFollowUpDate && p.stage !== 'Won' && p.stage !== 'Lost' && p.status !== 'Canceled' && p.status !== 'Order Confirmed' && p.status !== 'Sale Confirmed').length);
         }).catch(console.error);
         
-        orderApi.list({ countOnly: 'true' }, token).then(res => {
+        orderApi.list({ countOnly: 'true', hideCompleted: 'true' }, token).then(res => {
           if (res.success) setOrderCount(res.totalCount ?? res.count ?? res.data?.length ?? 0);
         }).catch(console.error);
 
