@@ -77,9 +77,22 @@ export default function MyLeads() {
           const isExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(user.role);
           let rawLeads = res.leads || [];
           if (isExec) {
-            rawLeads = rawLeads.filter(l => 
-              l.assignedEmployee?.toString() === user._id || l.createdBy?.toString() === user._id
-            );
+            const activeOwnerMode = workflowTab !== 'all' ? ownerTab : ownerTab;
+            if (activeOwnerMode === 'assigned') {
+              rawLeads = rawLeads.filter(l => 
+                (l.assignedEmployee?._id || l.assignedEmployee)?.toString() === user._id && 
+                (l.createdBy?._id || l.createdBy)?.toString() !== user._id
+              );
+            } else if (activeOwnerMode === 'created') {
+              rawLeads = rawLeads.filter(l => 
+                (l.createdBy?._id || l.createdBy)?.toString() === user._id
+              );
+            } else {
+              rawLeads = rawLeads.filter(l => 
+                (l.assignedEmployee?._id || l.assignedEmployee)?.toString() === user._id || 
+                (l.createdBy?._id || l.createdBy)?.toString() === user._id
+              );
+            }
           }
           setLeads(rawLeads);
           setDisplayLimit(25);
@@ -257,7 +270,7 @@ export default function MyLeads() {
           onClick={() => setShowCreateModal(true)}
           className="w-full md:w-auto px-5 py-2.5 bg-primary text-primary-foreground font-extrabold rounded-xl shadow-lg hover:opacity-95 active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5 shrink-0"
         >
-          <Plus className="h-4 w-4 stroke-[3]" /> Create Lead (+)
+          <Plus className="h-4 w-4 stroke-[3]" /> Create Lead
         </button>
       </div>
 

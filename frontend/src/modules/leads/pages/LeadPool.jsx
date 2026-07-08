@@ -132,8 +132,11 @@ export default function LeadPool() {
       .catch(err => alert(err.message));
   };
 
+  const isAssigned = (ld) => Boolean(ld.assignedEmployee && (ld.assignedEmployee._id || ld.assignedEmployee.name || typeof ld.assignedEmployee === 'string'));
+
   const handleSelectAll = (e) => {
-    if (e.target.checked) setSelectedIds(leads.map(l => l._id));
+    const selectable = leads.filter(l => !isAssigned(l));
+    if (e.target.checked) setSelectedIds(selectable.map(l => l._id));
     else setSelectedIds([]);
   };
 
@@ -242,7 +245,15 @@ export default function LeadPool() {
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-muted/50 border-b text-muted-foreground font-mono">
-                <th className="p-3 w-10"><input type="checkbox" onChange={handleSelectAll} checked={selectedIds.length === leads.length && leads.length > 0} className="rounded" /></th>
+                <th className="p-3 w-10">
+                  <input 
+                    type="checkbox" 
+                    onChange={handleSelectAll} 
+                    checked={leads.some(l => !isAssigned(l)) && leads.filter(l => !isAssigned(l)).every(l => selectedIds.includes(l._id))} 
+                    disabled={!leads.some(l => !isAssigned(l))}
+                    className="rounded cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" 
+                  />
+                </th>
                 <th className="p-3">Lead #</th>
                 <th className="p-3">Company & Contact</th>
                 <th className="p-3">Phone & Email</th>
@@ -260,7 +271,13 @@ export default function LeadPool() {
               ) : (
                 leads.map(ld => (
                   <tr key={ld._id} className="hover:bg-muted/30 transition-colors">
-                    <td className="p-3"><input type="checkbox" checked={selectedIds.includes(ld._id)} onChange={() => toggleSelect(ld._id)} className="rounded" /></td>
+                    <td className="p-3">
+                      {!isAssigned(ld) ? (
+                        <input type="checkbox" checked={selectedIds.includes(ld._id)} onChange={() => toggleSelect(ld._id)} className="rounded cursor-pointer" />
+                      ) : (
+                        <span className="text-muted-foreground/40 font-mono select-none">-</span>
+                      )}
+                    </td>
                     <td className="p-3 font-mono font-bold text-primary">{ld.leadNumber}</td>
                     <td className="p-3">
                       <div className="font-bold text-foreground">{ld.companyName || ld.contactPerson}</div>

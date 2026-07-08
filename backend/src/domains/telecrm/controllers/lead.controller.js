@@ -44,6 +44,7 @@ class LeadController {
       if (isExec) {
         if (ownerMode === 'assigned') {
           filter.assignedEmployee = req.user._id;
+          filter.createdBy = { $ne: req.user._id };
         } else if (ownerMode === 'created') {
           filter.createdBy = req.user._id;
         } else {
