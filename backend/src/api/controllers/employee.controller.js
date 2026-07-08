@@ -1,0 +1,418 @@
+const mongoose = require('mongoose');
+const User = require('../../domains/users/user.model');
+const Approval = require('../../domains/hr/approval.model');
+const Notification = require('../../domains/hr/notification.model');
+const { createAuditLog } = require('../../guards/audit.helper');
+
+// ── Helper: notify admins ────────────────────────────────────────
+const notifyAdmins = async (type, title, message, relatedEntity) => {
+  const admins = await User.find({ role: { $in: ['ADMIN', 'MD_CEO'] }, status: 'ACTIVE' }).select('_id');
+  const notifications = admins.map(admin => ({
+    recipient: admin._id, type, title, message, priority: 'HIGH', relatedEntity,
+  }));
+  if (notifications.length) await Notification.insertMany(notifications);
+};
+
+// ── GET /api/employees ───────────────────────────────────────────
+exports.getEmployees = async (req, res) => {
+  try {
+    const { status, role, department, search, reportingManager, page = 1, limit = 20 } = req.query;
+    const filter = {};
+    if (status) filter.status = status;
+    if (role) filter.role = role;
+    if (department) filter.department = department;
+    if (reportingManager) filter.reportingManager = reportingManager;
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { username: { $regex: search, $options: 'i' } },
+      ];
+    }
+    const skip = (page - 1) * limit;
+    const isSimple = req.query.simple === 'true' || req.query.dropdown === 'true';
+    let query = User.find(filter);
+    if (isSimple) {
+      query = query.select('_id name email role department status').sort('name');
+    } else {
+      query = query.select('-password -aadhaarNumber -currentSalary -passwordResetToken')
+        .populate('createdBy', 'name role')
+        .populate('approvedBy', 'name role')
+        .populate('reportingManager', 'name role')
+        .sort('-createdAt');
+    }
+    const [employees, total] = await Promise.all([
+      query.skip(skip).limit(Number(limit)).lean(),
+      User.countDocuments(filter),
+    ]);
+    res.json({ employees, total, page: Number(page), pages: Math.ceil(total / limit) });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ── GET /api/employees/:id ───────────────────────────────────────
+exports.getEmployee = async (req, res) => {
+  try {
+    const employee = await User.findById(req.params.id)
+      .select('-password -passwordResetToken')
+      .populate('createdBy', 'name role')
+      .populate('approvedBy', 'name role')
+      .populate('lastModifiedBy', 'name role')
+      .populate('reportingManager', 'name role');
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+    res.json(employee);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ── POST /api/employees ──────────────────────────────────────────
+// Admin/HR/MD_CEO creates employee → status: ACTIVE immediately (no approval queue)
+exports.createEmployee = async (req, res) => {
+  try {
+    const {
+      name, email, phone, role, department,
+      dateOfJoining, experience, employmentType, hrNotes,
+      alternatePhone, parentGuardianName, parentGuardianContact, panNumber, aadhaarNumber,
+    } = req.body;
+
+    // Validation
+    if (!name || !email || !phone || !role || !department) {
+      return res.status(400).json({ message: 'Name, email, phone, role, and department are required.' });
+    }
+
+    // Role escalation check — only ADMIN/MD_CEO can assign ADMIN/MD_CEO roles
+    const restrictedRoles = ['ADMIN', 'MD_CEO'];
+    if (!['ADMIN', 'MD_CEO'].includes(req.user.role) && restrictedRoles.includes(role)) {
+      return res.status(403).json({ message: `You cannot assign the '${role}' role.` });
+    }
+
+    // Duplicate check
+    const existing = await User.findOne({ $or: [{ email }, { phone }] });
+    if (existing) {
+      const field = existing.email === email ? 'email' : 'phone';
+      return res.status(409).json({ message: `An employee with this ${field} already exists.` });
+    }
+
+    let documents = [];
+    let profileImage = undefined;
+    if (req.files) {
+      if (req.files.documents) {
+        documents = req.files.documents.map(f => `/uploads/employees/documents/${f.filename}`);
+      }
+      if (req.files.profileImage && req.files.profileImage.length > 0) {
+        profileImage = `/uploads/employees/profiles/${req.files.profileImage[0].filename}`;
+      }
+    }
+
+    // Admin / HR / MD_CEO → create directly as ACTIVE (they have authority)
+    const DEFAULT_PASSWORD = 'GMS@1234';
+    const employee = await User.create({
+      name, email, phone, role, department,
+      dateOfJoining: dateOfJoining || undefined,
+      experience:    experience    || undefined,
+      employmentType: employmentType || 'FULL_TIME',
+      alternatePhone, parentGuardianName, parentGuardianContact, panNumber, aadhaarNumber,
+      documents,
+      profileImage,
+      status:         'ACTIVE',
+      createdBy:      req.user._id,
+      password:       DEFAULT_PASSWORD,
+      mustChangePassword: true,
+      // username auto-generated by pre('validate') hook → emp-0001, emp-0002 …
+    });
+
+    // Audit log (non-blocking)
+    createAuditLog({
+      action: 'EMPLOYEE_CREATED', performedBy: req.user,
+      targetEmployee: employee,
+      newValue: { name, role, department, status: 'ACTIVE' },
+      notes: hrNotes || `Created by ${req.user.role}: ${req.user.name}`,
+      req,
+    }).catch(() => {});
+
+    res.status(201).json({
+      success: true,
+      message: `${name} has been added as ${role} and is now ACTIVE.`,
+      employee: {
+        _id:        employee._id,
+        name:       employee.name,
+        employeeId: employee.username,
+        email:      employee.email,
+        role:       employee.role,
+        status:     employee.status,
+        department: employee.department,
+      },
+      loginCredentials: {
+        employeeId:  employee.username,
+        password:    DEFAULT_PASSWORD,
+        note:        'Share these credentials with the employee. They must change password on first login.',
+      },
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// ── PUT /api/employees/:id ───────────────────────────────────────
+exports.updateEmployee = async (req, res) => {
+  try {
+    const employee = await User.findById(req.params.id);
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+
+    // 1. Process standard profile updates
+    const allowedUpdates = [
+      'name', 'email', 'phone', 'department', 'experience', 'dateOfJoining', 'employmentType', 'profileImage',
+      'alternatePhone', 'parentGuardianName', 'parentGuardianContact', 'panNumber', 'aadhaarNumber'
+    ];
+    const previousValue = {};
+    const changedFields = [];
+    allowedUpdates.forEach(field => {
+      if (req.body[field] !== undefined && String(req.body[field]) !== String(employee[field])) {
+        previousValue[field] = employee[field];
+        employee.set(field, req.body[field]);
+        changedFields.push(field);
+      }
+    });
+
+    if (req.files) {
+      if (req.files.documents && req.files.documents.length > 0) {
+        const newDocs = req.files.documents.map(f => `/uploads/employees/documents/${f.filename}`);
+        employee.documents = [...(employee.documents || []), ...newDocs];
+        changedFields.push('documents');
+      }
+      if (req.files.profileImage && req.files.profileImage.length > 0) {
+        employee.profileImage = `/uploads/employees/profiles/${req.files.profileImage[0].filename}`;
+        changedFields.push('profileImage');
+      }
+    }
+
+    if (changedFields.length > 0) {
+      employee.lastModifiedBy = req.user._id;
+      await employee.save();
+
+      await createAuditLog({
+        action: 'PROFILE_UPDATED', performedBy: req.user,
+        targetEmployee: employee, previousValue, newValue: req.body,
+        changedFields, req,
+      });
+    }
+
+    let roleMsg = '';
+    // 2. Process role escalation / change
+    if (req.body.role && req.body.role !== employee.role) {
+      const restricted = ['ADMIN', 'MD_CEO'];
+      if (!['ADMIN', 'MD_CEO'].includes(req.user.role) && restricted.includes(req.body.role)) {
+        return res.status(403).json({ message: 'Role escalation denied.' });
+      }
+      // Role changes require approval
+      const approval = await Approval.create({
+        type: 'ROLE_CHANGE',
+        targetEmployee: employee._id,
+        initiatedBy: req.user._id,
+        status: 'PENDING',
+        previousValue: { role: employee.role },
+        newValue: { role: req.body.role },
+        hrNotes: req.body.changeReason || 'Role change requested',
+      });
+      await notifyAdmins('APPROVAL_REQUESTED', 'Role Change Pending Approval',
+        `${req.user.name} wants to change ${employee.name}'s role from ${employee.role} to ${req.body.role}.`,
+        { entityType: 'Approval', entityId: approval._id });
+      
+      roleMsg = ' Role change submitted for Admin approval.';
+    }
+
+    res.json({ message: `Employee updated successfully.${roleMsg}`, employee });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// ── PUT /api/employees/:id/status ────────────────────────────────
+// Admin/MD changes status (INACTIVE, SUSPENDED, REACTIVATION)
+exports.changeStatus = async (req, res) => {
+  try {
+    const { status, reason, inactiveReason, suspendFrom, suspendTo, resignationDate, inactiveRemark } = req.body;
+    const employee = await User.findById(req.params.id);
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+
+    if (!['ACTIVE', 'INACTIVE', 'SUSPENDED', 'PROBATION'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status value.' });
+    }
+
+    const previousStatus = employee.status;
+    employee.status = status;
+    
+    if (status === 'INACTIVE' || status === 'SUSPENDED') {
+      if (inactiveReason) employee.inactiveReason = inactiveReason;
+      if (suspendFrom) employee.suspendFrom = suspendFrom;
+      if (suspendTo) employee.suspendTo = suspendTo;
+      if (resignationDate) employee.resignationDate = resignationDate;
+      if (inactiveRemark) employee.inactiveRemark = inactiveRemark;
+    } else if (status === 'ACTIVE') {
+      // Clear inactivity tracking when reactivated
+      employee.inactiveReason = undefined;
+      employee.suspendFrom = undefined;
+      employee.suspendTo = undefined;
+      employee.resignationDate = undefined;
+      employee.inactiveRemark = undefined;
+    }
+
+    employee.lastModifiedBy = req.user._id;
+    await employee.save();
+
+    const actionMap = {
+      INACTIVE: 'EMPLOYEE_DEACTIVATED', SUSPENDED: 'EMPLOYEE_SUSPENDED',
+      ACTIVE: 'EMPLOYEE_REACTIVATED', PROBATION: 'STATUS_CHANGED',
+    };
+    
+    // Construct notes for audit log
+    let auditNotes = reason || '';
+    if (status !== 'ACTIVE') {
+      if (inactiveReason) auditNotes += ` [Reason: ${inactiveReason}]`;
+      if (inactiveRemark) auditNotes += ` [Remark: ${inactiveRemark}]`;
+    }
+
+    await createAuditLog({
+      action: actionMap[status] || 'STATUS_CHANGED', performedBy: req.user,
+      targetEmployee: employee, previousValue: { status: previousStatus },
+      newValue: { status, inactiveReason, suspendFrom, suspendTo, resignationDate, inactiveRemark }, req, notes: auditNotes.trim() || 'N/A',
+    });
+
+    // Notify HR
+    const hrs = await User.find({ role: 'HR', status: 'ACTIVE' }).select('_id');
+    await Notification.insertMany(hrs.map(hr => ({
+      recipient: hr._id, type: 'APPROVAL_GRANTED',
+      title: `Employee Status Changed: ${employee.name}`,
+      message: `${employee.name}'s status changed to ${status}. Reason: ${reason || 'N/A'}`,
+      priority: 'HIGH',
+    })));
+
+    res.json({ message: `Employee status changed to ${status}.` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ── DELETE /api/employees/:id (soft delete — Admin only) ─────────
+exports.deleteEmployee = async (req, res) => {
+  try {
+    const employee = await User.findById(req.params.id);
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+
+    const previousStatus = employee.status;
+    employee.status = 'INACTIVE';
+    employee.exitDate = new Date();
+    employee.exitReason = req.body.reason || 'Permanently deactivated by Admin';
+    employee.lastModifiedBy = req.user._id;
+    await employee.save();
+
+    await createAuditLog({
+      action: 'EMPLOYEE_DEACTIVATED', performedBy: req.user,
+      targetEmployee: employee, previousValue: { status: previousStatus },
+      newValue: { status: 'INACTIVE' }, req, notes: req.body.reason,
+    });
+
+    res.json({ message: 'Employee deactivated (soft deleted).' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ── POST /api/employees/:id/reset-password ─────────────────────────────────
+// HR or Admin resets password back to GMS@1234, forces change on next login
+exports.resetEmployeePassword = async (req, res) => {
+  try {
+    const employee = await User.findById(req.params.id);
+    if (!employee) return res.status(404).json({ message: 'Employee not found.' });
+
+    // Restrict HR from resetting Admin/MD_CEO passwords
+    if (['ADMIN', 'MD_CEO'].includes(employee.role) && !['ADMIN', 'MD_CEO'].includes(req.user.role)) {
+      return res.status(403).json({ message: 'You cannot reset passwords for Admin or MD/CEO accounts.' });
+    }
+
+    employee.password           = 'GMS@1234';
+    employee.mustChangePassword = true;
+    employee.lastModifiedBy     = req.user._id;
+    await employee.save();
+
+    await createAuditLog({
+      action: 'PASSWORD_RESET',
+      performedBy: req.user,
+      targetEmployee: employee,
+      notes: `Password reset to default by ${req.user.role}: ${req.user.name}`,
+      req,
+    });
+
+    res.json({
+      success: true,
+      message: `Password for ${employee.name} (${employee.username}) has been reset to the default.`,
+      employeeId: employee.username,
+      tempPassword: 'GMS@1234',
+      note: 'Employee must change this password on their next login.',
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+// ── PATCH /api/employees/:id/target ──────────────────────────────────────────
+exports.updateTarget = async (req, res) => {
+  try {
+    const { target, month } = req.body;
+    if (target === undefined) return res.status(400).json({ message: 'Target value is required.' });
+
+    // Permissions check
+    const allowedRoles = ['ADMIN', 'MD_CEO', 'SALES_MANAGER'];
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'You do not have permission to assign targets.' });
+    }
+
+    const employee = await User.findById(req.params.id);
+    if (!employee) return res.status(404).json({ message: 'Employee not found.' });
+
+    const previousTarget = employee.monthlyTarget;
+    employee.monthlyTarget = Number(target);
+    if (month) employee.targetMonth = month;
+    employee.lastModifiedBy = req.user._id;
+    await employee.save();
+
+    await createAuditLog({
+      action: 'TARGET_ASSIGNED', performedBy: req.user,
+      targetEmployee: employee,
+      previousValue: { monthlyTarget: previousTarget },
+      newValue: { monthlyTarget: target, targetMonth: month },
+      req,
+    });
+
+    res.json({ success: true, message: `Target of ₹${target} assigned to ${employee.name}.`, employee });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ── GET /api/employees/:id/master-profile ────────────────────────
+exports.getMasterProfile = async (req, res) => {
+  try {
+    const employee = await User.findById(req.params.id)
+      .select('-password -passwordResetToken')
+      .populate('createdBy', 'name role')
+      .populate('reportingManager', 'name role');
+    if (!employee) return res.status(404).json({ message: 'Employee not found' });
+    
+    // In a real implementation, we would aggregate data from:
+    // Compensation, Leaves, Attendance, HRDocuments, Training, etc.
+    const masterProfile = {
+      employee,
+      compensation: null,
+      documents: [],
+      trainings: [],
+      leaves: [],
+      attendance: []
+    };
+    res.json(masterProfile);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+

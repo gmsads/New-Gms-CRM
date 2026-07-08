@@ -1,0 +1,69 @@
+import React from 'react';
+import { useAuth } from '../context/AuthContext';
+import { Zap } from 'lucide-react';
+
+// Direct path imports
+import AdminDashboard from '../modules/admin/pages/AdminDashboard';
+import HRDashboard from '../modules/hr/pages/HRDashboard';
+import ExecDashboard from '../modules/sales/pages/ExecDashboard';
+import SalesManagerWorkspace from '../modules/sales/pages/SalesManagerWorkspace';
+import DesignDashboard from '../modules/design/pages/DesignDashboard';
+import ITDashboard from '../modules/it/pages/ITDashboard';
+import OperationsDashboard from '../modules/operations/pages/OperationsDashboard';
+
+const Dashboard = () => {
+  const { user } = useAuth();
+  
+
+  const role = user.role || '';
+
+  const renderDashboard = () => {
+    switch (role) {
+      case 'ADMIN':
+      case 'MD_CEO':
+        return <AdminDashboard />;
+      case 'HR':
+        return <HRDashboard />;
+      case 'SALES_EXEC':
+        return <ExecDashboard />;
+      case 'SALES_MANAGER':
+        return <SalesManagerWorkspace />;
+      case 'DESIGNER':
+        return <DesignDashboard />;
+      case 'IT_ADMIN':
+        return <ITDashboard />;
+      case 'OPS_MANAGER':
+      case 'OPS_EXEC':
+      case 'FIELD_EXEC':
+        return <OperationsDashboard />;
+      default:
+        return (
+          <div className="rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 bg-white p-6 sm:p-12 lg:p-20 text-center shadow-sm">
+            <div className="mx-auto mb-6 h-16 w-16 sm:h-20 sm:w-20 rounded-3xl bg-blue-50 flex items-center justify-center border border-blue-100 shadow-inner">
+              <Zap className="h-8 w-8 sm:h-10 sm:w-10 text-blue-600" />
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Welcome, {user?.name}</h3>
+            <p className="text-slate-500 font-semibold mt-2 uppercase tracking-widest text-[10px]">Portal Access: {role.replace(/_/g,' ')}</p>
+            <p className="text-xs sm:text-sm text-slate-400 mt-6 max-w-xs mx-auto">Your specialized module interface is ready. Use the navigation terminal to begin operations.</p>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700">
+      <div className="flex flex-col gap-1 sm:gap-2">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight break-words">
+          {role.toLowerCase().split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')} Dashboard
+        </h1>
+        <h2 className="text-base sm:text-lg lg:text-xl font-bold text-slate-500 break-words">
+          Welcome back, <span className="text-blue-600">{user?.name}</span>
+        </h2>
+      </div>
+
+      {renderDashboard()}
+    </div>
+  );
+};
+
+export default Dashboard;

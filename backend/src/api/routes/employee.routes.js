@@ -1,0 +1,21 @@
+const express = require('express');
+const router = express.Router();
+const c = require('../controllers/employee.controller');
+const promotionController = require('../../domains/hr/promotion.controller');
+const { protect, authorize, preventRoleEscalation, hrOnly, adminOnly } = require('../../guards/auth.guard');
+const upload = require('../../core/middlewares/upload.middleware');
+
+router.use(protect);
+router.get('/', authorize('HR', 'ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'BRANCH_HEAD'), c.getEmployees);
+router.get('/:id', hrOnly, c.getEmployee);
+router.post('/', hrOnly, upload.fields([{ name: 'profileImage', maxCount: 1 }, { name: 'documents', maxCount: 10 }]), preventRoleEscalation, c.createEmployee);
+router.put('/:id', hrOnly, upload.fields([{ name: 'profileImage', maxCount: 1 }, { name: 'documents', maxCount: 10 }]), preventRoleEscalation, c.updateEmployee);
+router.put('/:id/status', authorize('ADMIN', 'MD_CEO', 'HR'), c.changeStatus);  // HR can toggle active/inactive
+router.post('/:id/reset-password', authorize('ADMIN', 'MD_CEO', 'HR'), c.resetEmployeePassword);
+router.patch('/:id/target', authorize('ADMIN', 'MD_CEO', 'SALES_MANAGER'), c.updateTarget);
+router.post('/:id/promote', hrOnly, promotionController.promoteEmployee);
+router.get('/:id/promotions', hrOnly, promotionController.getPromotionHistory);
+router.get('/:id/master-profile', hrOnly, c.getMasterProfile);
+router.delete('/:id', adminOnly, c.deleteEmployee);
+
+module.exports = router;

@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  gms-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gms-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=${MONGO_URI:-mongodb://gms-mongo:27017/gms_crm}
+      - REDIS_URL=redis://gms-redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL}
+    volumes:
+      - gms_uploads:/app/public/uploads
+    depends_on:
+      gms-redis:
+        condition: service_healthy
+      # gms-mongo is optional (if using Atlas). Uncomment below if using local Mongo.
+      # gms-mongo:
+      #   condition: service_healthy
+    networks:
+      - gms_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  gms-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gms-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - VITE_API_URL=/api
+    depends_on:
+      gms-backend:
+        condition: service_healthy
+    networks:
+      - gms_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  gms-redis:
+    image: redis:7-alpine
+    container_name: gms-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - gms_redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gms_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Local MongoDB (Fallback if not using Atlas)
+  # To use this, run: docker-compose --profile local-db up -d
+  gms-mongo:
+    image: mongo:6
+    container_name: gms-mongo
+    restart: unless-stopped
+    profiles:
+      - local-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - gms_mongo_data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gms_network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  gms_uploads:
+    name: gms_uploads
+  gms_redis_data:
+    name: gms_redis_data
+  gms_mongo_data:
+    name: gms_mongo_data
+
+networks:
+  gms_network:
+    name: gms_network
+    driver: bridge

@@ -1,0 +1,461 @@
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Phone, MessageCircle, Plus, Search, Filter,
+  MoreVertical, ChevronUp, ChevronDown, Calendar, FileText, Trash2, Printer, Edit, IndianRupee, X, CheckCircle
+} from 'lucide-react';
+
+const STAGE_COLORS = {
+  Lead: 'bg-gray-100 text-gray-700',
+  Prospect: 'bg-blue-100 text-blue-700',
+  'Follow-up': 'bg-amber-100 text-amber-700',
+  Appointment: 'bg-purple-100 text-purple-700',
+  Quotation: 'bg-indigo-100 text-indigo-700',
+  Won: 'bg-green-100 text-green-700',
+  Lost: 'bg-red-100 text-red-700',
+};
+
+const PRIORITY_BADGE = {
+  Hot: 'bg-red-100 text-red-700 border border-red-200',
+  Warm: 'bg-orange-100 text-orange-700 border border-orange-200',
+  Cold: 'bg-blue-100 text-blue-700 border border-blue-200',
+};
+
+export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsApp, onInteract, onCreateOrder, onEdit, onDelete, onBrochure, onQuotation, onAppointment, onUpdateStage, onAddRemark, onBulkImport }) => {
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [stageFilter, setStageFilter] = useState('All');
+  const [monthFilter, setMonthFilter] = useState('All Months');
+  const [employeeFilter, setEmployeeFilter] = useState('All Employees');
+  const [openStatusMenu, setOpenStatusMenu] = useState(null);
+
+  const months = ['All Months', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  const uniqueEmployees = Array.from(new Set(
+    prospects.map(p => (typeof p.assignedTo === 'object' ? p.assignedTo?.name : p.assignedTo) || p.executiveName || 'Not Assigned')
+             .filter(name => name)
+  )).sort();
+
+  const filteredAndSorted = prospects
+    .filter(p => {
+      const matchSearch = !search || [p.name, p.company, p.phone].some(v => v?.toLowerCase().includes(search.toLowerCase()));
+      const matchStage = stageFilter === 'All' || p.source === stageFilter;
+      
+      let matchMonth = true;
+      if (monthFilter !== 'All Months') {
+        const pMonth = new Date(p.createdAt || p.updatedAt).toLocaleString('default', { month: 'long' });
+        matchMonth = pMonth === monthFilter;
+      }
+      
+      const empName = (typeof p.assignedTo === 'object' ? p.assignedTo?.name : p.assignedTo) || p.executiveName || 'Not Assigned';
+      const matchEmployee = employeeFilter === 'All Employees' || empName === employeeFilter;
+      
+      const hideInactive = sortByFollowUp ? !['Sale Confirmed', 'Canceled', 'Order Confirmed'].includes(p.status) : true;
+      
+      return matchSearch && matchStage && matchMonth && matchEmployee && hideInactive;
+    })
+    .sort((a, b) => {
+      const order = { 'In-progress': 1, 'Sale Confirmed': 2, 'Canceled': 3 };
+      const orderA = order[a.status || 'In-progress'] || 4;
+      const orderB = order[b.status || 'In-progress'] || 4;
+      
+      if (orderA !== orderB) return orderA - orderB;
+      
+      if (sortByFollowUp) {
+        const dateA = a.nextFollowUpDate ? new Date(a.nextFollowUpDate) : new Date(8640000000000000);
+        const dateB = b.nextFollowUpDate ? new Date(b.nextFollowUpDate) : new Date(8640000000000000);
+        return dateA - dateB;
+      } else {
+        const dateA = new Date(a.createdAt || a.updatedAt || 0);
+        const dateB = new Date(b.createdAt || b.updatedAt || 0);
+        return dateB - dateA;
+      }
+    });
+
+  return (
+    <div className="space-y-4">
+      {/* Filters and Controls */}
+      <div className="rounded-xl border bg-white shadow-sm p-4">
+        <div className="grid grid-cols-2 lg:flex lg:flex-row flex-wrap gap-4 mb-4">
+          <div className="flex flex-col gap-1 w-full lg:w-48">
+            <label className="text-sm font-medium text-slate-700">Year:</label>
+            <select className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
+              <option>All Years</option>
+              <option>2026</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1 w-full lg:w-48">
+            <label className="text-sm font-medium text-slate-700">Month:</label>
+            <select value={monthFilter} onChange={e => setMonthFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
+              {months.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1 col-span-2 sm:col-span-1 w-full lg:w-64">
+            <label className="text-sm font-medium text-slate-700">Lead Source:</label>
+            <select value={stageFilter} onChange={e => setStageFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
+              <option value="All">All Sources</option>
+              <option value="India mart">India mart</option>
+              <option value="Just dial">Just dial</option>
+              <option value="Google ads">Google ads</option>
+              <option value="Referral">Referral</option>
+              <option value="Website">Website</option>
+              <option value="Meta (Facebook/Instagram)">Meta (Facebook/Instagram)</option>
+              <option value="Walk-in">Walk-in</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1 col-span-2 sm:col-span-1 w-full lg:w-64">
+            <label className="text-sm font-medium text-slate-700">All Employees:</label>
+            <select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)} className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
+              <option value="All Employees">All Employees</option>
+              {uniqueEmployees.map(emp => (
+                <option key={emp} value={emp}>{emp}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        <div className="mb-4">
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Search by name, business, phone..."
+            className="h-12 w-full rounded-full border border-slate-300 px-6 text-sm outline-none focus:border-[#003366] shadow-inner"
+          />
+        </div>
+
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+          <button className="flex justify-center items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm w-full sm:w-auto" style={{ background: '#4caf50' }}>
+            <FileText className="h-4 w-4" /> Export to Excel
+          </button>
+          <button onClick={() => onBulkImport && onBulkImport()} className="flex justify-center items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm w-full sm:w-auto" style={{ background: '#1976d2' }}>
+            <FileText className="h-4 w-4" /> Import from Excel
+          </button>
+          <button className="flex justify-center items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm w-full sm:w-auto" style={{ background: '#00acc1' }}>
+            <Printer className="h-4 w-4" /> Print Report
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
+        {/* Desktop Table View */}
+        <div className="hidden lg:block overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b bg-slate-50">
+              <tr>
+                {[
+                  { name: 'Client', sticky: 0, width: 220 }, 
+                  { name: 'Created Date' }, 
+                  { name: 'Requirement' }, 
+                  { name: 'Employee' }, 
+                  { name: 'Source' }, 
+                  { name: 'Budget' }, 
+                  { name: 'History' }, 
+                  { name: 'Next Follow-up' }, 
+                  { name: 'Status' }, 
+                  { name: 'Remark' }, 
+                  { name: 'Actions' }
+                ].map(h => (
+                  <th key={h.name} className={`px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide whitespace-nowrap bg-slate-50 border-b border-slate-200 ${h.sticky !== undefined ? 'sm:sticky sm:z-20 sm:shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)]' : ''}`} style={h.sticky !== undefined ? { left: h.sticky, minWidth: h.width, maxWidth: h.width } : {}}>
+                    {h.name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredAndSorted.length === 0 ? (
+              <tr><td colSpan={10} className="px-4 py-10 text-center text-muted-foreground text-sm">
+                No prospects match your filters.
+              </td></tr>
+            ) : filteredAndSorted.map((p, idx) => {
+              let rowColor = "bg-white hover:bg-slate-50"; 
+              if (p.nextFollowUpDate) {
+                const fDate = new Date(p.nextFollowUpDate).setHours(0,0,0,0);
+                const today = new Date().setHours(0,0,0,0);
+                if (p.status === 'Canceled') rowColor = "bg-slate-50 hover:bg-slate-100";
+                else if (p.status === 'Sale Confirmed') rowColor = "bg-emerald-50 hover:bg-emerald-100"; 
+                else if (fDate < today) rowColor = "bg-red-50 hover:bg-red-100"; 
+                else if (fDate === today) rowColor = "bg-blue-50 hover:bg-blue-100"; 
+              }
+              const dotColor = p.status === 'Canceled' ? 'bg-red-500' : p.status === 'Sale Confirmed' ? 'bg-emerald-500' : 'bg-blue-500';
+
+              return (
+              <tr key={p._id || p.id || idx} className={`${rowColor} transition-colors group`}>
+                  <td className="px-4 py-3 whitespace-nowrap sm:sticky sm:left-0 sm:z-10 bg-inherit sm:shadow-[4px_0_10px_-4px_rgba(0,0,0,0.1)]" style={{ minWidth: 220, maxWidth: 220 }}>
+                    <div className="flex items-center gap-2.5">
+                      <div className="relative h-8 w-8 shrink-0">
+                        <div className="h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold bg-slate-800">
+                          {p.name.charAt(0)}
+                        </div>
+                        <div className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${dotColor}`} />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="font-semibold text-sm truncate w-full" title={p.name}>{p.name}</p>
+                        <p className="text-xs text-muted-foreground truncate w-full" title={p.company}>{p.company}</p>
+                        <p className="text-xs text-muted-foreground font-mono truncate w-full">{p.phone}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                    {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '-'}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap max-w-[220px]">
+                    {p.requirement?.service ? (
+                      <div className="flex flex-wrap gap-1">
+                        {p.requirement.service.split(', ').map((prod, i) => (
+                          <span key={i} className="inline-block px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[10px] font-semibold">{prod}</span>
+                        ))}
+                      </div>
+                    ) : <span className="text-xs text-muted-foreground">-</span>}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="text-xs font-semibold text-slate-800">
+                      {(typeof p.assignedTo === 'object' ? p.assignedTo?.name : p.assignedTo) || p.executiveName || 'Not Assigned'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className="rounded-full bg-slate-100 text-slate-700 text-xs px-2 py-0.5 font-medium">{p.source}</span>
+                  </td>
+                  <td className="px-4 py-3 text-xs font-semibold whitespace-nowrap">{p.requirement?.budget || p.budget || '-'}</td>
+                  <td className="px-4 py-2 text-xs text-muted-foreground">
+                    {p.interactions && p.interactions.length > 0 ? (
+                      <div className="flex flex-col gap-1 max-h-16 overflow-y-auto pr-1">
+                        {(p.interactions || []).slice().reverse().map((i, idx) => (
+                          <div key={idx} className="flex gap-1.5 border-b border-slate-100 pb-1 mb-1 last:border-0 last:mb-0 last:pb-0">
+                            <span className="font-semibold text-[10px] shrink-0">{new Date(i.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}:</span>
+                            <span className="text-[10px] truncate max-w-[140px]" title={i.notes}>{i.notes}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <span>-</span>}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <span className={`text-xs font-medium ${p.nextFollowUpDate && new Date(p.nextFollowUpDate) <= new Date() ? 'text-red-600 font-bold' : 'text-muted-foreground'}`}>
+                      {p.nextFollowUpDate ? new Date(p.nextFollowUpDate).toLocaleDateString() : '-'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap relative">
+                    <button 
+                      onClick={() => setOpenStatusMenu(openStatusMenu === (p._id || p.id) ? null : (p._id || p.id))}
+                      className={`rounded-full px-3 py-1 flex items-center justify-between min-w-[110px] text-xs font-bold border shadow-sm ${p.status === 'Canceled' ? 'bg-red-50 text-red-700' : p.status === 'Sale Confirmed' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`}
+                    >
+                      <span>{p.status || 'In-progress'}</span>
+                      <span className="text-[9px] opacity-60 ml-2">▼</span>
+                    </button>
+                    {openStatusMenu === (p._id || p.id) && (
+                      <div className="absolute top-10 right-0 mt-1 w-36 bg-white rounded-lg shadow-xl border border-slate-200 z-[99] py-1">
+                        {['In-progress', 'Canceled', 'Sale Confirmed'].map(s => (
+                          <div 
+                            key={s}
+                            onClick={() => { setOpenStatusMenu(null); onUpdateStage && onUpdateStage(p._id || p.id, s, 'status', p); }}
+                            className={`px-3 py-2 text-xs font-semibold cursor-pointer hover:bg-slate-50 flex items-center gap-2 ${p.status === s ? 'bg-slate-50' : ''}`}
+                          >
+                            <span className={`w-2 h-2 rounded-full ${s === 'In-progress' ? 'bg-blue-500' : s === 'Canceled' ? 'bg-red-500' : 'bg-emerald-500'}`}></span>
+                            {s}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate">{p.lastInteractionNote || p.cancelReason || '-'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => window.location.href = `tel:${p.phone}`} className="h-7 w-7 rounded border border-blue-200 bg-blue-50 flex items-center justify-center transition-colors"><Phone className="h-3.5 w-3.5 text-blue-700" /></button>
+                      <button onClick={() => window.open(`https://wa.me/${p.phone?.replace(/\D/g, '')}`, '_blank')} className="h-7 w-7 rounded border border-emerald-200 bg-emerald-50 flex items-center justify-center"><MessageCircle className="h-3.5 w-3.5 text-emerald-600" /></button>
+                      
+                      <button 
+                        onClick={() => navigate(`/brochures?phone=${p.phone}&name=${encodeURIComponent(p.name)}&prospectId=${p._id || p.id}`)} 
+                        className={`h-7 px-2 rounded border flex items-center gap-1 text-[10px] font-bold transition-all ${p.whatsappActions?.some(a => a.action === 'Brochure') ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-700'}`}
+                      >
+                        {p.whatsappActions?.some(a => a.action === 'Brochure') ? <CheckCircle className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+                        Brochure
+                      </button>
+
+                      <button 
+                        onClick={() => onQuotation && onQuotation(p)} 
+                        className={`h-7 px-2 rounded border flex items-center gap-1 text-[10px] font-bold transition-all ${p.stage === 'Quotation' || p.interactions?.some(i => i.type === 'Quotation' || i.notes?.toLowerCase().includes('quotation')) || p.whatsappActions?.some(a => a.action === 'Quotation') ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-700'}`}
+                      >
+                        {p.stage === 'Quotation' || p.interactions?.some(i => i.type === 'Quotation' || i.notes?.toLowerCase().includes('quotation')) || p.whatsappActions?.some(a => a.action === 'Quotation') ? <CheckCircle className="h-3.5 w-3.5" /> : <IndianRupee className="h-3.5 w-3.5" />}
+                        Quote
+                      </button>
+                      <button 
+                        onClick={() => onAppointment && onAppointment(p)} 
+                        className={`h-7 px-2 rounded border flex items-center gap-1 text-[10px] font-bold transition-all ${p.stage === 'Appointment' || p.interactions?.some(i => i.type === 'Meeting') ? 'border-purple-200 bg-purple-50 text-purple-700' : 'border-slate-200 bg-white text-slate-700'}`}
+                      >
+                        {p.stage === 'Appointment' || p.interactions?.some(i => i.type === 'Meeting') ? <CheckCircle className="h-3.5 w-3.5" /> : <Calendar className="h-3.5 w-3.5" />}
+                        Appt
+                      </button>
+                      <button 
+                        onClick={() => onCreateOrder && onCreateOrder(p)} 
+                        className={`h-7 px-2 rounded border flex items-center gap-1 text-[10px] font-bold ml-1 transition-all ${p.status === 'Sale Confirmed' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}
+                      >
+                        {p.status === 'Sale Confirmed' ? <CheckCircle className="h-3.5 w-3.5 text-white" /> : <Plus className="h-3.5 w-3.5" />}
+                        Order
+                      </button>
+                      <button onClick={() => onEdit && onEdit(p)} className="h-7 w-7 rounded hover:bg-slate-100 flex items-center justify-center transition-colors ml-2"><Edit className="h-3.5 w-3.5 text-slate-500" /></button>
+                      <button onClick={() => onDelete && onDelete(p._id || p.id)} className="h-7 w-7 rounded hover:bg-red-50 flex items-center justify-center transition-colors"><Trash2 className="h-3.5 w-3.5 text-red-500" /></button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile/Tablet Card View */}
+        <div className="block lg:hidden bg-slate-50/50 border-t border-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+            {filteredAndSorted.length === 0 ? (
+              <div className="col-span-full py-10 text-center text-muted-foreground text-sm">
+                No prospects match your filters.
+              </div>
+            ) : filteredAndSorted.map((p, idx) => {
+              const dotColor = p.status === 'Canceled' ? 'bg-red-500' : p.status === 'Sale Confirmed' ? 'bg-emerald-500' : 'bg-blue-500';
+              
+              return (
+                <div key={p._id || p.id || idx} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                  <div className="p-4 border-b border-slate-100 flex justify-between items-start gap-3">
+                    <div className="flex gap-3 min-w-0">
+                      <div className="relative h-10 w-10 shrink-0">
+                        <div className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-bold bg-slate-800 shadow-sm">
+                          {p.name.charAt(0)}
+                        </div>
+                        <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${dotColor}`} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-slate-800 text-sm truncate" title={p.name}>{p.name}</h3>
+                        <p className="text-xs text-slate-500 truncate" title={p.company}>{p.company}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Phone className="h-3 w-3 text-slate-400" />
+                          <span className="text-[10px] font-mono text-slate-500">{p.phone}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setOpenStatusMenu(openStatusMenu === (p._id || p.id) ? null : (p._id || p.id))}
+                      className={`shrink-0 inline-flex items-center px-2 py-1 rounded-md text-[10px] font-bold border transition-colors ${p.status === 'Canceled' ? 'bg-red-50 text-red-700 border-red-200' : p.status === 'Sale Confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}
+                    >
+                      {p.status || 'In-progress'}
+                      <ChevronDown className="h-3 w-3 ml-1 opacity-60" />
+                    </button>
+                    
+                    {openStatusMenu === (p._id || p.id) && (
+                      <div className="absolute mt-8 right-4 w-36 bg-white rounded-lg shadow-xl border border-slate-200 z-[99] overflow-hidden py-1">
+                        {['In-progress', 'Canceled', 'Sale Confirmed'].map(s => {
+                          let colorClass = 'text-slate-600 hover:bg-slate-50';
+                          let sDotColor = 'bg-slate-300';
+                          if (s === 'In-progress') { colorClass = 'text-blue-700 hover:bg-blue-50'; sDotColor = 'bg-blue-500'; }
+                          else if (s === 'Canceled') { colorClass = 'text-red-700 hover:bg-red-50'; sDotColor = 'bg-red-500'; }
+                          else if (s === 'Sale Confirmed') { colorClass = 'text-emerald-700 hover:bg-emerald-50'; sDotColor = 'bg-emerald-500'; }
+                          
+                          return (
+                            <div 
+                              key={s}
+                              onClick={() => {
+                                setOpenStatusMenu(null);
+                                onUpdateStage && onUpdateStage(p._id || p.id, s, 'status', p);
+                              }}
+                              className={`px-3 py-2 text-xs font-semibold cursor-pointer transition-colors flex items-center gap-2 ${colorClass}`}
+                            >
+                              <span className={`w-2 h-2 rounded-full shadow-sm ${sDotColor}`}></span>
+                              {s}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4 flex-1 space-y-3 bg-slate-50/50">
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs">
+                      <div className="col-span-2">
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Requirement</p>
+                        <p className="font-medium text-slate-700 line-clamp-2" title={p.requirement?.notes || (typeof p.requirement === 'string' ? p.requirement : '')}>
+                          {p.requirement?.service ? p.requirement.service.split(', ').join(', ') : (p.requirement?.notes || (typeof p.requirement === 'string' ? p.requirement : '-'))}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Employee</p>
+                        <span className="font-semibold text-slate-800">{(typeof p.assignedTo === 'object' ? p.assignedTo?.name : p.assignedTo) || p.executiveName || 'Not Assigned'}</span>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Next Follow-up</p>
+                        <p className={`font-semibold ${p.nextFollowUpDate && new Date(p.nextFollowUpDate) <= new Date() ? 'text-red-600' : 'text-slate-700'}`}>
+                          {p.nextFollowUpDate ? new Date(p.nextFollowUpDate).toLocaleDateString() : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Budget</p>
+                        <p className="font-medium text-slate-700">{p.requirement?.budget || p.budget || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Source</p>
+                        <span className="inline-block rounded-full bg-slate-200 text-slate-700 text-[10px] px-2 py-0.5 font-medium">{p.source}</span>
+                      </div>
+                    </div>
+                    
+                    {(p.lastInteractionNote || p.cancelReason) && (
+                      <div className="mt-2 pt-2 border-t border-slate-100">
+                        <p className="text-slate-400 mb-0.5 text-[10px] uppercase tracking-wider font-semibold">Latest Remark</p>
+                        <p className="text-xs text-slate-600 italic line-clamp-1">{p.lastInteractionNote || p.cancelReason}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 border-t border-slate-100 bg-white flex flex-wrap gap-2 justify-between items-center">
+                    <div className="flex gap-2">
+                      <button onClick={() => window.location.href = `tel:${p.phone}`} className="h-8 w-8 rounded-full bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors">
+                        <Phone className="h-4 w-4 text-blue-700" />
+                      </button>
+                      <button onClick={() => window.open(`https://wa.me/${p.phone?.replace(/\D/g, '')}`, '_blank')} className="h-8 w-8 rounded-full bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors">
+                        <MessageCircle className="h-4 w-4 text-emerald-600" />
+                      </button>
+                    </div>
+                    
+                    <div className="flex gap-1.5">
+                      <button 
+                        onClick={() => navigate(`/brochures?phone=${p.phone}&name=${encodeURIComponent(p.name)}&prospectId=${p._id || p.id}`)} 
+                        className={`h-8 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-semibold transition-all ${p.whatsappActions?.some(a => a.action === 'Brochure') ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-700 shadow-sm'}`}
+                      >
+                        {p.whatsappActions?.some(a => a.action === 'Brochure') ? <CheckCircle className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                        Brochure
+                      </button>
+
+                      <button 
+                        onClick={() => onQuotation && onQuotation(p)} 
+                        className={`h-8 px-2.5 rounded-full flex items-center gap-1 text-[11px] font-semibold transition-all ${p.stage === 'Quotation' || p.interactions?.some(i => i.type === 'Quotation' || i.notes?.toLowerCase().includes('quotation')) || p.whatsappActions?.some(a => a.action === 'Quotation') ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-slate-200 bg-white text-slate-700 shadow-sm'}`}
+                      >
+                        {p.stage === 'Quotation' || p.interactions?.some(i => i.type === 'Quotation' || i.notes?.toLowerCase().includes('quotation')) || p.whatsappActions?.some(a => a.action === 'Quotation') ? <CheckCircle className="h-3 w-3" /> : <IndianRupee className="h-3 w-3" />}
+                        Quote
+                      </button>
+                    </div>
+
+                    <div className="flex gap-1">
+                      <button onClick={() => onAppointment && onAppointment(p)} className="h-8 w-8 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center transition-colors shadow-sm">
+                        <Calendar className="h-3.5 w-3.5 text-purple-700" />
+                      </button>
+                      <button onClick={() => onCreateOrder && onCreateOrder(p)} className="h-8 w-8 rounded-full border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center transition-colors shadow-sm">
+                        <Plus className="h-3.5 w-3.5 text-emerald-700" />
+                      </button>
+                      <button onClick={() => onEdit && onEdit(p)} className="h-8 w-8 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
+                        <Edit className="h-3.5 w-3.5 text-slate-500" />
+                      </button>
+                      <button onClick={() => onDelete && onDelete(p._id || p.id)} className="h-8 w-8 rounded-full hover:bg-red-50 flex items-center justify-center transition-colors">
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t bg-slate-50 text-xs text-muted-foreground">
+          <span>Showing {filteredAndSorted.length} of {prospects.length} prospects</span>
+          <div className="flex gap-1"><button className="h-7 px-2 rounded border text-xs bg-white shadow-sm">← Prev</button><button className="h-7 px-2 rounded bg-blue-600 text-white text-xs shadow-sm">1</button><button className="h-7 px-2 rounded border text-xs bg-white shadow-sm">Next →</button></div>
+        </div>
+      </div>
+    </div>
+  );
+};
