@@ -70,7 +70,19 @@ export default function MyReports() {
     loginActivity: { checkInTime: '--:--', checkOutTime: '--:--', activeDuration: '00h 00m', currentState: 'Available' }
   });
 
-  const rep = data || getFallbackData();
+  const raw = data || getFallbackData();
+  const fallback = getFallbackData();
+
+  const rep = {
+    callOverview: { ...fallback.callOverview, ...(raw.callOverview || {}) },
+    outgoingCalls: { ...fallback.outgoingCalls, ...(raw.outgoingCalls || {}) },
+    followupReport: { ...fallback.followupReport, ...(raw.followupReport || raw.followUpReport || {}) },
+    dispositionReport: Array.isArray(raw.dispositionReport) ? raw.dispositionReport : fallback.dispositionReport,
+    leadPerformance: { ...fallback.leadPerformance, ...(raw.leadPerformance || {}) },
+    activitySummary: { ...fallback.activitySummary, ...(raw.activitySummary || {}) },
+    messageActivity: { ...fallback.messageActivity, ...(raw.messageActivity || {}) },
+    loginActivity: Array.isArray(raw.loginActivity) ? (raw.loginActivity[0] || fallback.loginActivity) : { ...fallback.loginActivity, ...(raw.loginActivity || {}) }
+  };
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 pb-24 animate-in fade-in duration-300">
@@ -290,7 +302,7 @@ export default function MyReports() {
               </span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
-              {(rep.dispositionReport || []).map((disp, i) => (
+              {(Array.isArray(rep.dispositionReport) ? rep.dispositionReport : []).map((disp, i) => (
                 <div key={i} className="bg-muted/30 p-3 rounded-xl border border-border/50 flex flex-col justify-between">
                   <div className="flex items-center justify-between gap-1 mb-1">
                     <span className="text-[11px] font-bold text-muted-foreground truncate">{disp.label}</span>

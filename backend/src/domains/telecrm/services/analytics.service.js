@@ -120,28 +120,58 @@ class AnalyticsService {
 
     const unconnectedCalls = totalCalls - connectedCalls;
     const avgCallDuration = connectedCalls > 0 ? Math.round(totalCallTime / connectedCalls) : 0;
+    const connectedRatio = totalCalls > 0 ? Math.round((connectedCalls / totalCalls) * 100) : 0;
 
     const callOverview = {
       totalCalls,
-      connectedCalls,
-      totalCallTime,
-      unconnectedCalls,
-      avgCallDuration
+      answeredCalls: connectedCalls,
+      unansweredCalls: unconnectedCalls,
+      connectedRatio
     };
+
+    const formatSeconds = (sec) => {
+      if (!sec || isNaN(sec) || sec <= 0) return '0s';
+      const h = Math.floor(sec / 3600);
+      const m = Math.floor((sec % 3600) / 60);
+      const s = Math.floor(sec % 60);
+      if (h > 0) return `${h}h ${m}m`;
+      if (m > 0) return `${m}m ${s}s`;
+      return `${s}s`;
+    };
+
+    const longestDuration = calls.reduce((max, c) => Math.max(max, c.talkDuration || c.durationSeconds || 0), 0);
+    const positiveDurations = calls.map(c => c.talkDuration || c.durationSeconds || 0).filter(d => d > 0);
+    const shortestDuration = positiveDurations.length > 0 ? Math.min(...positiveDurations) : 0;
 
     const outgoingCalls = {
-      totalOutgoing: totalCalls,
-      connected: connectedCalls,
-      unanswered: unconnectedCalls,
-      avgDuration: avgCallDuration
+      totalTalkDuration: formatSeconds(totalCallTime),
+      avgTalkTime: formatSeconds(avgCallDuration),
+      longestCall: formatSeconds(longestDuration),
+      shortestCall: formatSeconds(shortestDuration)
     };
 
-    const dispositionReport = {
-      totalDispositions,
-      connectedDispositions,
-      notConnectedDispositions,
-      convertedLeads
+    const dispColors = {
+      'Connected': 'bg-emerald-500',
+      'Busy / Call Waiting': 'bg-amber-500',
+      'Not Reachable': 'bg-blue-500',
+      'Interested / Demo': 'bg-indigo-500',
+      'Quotation Sent': 'bg-purple-500',
+      'Not Interested / Lost': 'bg-rose-500'
     };
+    const dispMap = { 'Connected': 0, 'Busy / Call Waiting': 0, 'Not Reachable': 0, 'Interested / Demo': 0, 'Quotation Sent': 0, 'Not Interested / Lost': 0 };
+    calls.forEach(c => {
+      if (c.callStatus === 'Connected') dispMap['Connected']++;
+      else if (c.callStatus === 'Busy' || c.callStatus === 'Call Waiting') dispMap['Busy / Call Waiting']++;
+      else dispMap['Not Reachable']++;
+      if (c.interested || (c.businessDisposition && c.businessDisposition.toLowerCase().includes('interested'))) dispMap['Interested / Demo']++;
+      if (c.needQuotation || (c.businessDisposition && c.businessDisposition.toLowerCase().includes('quotation'))) dispMap['Quotation Sent']++;
+      if (c.businessDisposition && c.businessDisposition.toLowerCase().includes('not interested')) dispMap['Not Interested / Lost']++;
+    });
+    const dispositionReport = Object.keys(dispMap).map(label => ({
+      label,
+      count: dispMap[label],
+      color: dispColors[label] || 'bg-primary'
+    }));
 
     // 3. Follow-up Report
     const todayStart = new Date(); todayStart.setHours(0,0,0,0);
@@ -155,17 +185,15 @@ class AnalyticsService {
       LeadFollowup.countDocuments({ userId, scheduledAt: { $gte: yestStart, $lte: yestEnd }, status: { $ne: 'Completed' } })
     ]);
 
-    const compliance = (dueToday + completedToday) > 0 ? Math.round((completedToday / (dueToday + completedToday)) * 100) : 100;
-    const followUpReport = {
-      dueToday,
-      completedToday,
-      missedYesterday,
-      compliance,
-      avgTurnAroundTime: 120
+    const followupReport = {
+      totalScheduled: dueToday + completedToday,
+      completed: completedToday,
+      overdue: missedYesterday,
+      upcomingToday: dueToday
     };
 
     // 5. Lead Performance
-    const [assignedLeads, selfCreatedLeads, contacted, interested, hotLeads, qualified, convertedToProspect] = await Promise.all([
+    const [assignedLeads, selfCreatedLeads, contacted, interestedCount, hotLeads, qualified, convertedToProspect] = await Promise.all([
       Lead.countDocuments({ assignedEmployee: userId, isDeleted: { $ne: true } }),
       Lead.countDocuments({ createdBy: userId, isDeleted: { $ne: true } }),
       Lead.countDocuments({ assignedEmployee: userId, firstCalledAt: { $ne: null }, isDeleted: { $ne: true } }),
@@ -176,13 +204,10 @@ class AnalyticsService {
     ]);
 
     const leadPerformance = {
-      assignedLeads,
-      selfCreatedLeads,
-      contacted,
-      interested,
-      hotLeads,
-      qualified,
-      convertedToProspect
+      totalWorked: assignedLeads + selfCreatedLeads,
+      touchedToday: contacted,
+      convertedToProspect,
+      hotLeads
     };
 
     // 6. Activity Summary
@@ -204,18 +229,21 @@ class AnalyticsService {
       }
     });
 
-    const workHours = totalWorkingSeconds / 3600;
-    const callsPerHour = workHours > 0 ? Math.round((totalCalls / workHours) * 10) / 10 : totalCalls;
-    const productivityScore = totalWorkingSeconds > 0 ? Math.min(100, Math.round(((totalWorkingSeconds - breakSeconds) / totalWorkingSeconds) * 100)) : 85;
+    const formatTimeOnly = (dt) => {
+      if (!dt) return '--:--';
+      const d = new Date(dt);
+      if (isNaN(d.getTime())) return '--:--';
+      return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    };
+
+    const firstCallTime = calls.length > 0 ? formatTimeOnly(calls[calls.length - 1].startTime || calls[calls.length - 1].createdAt) : '--:--';
+    const lastCallTime = calls.length > 0 ? formatTimeOnly(calls[0].startTime || calls[0].createdAt) : '--:--';
 
     const activitySummary = {
-      totalWorkingHours: Math.round(workHours * 10) / 10,
-      totalTalkTime: totalCallTime,
-      avgTalkTime: avgCallDuration,
-      callsPerHour,
-      productivityScore,
-      breakCount,
-      breakDuration: breakSeconds
+      firstCallTime,
+      lastCallTime,
+      totalSessionTime: formatSeconds(totalWorkingSeconds),
+      acwBreakTime: formatSeconds(breakSeconds)
     };
 
     // 7. Message Activity
@@ -227,34 +255,34 @@ class AnalyticsService {
 
     const messageActivity = {
       whatsappSent,
+      emailSent: emailsSent,
       smsSent,
-      emailsSent
+      quotesDispatched: calls.filter(c => c.needQuotation).length
     };
 
     // 8. Login Activity
-    const loginSessions = await WorkingSession.find({ userId }).sort({ loginTime: -1 }).limit(10).lean();
-    const loginActivity = loginSessions.map(ls => {
-      const logIn = ls.loginTime || ls.createdAt;
-      const logOut = ls.logoutTime;
-      let totalSessSecs = 0;
-      if (logOut && logIn) {
-        totalSessSecs = Math.floor((new Date(logOut).getTime() - new Date(logIn).getTime()) / 1000);
-      } else if (logIn) {
-        totalSessSecs = Math.floor((Date.now() - new Date(logIn).getTime()) / 1000);
-      }
-      return {
-        loginTime: logIn,
-        logoutTime: logOut || null,
-        totalSession: totalSessSecs,
-        device: ls.device || 'Web/Mobile App',
-        location: ls.location || 'India (HQ)'
-      };
-    });
+    const loginSessions = await WorkingSession.find({ userId }).sort({ loginTime: -1 }).limit(1).lean();
+    const latestLogin = loginSessions[0] || {};
+    const checkInTime = formatTimeOnly(latestLogin.loginTime || latestLogin.createdAt);
+    const checkOutTime = latestLogin.logoutTime ? formatTimeOnly(latestLogin.logoutTime) : '--:--';
+    
+    let activeSecs = 0;
+    if (latestLogin.loginTime) {
+      const endT = latestLogin.logoutTime ? new Date(latestLogin.logoutTime).getTime() : Date.now();
+      activeSecs = Math.max(0, Math.floor((endT - new Date(latestLogin.loginTime).getTime()) / 1000));
+    }
+
+    const loginActivity = {
+      checkInTime,
+      checkOutTime,
+      activeDuration: formatSeconds(activeSecs),
+      currentState: latestLogin.status || 'Available'
+    };
 
     return {
       callOverview,
       outgoingCalls,
-      followUpReport,
+      followupReport,
       dispositionReport,
       leadPerformance,
       activitySummary,
