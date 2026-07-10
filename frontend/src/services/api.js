@@ -322,4 +322,15 @@ export const teamApi = {
   delete: (id, token) => api.delete(`/teams/${id}`, token),
 };
 
+export const visitApi = {
+  list:          (params, token) => api.get(`/visits?${new URLSearchParams(params)}`, token),
+  getDailyReports: (params, token) => api.get(`/visits/daily-reports?${new URLSearchParams(params)}`, token),
+  recordPing:    (data, token)   => api.post('/visits/location-ping', data, token),
+  getPings:      (params, token) => api.get(`/visits/location-pings?${new URLSearchParams(params)}`, token),
+  create:        (data, token)   => api.post('/visits', data, token),
+  checkIn:       (id, data, token) => api.patch(`/visits/${id}/check-in`, data, token),
+  checkOut:      (id, data, token) => api.patch(`/visits/${id}/check-out`, data, token),
+  update:        (id, data, token) => api.patch(`/visits/${id}`, data, token),
+};
+
 export default api;

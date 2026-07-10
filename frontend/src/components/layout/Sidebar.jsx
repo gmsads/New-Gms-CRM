@@ -58,6 +58,7 @@ const menuConfig = [
   { title: 'Clients & Leads',  icon: Users,           path: '/clients',   roles: ['ADMIN','SALES_MANAGER','SR_SALES_MANAGER','AGENT'] },
   { title: 'Campaigns',        icon: Megaphone,       path: '/campaigns', roles: ['ADMIN','SALES_MANAGER','OPERATION_MANAGER','AGENT'] },
   { title: 'Field Operations', icon: Truck,           path: '/field',     roles: ['ADMIN','FIELD_EXEC','OPERATION_MANAGER'] },
+  { title: 'Daily Visit Reports', icon: Clock,        path: '/daily-reports', roles: ['ALL'] },
   { title: 'Design Assets',    icon: Palette,         path: '/design',    roles: ['ADMIN','DESIGNER','OPERATION_EXEC'] },
   { title: 'Tasks',            icon: CheckSquare,     path: '/tasks',     roles: ['ALL'] },
   { title: 'My Leaves',        icon: Calendar,        path: '/leaves',    roles: ['ALL'] },
@@ -198,6 +199,7 @@ const adminMenuConfig = [
     icon: BarChart2,
     path: '/analytics-center',
     subItems: [
+      { title: 'Daily Visit Reports', path: '/daily-reports', icon: Clock },
       { title: 'Sales Reports', path: '/analytics', icon: PieChart },
       { title: 'Revenue Reports', path: '/analytics/revenue', icon: IndianRupee },
       { title: 'Team Performance', path: '/hr/performance', icon: Target },
@@ -393,6 +395,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
       ]
     },
     ...(user.role === 'FIELD_EXEC' ? [{ title: 'Field Visits', icon: Truck, path: '/field', badge: null }] : []),
+    { title: 'Daily Visit Reports', icon: Clock, path: '/daily-reports', badge: null },
     { title: 'Prospects',     icon: Users,           path: '/prospects',   badge: null },
     { 
       title: 'Follow-ups',    

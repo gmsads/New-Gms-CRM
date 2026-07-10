@@ -14,6 +14,7 @@ import EmployeeLeaves from './pages/EmployeeLeaves';
 import Clients from './modules/sales/pages/ClientPortfolio';
 import Campaigns from './modules/operations/pages/CampaignManager';
 import Tasks from './modules/operations/pages/TaskTerminal';
+import DailyReports from './pages/DailyReports';
 import Field from './modules/operations/pages/OperationsDashboard';
 import DesignRoutes from './modules/design/DesignRoutes';
 import ProductionManagerDashboard from './modules/production/manager/ProductionManagerDashboard';
@@ -148,6 +149,7 @@ const AppRoutes = () => {
 
           <Route path="hr/*"        element={<HR />} />
           <Route path="field"       element={<Field />} />
+          <Route path="daily-reports" element={<DailyReports />} />
           <Route path="design/*"    element={<DesignRoutes />} />
           <Route path="production/manager/*" element={<ErrorBoundary><ProductionManagerDashboard /></ErrorBoundary>} />
           <Route path="production/executive/*" element={<ErrorBoundary><ProductionExecutiveDashboard /></ErrorBoundary>} />

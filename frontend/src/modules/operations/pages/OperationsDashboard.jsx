@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MapPin, CheckCircle2, Clock, Plus, Truck, AlertCircle, RefreshCw, Filter, X, Search, Camera, User, Phone as PhoneIcon, Building, Calendar as CalendarIcon, FileText, MessageCircle, MoreVertical } from 'lucide-react';
+import { MapPin, CheckCircle2, Clock, Plus, Truck, AlertCircle, RefreshCw, Filter, X, Search, Camera, User, Phone as PhoneIcon, Building, Calendar as CalendarIcon, FileText, MessageCircle, MoreVertical, Navigation, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import useApi from '../../../hooks/useApi';
+import { visitApi } from '../../../services/api';
 
 const statusStyle = {
   Completed: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -23,6 +24,75 @@ const OperationsDashboard = () => {
   const { user } = useAuth();
   const { data, loading, error, refetch, request } = useApi('/visits');
   const [filter, setFilter] = useState('All');
+
+  // Location Access Check & Live Tracking for Admin Monitoring
+  const [locationStatus, setLocationStatus] = useState('checking'); // 'checking', 'granted', 'denied', 'error'
+  const [currentCoords, setCurrentCoords] = useState(null);
+  const [showLocationWarningModal, setShowLocationWarningModal] = useState(false);
+
+  const checkAndStartLocationTracking = () => {
+    if (!navigator.geolocation) {
+      setLocationStatus('error');
+      setShowLocationWarningModal(true);
+      return;
+    }
+
+    setLocationStatus('checking');
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        setCurrentCoords({ latitude, longitude, accuracy });
+        setLocationStatus('granted');
+        setShowLocationWarningModal(false);
+
+        if (user && user.token) {
+          try {
+            await visitApi.recordPing({
+              latitude,
+              longitude,
+              accuracy,
+              status: 'Active (Field Visits Menu)',
+              locationName: `Lat ${latitude.toFixed(4)}, Lng ${longitude.toFixed(4)}`
+            }, user.token);
+          } catch (e) {
+            console.error('Ping error:', e);
+          }
+        }
+      },
+      (err) => {
+        console.warn('Geolocation error or permission denied:', err);
+        setLocationStatus('denied');
+        setShowLocationWarningModal(true);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  useEffect(() => {
+    checkAndStartLocationTracking();
+
+    const interval = setInterval(() => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          const { latitude, longitude, accuracy } = pos.coords;
+          setCurrentCoords({ latitude, longitude, accuracy });
+          if (user && user.token) {
+            try {
+              await visitApi.recordPing({
+                latitude,
+                longitude,
+                accuracy,
+                status: 'Active (Field Operations)',
+                locationName: `Lat ${latitude.toFixed(4)}, Lng ${longitude.toFixed(4)}`
+              }, user.token);
+            } catch (e) {}
+          }
+        }, () => {});
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Modals state
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -244,6 +314,53 @@ const OperationsDashboard = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 animate-in fade-in duration-700 relative min-w-0">
+      {/* Location Status & Admin Verification Banner */}
+      {locationStatus === 'granted' ? (
+        <div className="rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-4 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-300">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center font-bold shrink-0">
+              <Navigation className="h-5 w-5 animate-pulse" />
+            </div>
+            <div>
+              <p className="font-extrabold text-sm flex items-center gap-2">
+                Location Access OK — Live GPS Tracking Active
+                <span className="bg-emerald-800/80 px-2 py-0.5 rounded text-[10px] font-bold">VERIFIED</span>
+              </p>
+              <p className="text-xs text-emerald-100 mt-0.5">
+                Your location & onsite duration are being logged accurately for Admin verification and daily reporting.
+              </p>
+            </div>
+          </div>
+          {currentCoords && (
+            <span className="text-xs bg-white/10 px-3 py-1.5 rounded-xl border border-white/20 shrink-0 font-mono">
+              📍 {currentCoords.latitude.toFixed(4)}, {currentCoords.longitude.toFixed(4)}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-2xl bg-gradient-to-r from-red-600 via-rose-700 to-amber-700 text-white p-4.5 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-start gap-3.5">
+            <div className="h-11 w-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <ShieldAlert className="h-6 w-6 text-amber-200" />
+            </div>
+            <div>
+              <p className="font-black text-sm sm:text-base leading-snug">
+                ⚠️ Location Access is OFF or Permission Denied!
+              </p>
+              <p className="text-xs sm:text-sm text-red-100 mt-1 leading-relaxed">
+                Admin requires verified location access during field visits to check where business visits occur and calculate exact time spent on client locations versus elsewhere.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={checkAndStartLocationTracking}
+            className="px-4 py-2.5 rounded-xl bg-white text-red-700 hover:bg-red-50 font-extrabold text-xs sm:text-sm transition-all shadow-md active:scale-95 shrink-0 flex items-center gap-1.5"
+          >
+            <Navigation className="h-4 w-4" /> Turn ON Location Access
+          </button>
+        </div>
+      )}
+
       <div className="py-4 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sm:gap-6 min-w-0">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 truncate">
@@ -625,6 +742,55 @@ const OperationsDashboard = () => {
               </button>
               <button type="submit" onClick={handleScheduleVisit} className="h-12 w-full sm:w-auto px-10 rounded-xl text-white font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-md shadow-blue-900/20 flex justify-center items-center gap-2" style={{ background: "linear-gradient(135deg, #003366 0%, #004080 100%)" }}>
                 <CheckCircle2 className="h-5 w-5" /> Schedule Visit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Location Access Required Modal */}
+      {showLocationWarningModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-100 text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-red-600 via-amber-600 to-[#003366]" />
+            
+            <div className="h-16 w-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-inner">
+              <ShieldAlert className="h-8 w-8 animate-bounce" />
+            </div>
+
+            <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Location Access Required
+            </h3>
+            <p className="text-sm font-semibold text-slate-600 mt-2 leading-relaxed">
+              To log field visits and operate in the field menu, your browser or device location must be turned ON and permissions granted.
+            </p>
+
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 my-5 text-left space-y-2">
+              <p className="text-xs font-black text-[#003366] uppercase tracking-wider flex items-center gap-1.5">
+                <Navigation className="h-4 w-4" /> Why is this checked?
+              </p>
+              <p className="text-xs font-medium text-slate-600 leading-relaxed">
+                • <strong>Business Location Verification:</strong> Admin checks if you actually visited the designated client business location.<br />
+                • <strong>Time & Route Analysis:</strong> Admin reviews how much time you spent on the client site versus on the road or other places.<br />
+                • <strong>Live Route Timeline:</strong> Automatic GPS mapping builds your daily visit report.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLocationWarningModal(false)}
+                className="flex-1 py-3 px-4 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors"
+              >
+                Dismiss Warning
+              </button>
+              <button
+                type="button"
+                onClick={checkAndStartLocationTracking}
+                className="flex-1 py-3 px-4 rounded-xl text-white font-extrabold text-xs shadow-lg hover:opacity-95 transition-all flex items-center justify-center gap-2 active:scale-95"
+                style={{ background: 'linear-gradient(135deg, #003366 0%, #004080 100%)' }}
+              >
+                <RefreshCw className="h-4 w-4" /> Retest Location Access
               </button>
             </div>
           </div>
