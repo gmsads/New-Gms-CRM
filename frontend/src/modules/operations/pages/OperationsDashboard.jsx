@@ -122,6 +122,7 @@ const OperationsDashboard = () => {
 
   // Camera state
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState("environment");
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -132,9 +133,14 @@ const OperationsDashboard = () => {
     }
   }, [newVisitModalOpen]);
 
-  const startCamera = async () => {
+  const startCamera = async (mode = cameraFacingMode) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      setCameraFacingMode(mode);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
       streamRef.current = stream;
       setIsCameraOpen(true);
       setTimeout(() => {
@@ -144,8 +150,24 @@ const OperationsDashboard = () => {
       }, 50);
     } catch (err) {
       console.error("Camera access denied:", err);
-      alert("Unable to access camera. Please allow camera permissions in your browser.");
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        streamRef.current = stream;
+        setIsCameraOpen(true);
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+        }, 50);
+      } catch (fallbackErr) {
+        alert("Unable to access camera. Please allow camera permissions in your browser.");
+      }
     }
+  };
+
+  const toggleCameraFacingMode = async () => {
+    const nextMode = cameraFacingMode === "environment" ? "user" : "environment";
+    await startCamera(nextMode);
   };
 
   const stopCamera = () => {
@@ -161,7 +183,15 @@ const OperationsDashboard = () => {
       const context = canvasRef.current.getContext('2d');
       canvasRef.current.width = videoRef.current.videoWidth;
       canvasRef.current.height = videoRef.current.videoHeight;
+      
+      if (cameraFacingMode === "user") {
+        context.translate(canvasRef.current.width, 0);
+        context.scale(-1, 1);
+      }
       context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+      if (cameraFacingMode === "user") {
+        context.setTransform(1, 0, 0, 1, 0, 0);
+      }
       
       const dataUrl = canvasRef.current.toDataURL('image/jpeg');
       setPhotoPreview(dataUrl);
@@ -683,10 +713,20 @@ const OperationsDashboard = () => {
                   <div className="border-2 border-dashed border-slate-200 rounded-[1.5rem] p-4 text-center hover:bg-slate-50 hover:border-[#003366]/40 transition-all group bg-slate-50/50 relative overflow-hidden flex flex-col items-center justify-center min-h-[160px]">
                     {isCameraOpen ? (
                       <div className="absolute inset-0 z-20 bg-black flex flex-col items-center justify-center">
-                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                        <button type="button" onClick={capturePhoto} className="absolute bottom-4 h-12 w-12 bg-white rounded-full border-4 border-slate-300 shadow-lg active:scale-95 transition-transform" />
-                        <button type="button" onClick={stopCamera} className="absolute top-2 right-2 text-white bg-black/50 p-1.5 rounded-full hover:bg-black/80">
-                          <X className="h-4 w-4" />
+                        <video ref={videoRef} autoPlay playsInline className={`w-full h-full object-cover ${cameraFacingMode === 'user' ? 'scale-x-[-1]' : ''}`} />
+                        
+                        {/* Shutter / Capture Photo Button */}
+                        <button type="button" onClick={capturePhoto} title="Capture Photo" className="absolute bottom-4 h-14 w-14 bg-white rounded-full border-4 border-slate-300 shadow-xl active:scale-95 transition-transform flex items-center justify-center" />
+                        
+                        {/* Toggle / Switch Camera Button (Front <-> Back) */}
+                        <button type="button" onClick={toggleCameraFacingMode} title="Switch Front/Back Camera" className="absolute bottom-4 right-4 z-30 text-white bg-black/60 hover:bg-black/80 backdrop-blur-md px-3.5 py-2 rounded-full flex items-center gap-1.5 text-xs font-bold shadow-lg transition-all active:scale-95 border border-white/20">
+                          <RefreshCw className="h-4 w-4 animate-spin-once" />
+                          <span>{cameraFacingMode === 'environment' ? 'Selfie / Front' : 'Back Camera'}</span>
+                        </button>
+
+                        {/* Close Camera Button */}
+                        <button type="button" onClick={stopCamera} title="Close Camera" className="absolute top-3 right-3 z-30 text-white bg-black/60 hover:bg-black/80 backdrop-blur-md p-2 rounded-full border border-white/20 transition-all active:scale-95">
+                          <X className="h-5 w-5" />
                         </button>
                       </div>
                     ) : photoPreview ? (
@@ -694,10 +734,29 @@ const OperationsDashboard = () => {
                     ) : null}
 
                     <div className="relative z-10 flex flex-col items-center w-full">
-                      <button type="button" onClick={startCamera} className={`h-16 w-16 rounded-full shadow-sm flex items-center justify-center mx-auto mb-3 border transition-transform group-hover:scale-110 ${photoPreview ? 'bg-white/90 text-emerald-600 border-emerald-100' : 'bg-white text-[#003366] border-slate-100'}`}>
-                        {photoPreview ? <CheckCircle2 className="h-7 w-7" /> : <Camera className="h-7 w-7" />}
-                      </button>
-                      <p className="text-sm font-black text-slate-800 mb-1">{photoPreview ? 'Retake Photo' : 'Click to open camera'}</p>
+                      {photoPreview ? (
+                        <>
+                          <button type="button" onClick={() => startCamera(cameraFacingMode)} className="h-16 w-16 rounded-full shadow-sm flex items-center justify-center mx-auto mb-3 border transition-transform group-hover:scale-110 bg-white/90 text-emerald-600 border-emerald-100">
+                            <CheckCircle2 className="h-7 w-7" />
+                          </button>
+                          <p className="text-sm font-black text-slate-800 mb-1">Retake Photo</p>
+                          <button type="button" onClick={() => setPhotoPreview(null)} className="text-xs text-red-500 font-bold hover:underline mt-0.5">Remove Photo</button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-center gap-4 mb-3">
+                            <button type="button" onClick={() => startCamera("environment")} title="Take Back Camera Photo" className="h-16 px-4 rounded-2xl shadow-sm flex flex-col items-center justify-center bg-white text-[#003366] border border-slate-200 hover:bg-[#003366]/5 transition-all group-hover:scale-105 active:scale-95">
+                              <Camera className="h-6 w-6 mb-1 text-[#003366]" />
+                              <span className="text-[11px] font-black tracking-wide">Back Camera</span>
+                            </button>
+                            <button type="button" onClick={() => startCamera("user")} title="Take Front Selfie Photo" className="h-16 px-4 rounded-2xl shadow-sm flex flex-col items-center justify-center bg-white text-[#003366] border border-slate-200 hover:bg-[#003366]/5 transition-all group-hover:scale-105 active:scale-95">
+                              <User className="h-6 w-6 mb-1 text-emerald-600" />
+                              <span className="text-[11px] font-black tracking-wide">Take Selfie</span>
+                            </button>
+                          </div>
+                          <p className="text-sm font-black text-slate-800 mb-1">Choose Back Camera or Selfie</p>
+                        </>
+                      )}
                       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Required</p>
                     </div>
                     <canvas ref={canvasRef} className="hidden" />

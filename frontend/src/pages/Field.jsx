@@ -353,7 +353,7 @@ const Field = () => {
                   </div>
                   <p className="text-sm font-medium text-slate-700 mb-1">Click to upload or capture photo</p>
                   <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
-                  <input type="file" accept="image/*" capture="environment" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" id="visit-photo-upload" />
+                  <input type="file" accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" id="visit-photo-upload" />
                 </div>
               </div>
 
