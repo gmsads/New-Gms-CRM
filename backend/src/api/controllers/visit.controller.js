@@ -243,6 +243,11 @@ exports.getDailyReports = async (req, res) => {
       };
     }
 
+    // Hierarchical scoping: If requesting user is Branch Head / Manager, filter users by branch
+    if (req.user && ['BRANCH_HEAD', 'BRANCH_MANAGER'].includes(req.user.role) && req.user.branch) {
+      userQuery.branch = req.user.branch;
+    }
+
     let users = await User.find(userQuery)
       .select('name email role phone department profilePicture')
       .lean();
