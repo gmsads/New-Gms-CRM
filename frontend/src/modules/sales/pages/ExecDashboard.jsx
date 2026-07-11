@@ -1018,7 +1018,7 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
       const pRes = await prospectApi.list(params, user.token); 
       if (pRes.success) setProspects(pRes.data.filter(p => p.nextFollowUpDate && p.stage !== 'Won' && p.stage !== 'Lost' && p.status !== 'Canceled' && p.status !== 'Order Confirmed' && p.status !== 'Sale Confirmed')); 
 
-      const oRes = await orderApi.list({ ...params, limit: 25 }, user.token);
+      const oRes = await orderApi.list({ ...params, limit: 100, hideCompleted: 'true' }, user.token);
       if (oRes.success) setOrders(oRes.data);
 
       const aRes = await appointmentApi.list(params, user.token);

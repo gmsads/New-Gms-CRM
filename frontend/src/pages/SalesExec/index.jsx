@@ -1247,7 +1247,7 @@ export const SalesFollowups = () => {
 
   const fetchOrders = async () => {
     try {
-      const res = await orderApi.list({}, user?.token);
+      const res = await orderApi.list({ hideCompleted: 'true' }, user?.token);
       if (res.success) {
         setOrders(res.data);
       }
