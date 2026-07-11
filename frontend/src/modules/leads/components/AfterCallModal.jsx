@@ -24,6 +24,23 @@ export const AfterCallModal = ({ isOpen, lead, onClose, onSave }) => {
   const [interestedLevel, setInterestedLevel] = useState('Warm (Evaluating)');
   const [nextAction, setNextAction] = useState('Follow-up Call');
 
+  React.useEffect(() => {
+    if (isOpen && lead) {
+      setCallStatus(lead.status || 'Connected');
+      setRemarks('');
+      setFollowupDate('');
+      setFollowupTime('10:00');
+      setInterested(false);
+      setNeedMeeting(false);
+      setNeedQuotation(false);
+      setConvertToProspect(false);
+      setBusinessDisposition('');
+      setPriority(lead.priority || 'Medium');
+      setInterestedLevel('Warm (Evaluating)');
+      setNextAction('Follow-up Call');
+    }
+  }, [isOpen, lead]);
+
   const statuses = [
     'Connected', 'Busy', 'Call Waiting', 'Not Reachable', 
     'Wrong Number', 'Rejected', 'Failed', 'Voicemail'
@@ -31,11 +48,15 @@ export const AfterCallModal = ({ isOpen, lead, onClose, onSave }) => {
 
   const handleSave = (e) => {
     e.preventDefault();
+    const actualDuration = lead.callStartTime
+      ? Math.max(15, Math.round((Date.now() - lead.callStartTime) / 1000))
+      : (lead.talkDuration || lead.durationSeconds || 30);
+
     onSave({
       leadId: lead._id,
       callStatus,
-      durationSeconds: lead.talkDuration || lead.durationSeconds || Math.floor(Math.random() * 60) + 20,
-      remarks: remarks || `Call outcome: ${businessDisposition || callStatus}`,
+      durationSeconds: actualDuration,
+      remarks: remarks || `Call outcome: ${businessDisposition || callStatus} (${interestedLevel})`,
       followupDate,
       followupTime,
       interested,
@@ -165,13 +186,12 @@ export const AfterCallModal = ({ isOpen, lead, onClose, onSave }) => {
 
           {/* Remarks */}
           <div>
-            <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Call Notes / Remarks *</label>
+            <label className="block text-xs font-bold text-muted-foreground uppercase mb-1">Call Notes / Remarks</label>
             <textarea
-              required
               rows={3}
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
-              placeholder="Enter discussion summary or customer feedback..."
+              placeholder="Enter discussion summary or customer feedback (optional)..."
               className="w-full bg-background border rounded-xl p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
             />
           </div>

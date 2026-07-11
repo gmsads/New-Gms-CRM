@@ -182,6 +182,30 @@ export default function MyLeads() {
     };
   }, [user, leads, activeCallLead]);
 
+  // Auto-display post-call disposition popup when user returns from phone dialer
+  useEffect(() => {
+    const handleReturnFromCall = () => {
+      if (activeCallLead && !showPostModal && activeCallLead.callStartTime) {
+        if (Date.now() - activeCallLead.callStartTime > 2500) {
+          setShowPostModal(true);
+        }
+      }
+    };
+
+    window.addEventListener('focus', handleReturnFromCall);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleReturnFromCall();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleReturnFromCall);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [activeCallLead, showPostModal]);
+
   // Create Lead Save Handler
   const handleCreateSave = async (formData, callImmediately) => {
     try {
@@ -204,8 +228,28 @@ export default function MyLeads() {
     }
   };
 
-  // Telephony Click To Call (Strictly No Mobile Dialer tel: Redirects)
+  // Telephony Click To Call & Native Device Dialer
   const handleInitiateCall = (ld) => {
+    if (!ld || !ld.phone) return alert('No valid phone number found for this lead');
+    const cleanPhone = ld.phone.replace(/\D/g, '');
+    const dialPhone = cleanPhone.length === 10 ? `+91${cleanPhone}` : (cleanPhone || ld.phone);
+
+    // 1. Trigger native phone dialer immediately so the call goes to another person
+    try {
+      const telLink = document.createElement('a');
+      telLink.href = `tel:${dialPhone}`;
+      telLink.style.display = 'none';
+      document.body.appendChild(telLink);
+      telLink.click();
+      setTimeout(() => {
+        if (telLink.parentNode) telLink.parentNode.removeChild(telLink);
+      }, 500);
+    } catch (e) {
+      console.warn('Native dialer click fallback:', e);
+      window.location.href = `tel:${dialPhone}`;
+    }
+
+    // 2. Log call initiation in backend and set active call state
     leadApi.initiateCall(ld.phone, ld._id, user.token)
       .then(res => {
         setActiveCallLead({
@@ -215,7 +259,7 @@ export default function MyLeads() {
         });
       })
       .catch(err => {
-        alert(err.message || 'Call failed');
+        alert(err.message || 'Call initiation logging failed');
       });
   };
 
