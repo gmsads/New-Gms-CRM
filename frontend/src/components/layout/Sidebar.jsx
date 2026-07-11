@@ -57,8 +57,8 @@ const menuConfig = [
   },
   { title: 'Clients & Leads',  icon: Users,           path: '/clients',   roles: ['ADMIN','SALES_MANAGER','SR_SALES_MANAGER','AGENT'] },
   { title: 'Campaigns',        icon: Megaphone,       path: '/campaigns', roles: ['ADMIN','SALES_MANAGER','OPERATION_MANAGER','AGENT'] },
-  { title: 'Field Operations', icon: Truck,           path: '/field',     roles: ['ADMIN','FIELD_EXEC','OPERATION_MANAGER'] },
-  { title: 'Daily Visit Reports', icon: Clock,        path: '/daily-reports', roles: ['ALL'] },
+  { title: 'Field Operations', icon: Truck,           path: '/field',     roles: ['ADMIN','FIELD_EXEC','SALES_MANAGER','SR_SALES_MANAGER','OPERATION_MANAGER'] },
+  { title: 'Daily Visit Reports', icon: Clock,        path: '/daily-reports', roles: ['ADMIN','FIELD_EXEC','SALES_MANAGER','SR_SALES_MANAGER','OPERATION_MANAGER'] },
   { title: 'Design Assets',    icon: Palette,         path: '/design',    roles: ['ADMIN','DESIGNER','OPERATION_EXEC'] },
   { title: 'Tasks',            icon: CheckSquare,     path: '/tasks',     roles: ['ALL'] },
   { title: 'My Leaves',        icon: Calendar,        path: '/leaves',    roles: ['ALL'] },
@@ -394,8 +394,10 @@ const Sidebar = ({ isOpen, setOpen }) => {
         { title: 'My Reports', path: '/telecrm/my-reports', icon: BarChart2 }
       ]
     },
-    ...(user.role === 'FIELD_EXEC' ? [{ title: 'Field Visits', icon: Truck, path: '/field', badge: null }] : []),
-    { title: 'Daily Visit Reports', icon: Clock, path: '/daily-reports', badge: null },
+    ...(user.role === 'FIELD_EXEC' ? [
+      { title: 'Field Visits', icon: Truck, path: '/field', badge: null },
+      { title: 'Daily Visit Reports', icon: Clock, path: '/daily-reports', badge: null }
+    ] : []),
     { title: 'Prospects',     icon: Users,           path: '/prospects',   badge: null },
     { 
       title: 'Follow-ups',    
@@ -656,6 +658,8 @@ const Sidebar = ({ isOpen, setOpen }) => {
     },
     { title: 'Appointments',  icon: Calendar,        path: '/appointments',badge: appointmentCount > 0 ? appointmentCount.toString() : null },
     { title: 'Assigned Appointments', icon: Calendar, path: '/assigned-appointments', badge: null },
+    { title: 'Field Visits', icon: Truck, path: '/field', badge: null },
+    { title: 'Daily Visit Reports', icon: Clock, path: '/daily-reports', badge: null },
     { title: 'Orders',        icon: ShoppingCart,    path: '/orders',      badge: null },
     { title: 'Approvals',     icon: ShieldCheck,     path: '/manager/my-approvals',   badge: approvalCount > 0 ? approvalCount.toString() : null },
     { title: 'Catalog',       icon: FileText,        path: '/brochures',   badge: null },

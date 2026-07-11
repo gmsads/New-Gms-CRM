@@ -235,11 +235,10 @@ exports.getDailyReports = async (req, res) => {
     if (executive && executive !== 'All Executives' && executive !== 'all') {
       userQuery._id = executive;
     } else {
-      // Include all field executives, sales executives, sales managers, and general employees
+      // Include field executives and sales managers (sales executives are in-house tele team and do calls only)
       userQuery.role = {
         $in: [
-          'FIELD_EXEC', 'SALES_EXEC', 'SR_SALES_EXEC', 'SALES_MANAGER',
-          'SR_SALES_MANAGER', 'AGENT', 'OPERATION_MANAGER', 'ADMIN', 'PRODUCTION_EXEC', 'SERVICE_EXEC'
+          'FIELD_EXEC', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'OPERATION_MANAGER'
         ]
       };
     }
