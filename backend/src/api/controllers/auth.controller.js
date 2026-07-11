@@ -92,6 +92,10 @@ exports.loginUser = async (req, res) => {
 
     // Log successful login (non-blocking)
     createAuditLog({ action: 'LOGIN', performedBy: user, req }).catch(() => {});
+    try {
+      const workdaySessionService = require('../../domains/timeline/services/workdaySession.service');
+      workdaySessionService.onEmployeeLogin(user, req).catch(() => {});
+    } catch (e) {}
 
     // Fetch dynamic permissions
     const permissionsData = await UserPermission.find({ user_id: user._id }).select('permission_key scope');

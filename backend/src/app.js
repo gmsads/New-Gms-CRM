@@ -182,6 +182,8 @@ mountModule('/api/telecrm', './domains/telecrm/routes/telecrm.routes');
 // ── Enterprise Communication Center Webhooks ──────────────────────────────────
 mountModule('/api/webhooks', './api/routes/notificationWebhook.routes');
 
+// ── Enterprise Workforce Intelligence & Timeline Engine ───────────────────────
+mountModule('/api/timeline', './api/routes/timeline.routes');
 
 // ── 404 catch ────────────────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ message: `Route ${req.method} ${req.path} not found` }));

@@ -59,6 +59,7 @@ const menuConfig = [
   { title: 'Campaigns',        icon: Megaphone,       path: '/campaigns', roles: ['ADMIN','SALES_MANAGER','OPERATION_MANAGER','AGENT'] },
   { title: 'Field Operations', icon: Truck,           path: '/field',     roles: ['ADMIN','FIELD_EXEC','SALES_MANAGER','SR_SALES_MANAGER','OPERATION_MANAGER'] },
   { title: 'Daily Visit Reports', icon: Clock,        path: '/daily-reports', roles: ['ADMIN','MD_CEO','COO','BRANCH_HEAD','BRANCH_MANAGER','SALES_MANAGER','SR_SALES_MANAGER','OPERATION_MANAGER'] },
+  { title: 'Workforce Intelligence', icon: Activity,  path: '/workforce-timeline', roles: ['ADMIN','MD_CEO','COO','BRANCH_HEAD','BRANCH_MANAGER','OPERATION_MANAGER','HR'] },
   { title: 'Design Assets',    icon: Palette,         path: '/design',    roles: ['ADMIN','DESIGNER','OPERATION_EXEC'] },
   { title: 'Tasks',            icon: CheckSquare,     path: '/tasks',     roles: ['ALL'] },
   { title: 'My Leaves',        icon: Calendar,        path: '/leaves',    roles: ['ALL'] },
@@ -200,6 +201,7 @@ const adminMenuConfig = [
     path: '/analytics-center',
     subItems: [
       { title: 'Daily Visit Reports', path: '/daily-reports', icon: Clock },
+      { title: 'Workforce Intelligence', path: '/workforce-timeline', icon: Activity },
       { title: 'Sales Reports', path: '/analytics', icon: PieChart },
       { title: 'Revenue Reports', path: '/analytics/revenue', icon: IndianRupee },
       { title: 'Team Performance', path: '/hr/performance', icon: Target },

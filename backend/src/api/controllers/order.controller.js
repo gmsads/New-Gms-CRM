@@ -697,12 +697,14 @@ exports.create = async (req, res) => {
         item.designerWorkflow.workflowType = 'CLIENT_UPLOADED';
         item.designerWorkflow.currentStatus = 'Assigned';
         
-        // Attach the uploaded design file to the first line item
-        if (idx === 0 && body.designFileUrl) {
+        // Attach item specific uploaded design file, or fall back to order root designFileUrl for idx === 0
+        const fileUrlToUse = item.designFileUrl || (idx === 0 ? body.designFileUrl : null);
+        if (fileUrlToUse) {
+          item.designFileUrl = fileUrlToUse;
           if (!item.serviceFiles) item.serviceFiles = [];
           item.serviceFiles.push({
             type: 'CLIENT_UPLOAD',
-            fileUrl: body.designFileUrl,
+            fileUrl: fileUrlToUse,
             uploadedBy: req.user._id,
             uploadedAt: new Date()
           });

@@ -37,6 +37,7 @@ import QuotationBrandingChanges from './modules/admin/pages/QuotationBrandingCha
 import SalesManagerWorkspace from './modules/sales/pages/SalesManagerWorkspace';
 import AuthorityAccess from './modules/admin/pages/AuthorityAccess';
 import TargetAssignment from './modules/admin/pages/TargetAssignment';
+import WorkforceTimelineDashboard from './modules/admin/pages/WorkforceTimelineDashboard';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { TeamDataView } from './modules/sales/pages/TeamDataView';
 import ComingSoon from './components/ui/ComingSoon';
@@ -150,6 +151,7 @@ const AppRoutes = () => {
           <Route path="hr/*"        element={<HR />} />
           <Route path="field"       element={<Field />} />
           <Route path="daily-reports" element={<DailyReports />} />
+          <Route path="workforce-timeline" element={<ErrorBoundary><WorkforceTimelineDashboard /></ErrorBoundary>} />
           <Route path="design/*"    element={<DesignRoutes />} />
           <Route path="production/manager/*" element={<ErrorBoundary><ProductionManagerDashboard /></ErrorBoundary>} />
           <Route path="production/executive/*" element={<ErrorBoundary><ProductionExecutiveDashboard /></ErrorBoundary>} />

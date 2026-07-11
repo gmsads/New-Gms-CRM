@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import workforceEngineService from '../services/workforceEngine.service';
 
 const AuthContext = createContext();
 const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -33,10 +34,23 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const stored = localStorage.getItem('gms_user');
     if (stored) {
-      try { setUser(JSON.parse(stored)); } catch {}
+      try { 
+        const parsed = JSON.parse(stored);
+        setUser(parsed);
+        workforceEngineService.startTracking(parsed);
+      } catch {}
     }
     setLoading(false);
   }, []);
+
+  // Ensure tracking updates if user state changes dynamically
+  useEffect(() => {
+    if (user) {
+      workforceEngineService.startTracking(user);
+    } else {
+      workforceEngineService.stopTracking();
+    }
+  }, [user]);
 
   // ── Login ────────────────────────────────────────────────────────
   const login = useCallback(async (loginId, password) => {
@@ -60,6 +74,7 @@ export const AuthProvider = ({ children }) => {
 
       localStorage.setItem('gms_user', JSON.stringify(data));
       setUser(data);
+      workforceEngineService.startTracking(data);
       return { success: true, mustChangePassword: data.mustChangePassword, role: data.role };
     } catch (err) {
       setError(err.message);
@@ -69,9 +84,18 @@ export const AuthProvider = ({ children }) => {
 
   // ── Logout ───────────────────────────────────────────────────────
   const logout = useCallback(() => {
+    try {
+      if (user && user.token) {
+        fetch('/api/timeline/workday/logout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${user.token}` }
+        }).catch(() => {});
+      }
+    } catch (e) {}
+    workforceEngineService.stopTracking();
     localStorage.removeItem('gms_user');
     setUser(null);
-  }, []);
+  }, [user]);
 
   // ── Change password (first-login or voluntary) ───────────────────
   const changePassword = useCallback(async (currentPassword, newPassword) => {

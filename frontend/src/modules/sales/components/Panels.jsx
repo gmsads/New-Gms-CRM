@@ -966,7 +966,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
       .catch(console.error);
   }, [user]);
 
-  const [items, setItems] = useState([{ categoryId: '', productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, baseCost: 0, deliveryDate: getDefaultDeliveryDate() }]);
+  const [items, setItems] = useState([{ categoryId: '', productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, baseCost: 0, deliveryDate: getDefaultDeliveryDate(), designFileUrl: null }]);
   const [isCatalogueOpen, setIsCatalogueOpen] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState(null);
   const [advance, setAdvance] = useState('');
@@ -1071,8 +1071,17 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
       newErrors.advance = 'You enter more then Final Amount';
     }
     if (!paymentProof) newErrors.paymentProof = 'Required';
-    if (formData.designStatus === 'Design Provided' && !designFile) {
-      newErrors.designFile = 'Required';
+    if (formData.designStatus === 'Design Provided') {
+      let missingAny = false;
+      items.forEach((item, idx) => {
+        if (!item.designFileUrl && !designFile) {
+          newErrors[`designFile_${idx}`] = 'Required';
+          missingAny = true;
+        }
+      });
+      if (missingAny) {
+        newErrors.designFile = 'Please upload design file for each item requirement below';
+      }
     }
     
     setErrors(newErrors);
@@ -1081,7 +1090,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 
   const states = ["Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Delhi", "Other"];
 
-  const addItem = () => setItems(prev => [...prev, { categoryId: '', productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, baseCost: 0, deliveryDate: getDefaultDeliveryDate() }]);
+  const addItem = () => setItems(prev => [...prev, { categoryId: '', productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, baseCost: 0, deliveryDate: getDefaultDeliveryDate(), designFileUrl: null }]);
   const removeItem = i => setItems(prev => prev.filter((_, idx) => idx !== i));
   const updateItem = (i, k, v) => setItems(prev => prev.map((item, idx) => {
     if (idx !== i) return item;
@@ -1186,6 +1195,20 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     }
   };
 
+  const handleItemDesignFileChange = (index, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        updateItem(index, 'designFileUrl', reader.result);
+        if (errors[`designFile_${index}`]) {
+          setErrors(prev => ({ ...prev, [`designFile_${index}`]: null, designFile: null }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAdvanceChange = (val) => {
     setAdvance(val);
     if (Number(val) > totalAmount) {
@@ -1204,14 +1227,15 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
       unitPrice: Number(it.cost),
       discount: 0,
       gstRate: applyGst ? 18 : 0,
-      deliveryDate: it.deliveryDate // optional item level fallback
+      deliveryDate: it.deliveryDate, // optional item level fallback
+      designFileUrl: it.designFileUrl || designFile || null
     }));
 
     onSubmit({
       ...formData,
       lineItems,
       deliveryDate: formData.deliveryDate,
-      designFileUrl: designFile,
+      designFileUrl: items[0]?.designFileUrl || designFile || null,
       clientSnapshot: {
         name: formData.name,
         phone: formData.phone,
@@ -1348,33 +1372,6 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                   <option value="Need Design">Need Design</option>
                 </select>
               </div>
-              {formData.designStatus === 'Design Provided' && (
-                <div className="col-span-full md:col-span-3">
-                  <label className="text-xs font-bold text-slate-800 mb-1 block">Upload Design File *</label>
-                  <div className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-slate-50 relative min-h-[120px] transition-colors ${errors.designFile ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}>
-                    {designFile ? (
-                      <div className="text-center w-full">
-                        {designFile.startsWith('data:image/') ? (
-                          <img src={designFile} alt="Design Preview" className="w-full h-32 object-contain rounded-lg mb-2" />
-                        ) : (
-                          <div className="h-32 flex flex-col items-center justify-center bg-slate-100 rounded-lg mb-2 border border-slate-200">
-                            <FileText className="h-10 w-10 text-slate-400 mb-1" />
-                            <span className="text-xs font-bold text-slate-600 truncate max-w-[90%]">Design File Uploaded</span>
-                          </div>
-                        )}
-                        <button type="button" onClick={() => setDesignFile(null)} className="text-xs text-red-600 font-bold hover:underline">Remove File</button>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer flex flex-col items-center justify-center w-full h-full py-4">
-                        <Upload className={`h-8 w-8 mb-2 ${errors.designFile ? 'text-red-300' : 'text-slate-300'}`} />
-                        <span className={`text-[10px] font-bold ${errors.designFile ? 'text-red-500' : 'text-slate-500'}`}>Click to upload design file</span>
-                        <input type="file" onChange={handleDesignFileChange} className="hidden" />
-                      </label>
-                    )}
-                  </div>
-                  {errors.designFile && <p className="text-[10px] text-red-500 mt-1 font-bold text-center">{errors.designFile}</p>}
-                </div>
-              )}
             </div>
           </div>
 
@@ -1476,6 +1473,39 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                         <input type="date" value={item.deliveryDate} onChange={e => updateItem(i, 'deliveryDate', e.target.value)} className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none" />
                       </div>
                     </div>
+
+                    {formData.designStatus === 'Design Provided' && (
+                      <div className="mt-4 pt-3 border-t border-slate-200 col-span-full">
+                        <label className="text-xs font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
+                          <FileText className="h-3.5 w-3.5 text-indigo-600" />
+                          Upload Design File for {item.desc || `Item #${i + 1}`} *
+                        </label>
+                        <div className={`border-2 border-dashed rounded-xl p-3 flex flex-col items-center justify-center bg-white relative min-h-[100px] transition-colors ${errors[`designFile_${i}`] ? 'border-red-500 bg-red-50' : 'border-slate-300 hover:border-indigo-400'}`}>
+                          {item.designFileUrl ? (
+                            <div className="text-center w-full flex flex-col sm:flex-row items-center justify-between gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                              <div className="flex items-center gap-2.5 overflow-hidden">
+                                {item.designFileUrl.startsWith('data:image/') ? (
+                                  <img src={item.designFileUrl} alt="Design Preview" className="w-12 h-12 object-contain rounded border bg-white shrink-0" />
+                                ) : (
+                                  <div className="w-12 h-12 flex items-center justify-center bg-indigo-50 rounded shrink-0 border border-indigo-100">
+                                    <FileText className="h-6 w-6 text-indigo-600" />
+                                  </div>
+                                )}
+                                <span className="text-xs font-bold text-slate-700 truncate max-w-[180px] sm:max-w-[260px]">Design File Attached</span>
+                              </div>
+                              <button type="button" onClick={() => updateItem(i, 'designFileUrl', null)} className="text-xs text-red-600 font-bold hover:underline px-2 py-1 rounded hover:bg-red-50 transition">Remove File</button>
+                            </div>
+                          ) : (
+                            <label className="cursor-pointer flex flex-col items-center justify-center w-full h-full py-3">
+                              <Upload className={`h-6 w-6 mb-1 ${errors[`designFile_${i}`] ? 'text-red-300' : 'text-slate-400'}`} />
+                              <span className={`text-[11px] font-bold ${errors[`designFile_${i}`] ? 'text-red-500' : 'text-slate-600'}`}>Click to upload design file for {item.desc || `Item #${i + 1}`}</span>
+                              <input type="file" onChange={(e) => handleItemDesignFileChange(i, e)} className="hidden" />
+                            </label>
+                          )}
+                        </div>
+                        {errors[`designFile_${i}`] && <p className="text-[10px] text-red-500 mt-1 font-bold">{errors[`designFile_${i}`]}</p>}
+                      </div>
+                    )}
                   </div>
                 );
               })}
