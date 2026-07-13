@@ -61,6 +61,10 @@ const QuotationBuilder = ({ prospect, onClose, onSave }) => {
   const [addGst, setAddGst] = useState(false);
   const [clientGstNumber, setClientGstNumber] = useState(prospect?.gstin || prospect?.gstNumber || '');
   const [clientPanNumber, setClientPanNumber] = useState(prospect?.panNumber || '');
+  const [clientCompany, setClientCompany] = useState(prospect?.company || prospect?.companyName || prospect?.name || '');
+  const [clientContactPerson, setClientContactPerson] = useState(prospect?.contactPerson || prospect?.contactPersonName || (prospect?.company ? prospect?.name : '') || '');
+  const [clientAddress, setClientAddress] = useState(prospect?.address || prospect?.location || prospect?.billingAddress || '');
+  const [clientPhone, setClientPhone] = useState(prospect?.phone || prospect?.mobile || prospect?.mobileNumber || '');
   
   const [template, setTemplate] = useState(null);
 
@@ -352,6 +356,13 @@ Sales Executive`;
       templateSnapshot: template || {},
       prospect: {
         ...(prospect || {}),
+        company: clientCompany,
+        companyName: clientCompany,
+        contactPerson: clientContactPerson,
+        contactPersonName: clientContactPerson,
+        name: clientContactPerson || clientCompany,
+        address: clientAddress,
+        phone: clientPhone,
         gstin: clientGstNumber || prospect?.gstin || prospect?.gstNumber || '',
         panNumber: clientPanNumber || prospect?.panNumber || ''
       },
@@ -373,7 +384,7 @@ Sales Executive`;
       tax: { enabled: addGst, amount: gstAmount },
       totalAmount: finalTotal,
       notes: notes || template?.termsAndConditions?.[0] || '70% ADVANCE PAYMENT NEED TO START WORK',
-      quotationDate: new Date().toLocaleDateString('en-GB')
+      quotationDate: quoteDate ? (quoteDate.includes('-') ? new Date(quoteDate).toLocaleDateString('en-GB') : quoteDate) : new Date().toLocaleDateString('en-GB')
     };
     
     return (
@@ -434,18 +445,48 @@ Sales Executive`;
           {/* Top Section */}
           <div className="flex flex-col lg:flex-row gap-10 mb-8">
             <div className="flex-1">
-              <p className="text-gray-600 mb-3 font-semibold tracking-wide uppercase text-xs">Bill To</p>
-              <div className="border-2 border-dashed border-indigo-200 rounded-xl p-5 bg-indigo-50/30 w-full lg:max-w-md">
-                <p className="font-bold text-gray-900 text-lg mb-1">{prospect?.company || 'Company Name'}</p>
-                <p className="text-gray-700 font-medium">{prospect?.name || 'Contact Person'}</p>
-                <p className="text-gray-500 text-sm mt-2 flex items-center gap-2">
-                  <span className="w-4 flex justify-center"><Phone className="h-3.5 w-3.5" /></span> {prospect?.phone}
-                </p>
-                {prospect?.email && (
-                  <p className="text-gray-500 text-sm mt-1 flex items-center gap-2">
-                    <span className="w-4 flex justify-center"><Mail className="h-3.5 w-3.5" /></span> {prospect.email}
-                  </p>
-                )}
+              <p className="text-gray-600 mb-3 font-semibold tracking-wide uppercase text-xs">Bill To (Editable Client Details)</p>
+              <div className="border border-indigo-200 rounded-xl p-4 bg-indigo-50/20 w-full lg:max-w-md space-y-3">
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-indigo-700 mb-1">Company Name</label>
+                  <input
+                    type="text"
+                    value={clientCompany}
+                    onChange={e => setClientCompany(e.target.value)}
+                    placeholder="e.g. EBO MART PRIVATE LIMITED"
+                    className="w-full h-9 px-3 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-gray-900 outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-indigo-700 mb-1">Contact Person Name</label>
+                  <input
+                    type="text"
+                    value={clientContactPerson}
+                    onChange={e => setClientContactPerson(e.target.value)}
+                    placeholder="e.g. Rajesh Kumar"
+                    className="w-full h-9 px-3 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-gray-800 outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-indigo-700 mb-1">Company Address</label>
+                  <textarea
+                    rows={2}
+                    value={clientAddress}
+                    onChange={e => setClientAddress(e.target.value)}
+                    placeholder="e.g. Ground, First Floor, 5-4-156, Secunderabad, Hyderabad, Telangana, 500003"
+                    className="w-full p-2.5 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-gray-800 outline-none focus:border-indigo-500 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-indigo-700 mb-1">Mobile Number</label>
+                  <input
+                    type="text"
+                    value={clientPhone}
+                    onChange={e => setClientPhone(e.target.value)}
+                    placeholder="e.g. 6300380539"
+                    className="w-full h-9 px-3 bg-white border border-indigo-200 rounded-lg text-xs font-medium text-gray-800 outline-none focus:border-indigo-500"
+                  />
+                </div>
               </div>
             </div>
             <div className="w-full lg:w-96 flex flex-col gap-5">

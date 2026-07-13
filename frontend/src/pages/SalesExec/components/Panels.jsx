@@ -2528,6 +2528,11 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
   const [taxEnabled, setTaxEnabled] = useState(true);
   const [clientGstNumber, setClientGstNumber] = useState(prospect?.gstin || prospect?.gstNumber || '');
   const [clientPanNumber, setClientPanNumber] = useState(prospect?.panNumber || '');
+  const [clientCompany, setClientCompany] = useState(prospect?.company || prospect?.companyName || prospect?.name || '');
+  const [clientContactPerson, setClientContactPerson] = useState(prospect?.contactPerson || prospect?.contactPersonName || (prospect?.company ? prospect?.name : '') || '');
+  const [clientAddress, setClientAddress] = useState(prospect?.address || prospect?.location || prospect?.billingAddress || '');
+  const [clientPhone, setClientPhone] = useState(prospect?.phone || prospect?.mobile || prospect?.mobileNumber || '');
+  const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split('T')[0]);
 
   React.useEffect(() => {
     Promise.all([
@@ -2648,25 +2653,56 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
         </h2>
 
         <div className="overflow-y-auto flex-1 space-y-4 pr-2">
-          {/* Pre-filled info */}
-          <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border">
-            <div>
-              <p className="text-xs text-muted-foreground">Client Name</p>
-              <p className="font-semibold text-sm">{prospect?.name}</p>
+          {/* Editable Client Details & Date */}
+          <div className="grid grid-cols-2 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Company Name</label>
+              <input 
+                type="text" 
+                value={clientCompany} 
+                onChange={e => setClientCompany(e.target.value)} 
+                placeholder="e.g. EBO MART PRIVATE LIMITED"
+                className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Contact Person Name</label>
+              <input 
+                type="text" 
+                value={clientContactPerson} 
+                onChange={e => setClientContactPerson(e.target.value)} 
+                placeholder="e.g. John Doe"
+                className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Company Address</label>
+              <input 
+                type="text" 
+                value={clientAddress} 
+                onChange={e => setClientAddress(e.target.value)} 
+                placeholder="e.g. Ground, First Floor, 5-4-156, Secunderabad, Hyderabad, Telangana, 500003"
+                className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
+              />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Business</p>
-              <p className="font-semibold text-sm">{prospect?.company}</p>
+              <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Mobile Number</label>
+              <input 
+                type="text" 
+                value={clientPhone} 
+                onChange={e => setClientPhone(e.target.value)} 
+                placeholder="e.g. 6300380539"
+                className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
+              />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Phone</p>
-              <p className="font-semibold text-sm">{prospect?.phone}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Client Type</p>
-              <p className="font-semibold text-blue-600 text-sm">
-                {prospect?.clientType || "Retail"}
-              </p>
+              <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Quotation Date (Editable)</label>
+              <input 
+                type="date" 
+                value={quoteDate} 
+                onChange={e => setQuoteDate(e.target.value)} 
+                className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
+              />
             </div>
           </div>
 
@@ -2888,6 +2924,13 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
             templateSnapshot: {},
             prospect: {
               ...(prospect || {}),
+              company: clientCompany,
+              companyName: clientCompany,
+              contactPerson: clientContactPerson,
+              contactPersonName: clientContactPerson,
+              name: clientContactPerson || clientCompany,
+              address: clientAddress,
+              phone: clientPhone,
               gstin: clientGstNumber || prospect?.gstin || '',
               panNumber: clientPanNumber || prospect?.panNumber || ''
             },
@@ -2901,12 +2944,13 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
             })),
             subtotal: subtotal,
             tax: { enabled: taxEnabled, amount: gstAmount },
-            totalAmount: total
+            totalAmount: total,
+            quotationDate: quoteDate ? (quoteDate.includes('-') ? new Date(quoteDate).toLocaleDateString('en-GB') : quoteDate) : new Date().toLocaleDateString('en-GB')
           }}
           onClose={() => setIsPreviewOpen(false)}
           onSendWhatsApp={() => {
             setIsPreviewOpen(false);
-            onSubmit({ prospect: { ...prospect, gstin: clientGstNumber, panNumber: clientPanNumber }, items, total, taxEnabled });
+            onSubmit({ prospect: { ...prospect, company: clientCompany, name: clientContactPerson, address: clientAddress, phone: clientPhone, gstin: clientGstNumber, panNumber: clientPanNumber }, items, total, taxEnabled, quotationDate: quoteDate });
           }}
         />
       )}

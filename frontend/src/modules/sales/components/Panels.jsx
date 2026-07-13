@@ -2025,6 +2025,11 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [clientGstNumber, setClientGstNumber] = useState(prospect?.gstin || prospect?.gstNumber || '');
   const [clientPanNumber, setClientPanNumber] = useState(prospect?.panNumber || '');
+  const [clientCompany, setClientCompany] = useState(prospect?.company || prospect?.companyName || prospect?.name || '');
+  const [clientContactPerson, setClientContactPerson] = useState(prospect?.contactPerson || prospect?.contactPersonName || (prospect?.company ? prospect?.name : '') || '');
+  const [clientAddress, setClientAddress] = useState(prospect?.address || prospect?.location || prospect?.billingAddress || '');
+  const [clientPhone, setClientPhone] = useState(prospect?.phone || prospect?.mobile || prospect?.mobileNumber || '');
+  const [quoteDate, setQuoteDate] = useState(new Date().toISOString().split('T')[0]);
 
   const getProductPriceForClientType = (product, clientType) => {
     if (!product) return 0;
@@ -2219,18 +2224,59 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
           {/* Left: Input Configuration */}
           <div className="flex-1 overflow-y-auto p-10 space-y-10 border-r bg-white/50">
             
-            {/* Client Context */}
+            {/* Client Context & Editable Snapshot */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Client Snapshot</label>
-                <div className="bg-slate-50 border border-slate-100 rounded-[1.5rem] p-5 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><User className="h-4 w-4" /></div>
-                    <div><p className="text-xs font-black text-slate-900">{prospect?.name}</p><p className="text-[10px] font-bold text-slate-500">{prospect?.company}</p></div>
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Editable Client Details & Date</label>
+                <div className="bg-slate-50 border border-slate-200 rounded-[1.5rem] p-4 space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Company Name</label>
+                    <input 
+                      type="text" 
+                      value={clientCompany} 
+                      onChange={e => setClientCompany(e.target.value)} 
+                      placeholder="e.g. EBO MART PRIVATE LIMITED"
+                      className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
+                    />
                   </div>
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600"><Phone className="h-4 w-4" /></div>
-                    <p className="text-xs font-bold text-slate-700">{prospect?.phone}</p>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Contact Person Name</label>
+                    <input 
+                      type="text" 
+                      value={clientContactPerson} 
+                      onChange={e => setClientContactPerson(e.target.value)} 
+                      placeholder="e.g. Rajesh Kumar"
+                      className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Company Address</label>
+                    <input 
+                      type="text" 
+                      value={clientAddress} 
+                      onChange={e => setClientAddress(e.target.value)} 
+                      placeholder="e.g. Ground, First Floor, 5-4-156, Secunderabad, Hyderabad, Telangana, 500003"
+                      className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Mobile Number</label>
+                    <input 
+                      type="text" 
+                      value={clientPhone} 
+                      onChange={e => setClientPhone(e.target.value)} 
+                      placeholder="e.g. 6300380539"
+                      className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Quotation Date (Editable)</label>
+                    <input 
+                      type="date" 
+                      value={quoteDate} 
+                      onChange={e => setQuoteDate(e.target.value)} 
+                      className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
+                    />
                   </div>
                 </div>
               </div>
@@ -2470,6 +2516,13 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
             templateSnapshot: {},
             prospect: {
               ...(prospect || {}),
+              company: clientCompany,
+              companyName: clientCompany,
+              contactPerson: clientContactPerson,
+              contactPersonName: clientContactPerson,
+              name: clientContactPerson || clientCompany,
+              address: clientAddress,
+              phone: clientPhone,
               gstin: clientGstNumber || prospect?.gstin || '',
               panNumber: clientPanNumber || prospect?.panNumber || ''
             },
@@ -2484,7 +2537,8 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
             subtotal: subtotal,
             discount: { amount: discountAmount, type: discountType, value: discountValue },
             tax: { enabled: taxEnabled, amount: gstAmount },
-            totalAmount: total
+            totalAmount: total,
+            quotationDate: quoteDate ? (quoteDate.includes('-') ? new Date(quoteDate).toLocaleDateString('en-GB') : quoteDate) : new Date().toLocaleDateString('en-GB')
           }}
           onClose={() => setIsPreviewOpen(false)}
           onSendWhatsApp={() => {

@@ -190,26 +190,38 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
 
               {/* BILL TO & SHIP TO */}
               {(() => {
-                const isSample = !prospect.company && !prospect.name;
-                const billAddr = prospect.address || prospect.location || prospect.billingAddress || (isSample ? 'Ground ,First Floor, 5-4-156, 157, 173, to 176 179 to 184 /2, 184/2A/1 GF & 5-4-1, T-19 Towers, Ranigunj, Secunderabad, Hyderabad, Telangana, pin: 500003' : (prospect.city ? `${prospect.city}, ${placeOfSupply}` : `${placeOfSupply}, India`));
-                const shipAddr = prospect.shippingAddress || prospect.address || prospect.location || prospect.billingAddress || (isSample ? '8-40/1, Dammaiguda Rd, Narayana Puri Colony, Sai Priya Colony, Dammaiguda, Secunderabad, Telangana 500083, K.V.Rangareddy, Telangana, 500032' : billAddr);
-                const gstin = prospect.gstin || prospect.gstNumber || (isSample ? '36AAGCE1517R1ZA' : 'Unregistered');
+                const companyName = prospect.company || prospect.companyName || (prospect.name && !prospect.contactPerson ? prospect.name : '');
+                const contactPerson = prospect.contactPerson || prospect.contactPersonName || (prospect.company && prospect.name ? prospect.name : '');
+                const billAddr = prospect.address || prospect.location || prospect.billingAddress || '';
+                const shipAddr = prospect.shippingAddress || billAddr;
+                const phone = prospect.phone || prospect.mobile || prospect.mobileNumber || '';
+                const gstin = prospect.gstin || prospect.gstNumber || '';
+                const pan = prospect.panNumber || prospect.pan || '';
+                const showPlaceOfSupply = placeOfSupply || prospect.state;
+
                 return (
                   <div className="grid grid-cols-2 gap-6 py-5 px-1 border-b border-slate-100 text-xs sm:text-[13px]">
                     <div>
                       <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">BILL TO</h3>
-                      <p className="font-bold text-slate-900 text-[13.5px]">{prospect.company || prospect.name || 'CLIENT COMPANY'}</p>
-                      <p className="text-slate-800 mt-0.5 leading-snug">{billAddr}</p>
-                      <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {prospect.phone || 'N/A'}</p>
-                      <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {gstin}</p>
-                      {prospect.panNumber && <p className="text-slate-800"><span className="font-semibold">PAN Number:</span> {prospect.panNumber}</p>}
-                      <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {placeOfSupply}</p>
+                      {companyName ? <p className="font-bold text-slate-900 text-[13.5px]">{companyName}</p> : <p className="font-bold text-slate-400 italic text-xs">No Client Name Specified</p>}
+                      {contactPerson && <p className="text-slate-800 mt-0.5"><span className="font-semibold">Contact Person:</span> {contactPerson}</p>}
+                      {billAddr && <p className="text-slate-800 mt-0.5 leading-snug">{billAddr}</p>}
+                      {phone && <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {phone}</p>}
+                      {gstin && <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {gstin}</p>}
+                      {pan && <p className="text-slate-800"><span className="font-semibold">PAN Number:</span> {pan}</p>}
+                      {showPlaceOfSupply && <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {showPlaceOfSupply}</p>}
                     </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">SHIP TO</h3>
-                      <p className="font-bold text-slate-900 text-[13.5px]">{prospect.company || prospect.name || 'CLIENT COMPANY'}</p>
-                      <p className="text-slate-800 mt-0.5 leading-snug">{shipAddr}</p>
-                    </div>
+                    {(companyName || shipAddr) && (
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">SHIP TO</h3>
+                        {companyName && <p className="font-bold text-slate-900 text-[13.5px]">{companyName}</p>}
+                        {contactPerson && <p className="text-slate-800 mt-0.5"><span className="font-semibold">Contact Person:</span> {contactPerson}</p>}
+                        {shipAddr && <p className="text-slate-800 mt-0.5 leading-snug">{shipAddr}</p>}
+                        {phone && <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {phone}</p>}
+                        {gstin && <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {gstin}</p>}
+                        {pan && <p className="text-slate-800"><span className="font-semibold">PAN Number:</span> {pan}</p>}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -392,7 +404,8 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
         )}
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -518,25 +531,38 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
 
               {/* BILL TO & SHIP TO */}
               {(() => {
-                const isSample = !clientSnapshot.company && !clientSnapshot.name;
-                const billAddr = clientSnapshot.address || clientSnapshot.location || clientSnapshot.billingAddress || order.location || order.address || (isSample ? 'NO. 23B, HALLS ROAD, KLPPAUK, CHENNAI,600010, Chennai, Tamil Nadu, 600010' : (clientSnapshot.city ? `${clientSnapshot.city}, ${placeOfSupply}` : `${placeOfSupply}, India`));
-                const shipAddr = clientSnapshot.shippingAddress || clientSnapshot.address || clientSnapshot.location || clientSnapshot.billingAddress || order.shippingAddress || order.location || order.address || (isSample ? 'NO. 23B, HALLS ROAD, KLPPAUK, CHENNAI,600010, Chennai, Tamil Nadu, 600010' : billAddr);
-                const gstin = clientSnapshot.gstin || clientSnapshot.gstNumber || order.gstNumber || (isSample ? '33AAACW7753P2ZP' : 'Unregistered');
+                const companyName = clientSnapshot.company || clientSnapshot.companyName || (clientSnapshot.name && !clientSnapshot.contactPerson ? clientSnapshot.name : '');
+                const contactPerson = clientSnapshot.contactPerson || clientSnapshot.contactPersonName || (clientSnapshot.company && clientSnapshot.name ? clientSnapshot.name : '');
+                const billAddr = clientSnapshot.address || clientSnapshot.location || clientSnapshot.billingAddress || order.location || order.address || '';
+                const shipAddr = clientSnapshot.shippingAddress || order.shippingAddress || billAddr;
+                const phone = clientSnapshot.phone || clientSnapshot.mobile || clientSnapshot.mobileNumber || '';
+                const gstin = clientSnapshot.gstin || clientSnapshot.gstNumber || order.gstNumber || '';
+                const pan = clientSnapshot.panNumber || clientSnapshot.pan || '';
+                const showPlaceOfSupply = placeOfSupply || clientSnapshot.state;
+
                 return (
                   <div className="grid grid-cols-2 gap-6 py-5 px-1 border-b border-slate-100 text-xs sm:text-[13px]">
                     <div>
                       <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">BILL TO</h3>
-                      <p className="font-bold text-slate-900 text-[13.5px]">{clientSnapshot.company || clientSnapshot.name || 'CLIENT COMPANY'}</p>
-                      <p className="text-slate-800 mt-0.5 leading-snug">{billAddr}</p>
-                      <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {clientSnapshot.phone || 'N/A'}</p>
-                      <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {gstin}</p>
-                      <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {placeOfSupply}</p>
+                      {companyName ? <p className="font-bold text-slate-900 text-[13.5px]">{companyName}</p> : <p className="font-bold text-slate-400 italic text-xs">No Client Name Specified</p>}
+                      {contactPerson && <p className="text-slate-800 mt-0.5"><span className="font-semibold">Contact Person:</span> {contactPerson}</p>}
+                      {billAddr && <p className="text-slate-800 mt-0.5 leading-snug">{billAddr}</p>}
+                      {phone && <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {phone}</p>}
+                      {gstin && <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {gstin}</p>}
+                      {pan && <p className="text-slate-800"><span className="font-semibold">PAN Number:</span> {pan}</p>}
+                      {showPlaceOfSupply && <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {showPlaceOfSupply}</p>}
                     </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">SHIP TO</h3>
-                      <p className="font-bold text-slate-900 text-[13.5px]">{clientSnapshot.company || clientSnapshot.name || 'CLIENT COMPANY'}</p>
-                      <p className="text-slate-800 mt-0.5 leading-snug">{shipAddr}</p>
-                    </div>
+                    {(companyName || shipAddr) && (
+                      <div>
+                        <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">SHIP TO</h3>
+                        {companyName && <p className="font-bold text-slate-900 text-[13.5px]">{companyName}</p>}
+                        {contactPerson && <p className="text-slate-800 mt-0.5"><span className="font-semibold">Contact Person:</span> {contactPerson}</p>}
+                        {shipAddr && <p className="text-slate-800 mt-0.5 leading-snug">{shipAddr}</p>}
+                        {phone && <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {phone}</p>}
+                        {gstin && <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {gstin}</p>}
+                        {pan && <p className="text-slate-800"><span className="font-semibold">PAN Number:</span> {pan}</p>}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
