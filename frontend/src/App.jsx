@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CompanyProfileProvider } from './context/CompanyProfileContext';
 import Layout from './components/layout/Layout';
 import PerformanceDashboard from './modules/performance/pages/PerformanceDashboard';
 
@@ -34,6 +35,7 @@ import PaymentVerification from './modules/admin/pages/PaymentVerification';
 import SalesApprovals from './modules/sales/pages/ApprovalsTerminal';
 import QuotationManagementList from './modules/admin/pages/QuotationManagementList';
 import QuotationBrandingChanges from './modules/admin/pages/QuotationBrandingChanges';
+import InvoiceManagementList from './modules/admin/pages/InvoiceManagementList';
 import SalesManagerWorkspace from './modules/sales/pages/SalesManagerWorkspace';
 import AuthorityAccess from './modules/admin/pages/AuthorityAccess';
 import TargetAssignment from './modules/admin/pages/TargetAssignment';
@@ -165,6 +167,9 @@ const AppRoutes = () => {
           <Route path="cost-management"    element={<CostManagement />} />
           <Route path="quotation-management/list" element={<QuotationManagementList />} />
           <Route path="quotation-management/changes" element={<QuotationBrandingChanges />} />
+          <Route path="invoice-management/list" element={<InvoiceManagementList />} />
+          <Route path="invoice-management/changes" element={<QuotationBrandingChanges />} />
+          <Route path="invoice-management" element={<InvoiceManagementList />} />
           
           <Route path="prospects"   element={<AdminTeamViewSwitch viewType="prospects" salesElement={<SalesProspects />} />} />
           <Route path="orders"      element={<AdminTeamViewSwitch viewType="orders" salesElement={<SalesOrders />} />} />
@@ -231,7 +236,7 @@ const AppRoutes = () => {
           <Route path="communications/sms" element={<ComingSoon title="SMS Integration" />} />
           <Route path="communications/notifications" element={<ComingSoon title="Notifications Center" />} />
 
-          <Route path="settings"    element={<ComingSoon title="Settings" />} />
+          <Route path="settings"    element={<QuotationBrandingChanges />} />
           <Route path="*"           element={<div className="p-6 text-muted-foreground">Page not found.</div>} />
         </Route>
 
@@ -246,7 +251,9 @@ function App() {
   
   return (
     <AuthProvider>
-      <AppRoutes />
+      <CompanyProfileProvider>
+        <AppRoutes />
+      </CompanyProfileProvider>
     </AuthProvider>
   );
 }

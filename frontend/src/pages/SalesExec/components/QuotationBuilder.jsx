@@ -411,33 +411,6 @@ Sales Executive`;
             </button>
             <h2 className="text-xl font-semibold text-gray-800">Create Quotation</h2>
           </div>
-          <div className="flex items-center gap-3">
-            <button 
-              type="button"
-              onClick={() => setIsPreviewOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 border border-indigo-200 rounded-lg text-indigo-600 hover:bg-indigo-50 bg-white shadow-sm transition-all text-sm font-semibold"
-            >
-              <Eye className="h-4 w-4" /> Preview
-            </button>
-            <button 
-              type="button"
-              onClick={() => {
-                setIsPreviewOpen(true);
-                setTimeout(() => window.print(), 600);
-              }}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-all text-sm font-bold"
-            >
-              <Printer className="h-4 w-4" /> Download
-            </button>
-            <button 
-              type="button"
-              onClick={handleSend} 
-              disabled={saving} 
-              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-md shadow-emerald-200 transition-all text-sm disabled:opacity-50"
-            >
-              <MessageCircle className="h-4 w-4" /> {saving ? 'Sending...' : 'Send'}
-            </button>
-          </div>
         </div>
 
         {/* Content */}

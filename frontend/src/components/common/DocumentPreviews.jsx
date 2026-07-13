@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Eye, Printer, X, FileText, AlertCircle, MessageCircle } from 'lucide-react';
 import { numberToWords } from '../../utils/numberToWords';
 import { useAuth } from '../../context/AuthContext';
+import { useCompanyProfile } from '../../context/CompanyProfileContext';
 import { quotationApi } from '../../services/api';
 
 // Default GMS Company Logo SVG component matching the PDF logo
@@ -69,11 +70,12 @@ const formatUKDate = (dateVal) => {
 };
 
 export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
-  const auth = useAuth();
-  const user = auth?.user;
+  const { user } = useAuth();
+  const { profile } = useCompanyProfile();
   if (!quotation) return null;
 
-  const template = quotation.templateSnapshot || {};
+  const rawTemplate = quotation.templateSnapshot || quotation.template || {};
+  const template = { ...profile, ...rawTemplate, bankDetails: { ...profile?.bankDetails, ...(rawTemplate.bankDetails || {}) } };
   const prospect = quotation.prospect || quotation.clientSnapshot || {};
   const items = quotation.items || [];
   
@@ -117,28 +119,6 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
             <h2 className="text-lg font-black text-slate-900">Quotation Preview</h2>
           </div>
           <div className="flex items-center gap-3 flex-wrap justify-end">
-            <button 
-              onClick={() => window.print()}
-              className="px-5 py-2 bg-[#0284c7] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#0369a1] transition-all shadow-md"
-            >
-              <Printer className="h-4 w-4" /> Download PDF / Print
-            </button>
-            <button 
-              onClick={() => {
-                if (onSendWhatsApp) {
-                  onSendWhatsApp();
-                } else {
-                  const phoneClean = prospect.phone?.replace(/\D/g, '') || '';
-                  const formattedPhone = phoneClean.length === 10 ? `91${phoneClean}` : phoneClean;
-                  const itemsList = items.map(i => `• ${i.name || i.description} (x${i.quantity || 1}): ₹${Number(i.totalCost || i.amount || 0).toLocaleString()}`).join('\n');
-                  const text = `*QUOTATION: ${template.companyName || 'GMS ADS & MARKETING'}*\n\nHello *${prospect.name || 'Client'}* (${prospect.company || 'N/A'}),\n\nFollowing is the estimate for your requirement:\n\n${itemsList}\n\n--------------------------\n*Subtotal:* ₹${Number(subtotal).toLocaleString()}\n*TOTAL AMOUNT:* ₹${Math.round(totalAmount).toLocaleString()}\n--------------------------\n\nRegards,\n*GMS Sales Team*`;
-                  window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(text)}`, '_blank');
-                }
-              }}
-              className="px-5 py-2 bg-[#25d366] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#1ebd5b] transition-all shadow-md"
-            >
-              <MessageCircle className="h-4 w-4" /> Send via WhatsApp
-            </button>
             {onClose && (
               <button 
                 onClick={onClose} 
@@ -173,7 +153,8 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                   <p className="text-xs sm:text-[13px] text-slate-800 font-normal mt-0.5">
                     <span className="font-semibold">Mobile:</span> {template.contactPhone || template.mobile || '9985330008'}{'   '}
                     <span className="font-semibold ml-3">GSTIN:</span> {template.gstin || '36AAQFG7654Q2ZB'}{'   '}
-                    <span className="font-semibold ml-3">PAN Number:</span> {template.panNumber || 'AAQFG7654Q'}
+                    <span className="font-semibold ml-3">PAN Number:</span> {template.panNumber || 'AAQFG7654Q'}{'   '}
+                    <span className="font-semibold ml-3">REG/CIN:</span> {template.regNumber || profile?.regNumber || 'REG-2024-GMS-881'}
                   </p>
                 </div>
               </div>
@@ -297,6 +278,7 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                       <p><span className="font-semibold">Account Name:</span> {template.bankDetails.accountName}</p>
                       <p><span className="font-semibold">A/C No:</span> {template.bankDetails.accountNumber}</p>
                       <p><span className="font-semibold">IFSC:</span> {template.bankDetails.ifscCode}</p>
+                      {template.bankDetails.branch && <p><span className="font-semibold">Branch:</span> {template.bankDetails.branch}</p>}
                     </div>
                   )}
                 </div>
@@ -362,10 +344,11 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
         </div>
 
         {/* Approval Actions Footer (if pending approval) */}
-        {quotation.requiresApproval && quotation.status === 'Draft' && (
-          <div className="bg-white border-t px-6 py-4 flex justify-between items-center shrink-0 print-hidden">
-            <div>
-              {['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user?.role) ? (
+        {/* Bottom Actions Footer */}
+        <div className="bg-white border-t px-6 py-4 flex flex-wrap justify-between items-center gap-4 shrink-0 print-hidden">
+          <div>
+            {quotation.requiresApproval && quotation.status === 'Draft' && (
+              ['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user?.role) ? (
                 <div className="flex gap-3">
                   <button 
                     onClick={async () => {
@@ -374,7 +357,7 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                         onClose?.(true);
                       }
                     }}
-                    className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold text-xs hover:bg-emerald-700 transition-all shadow-md"
+                    className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs hover:bg-emerald-700 transition-all shadow-md"
                   >
                     Approve Quotation
                   </button>
@@ -386,7 +369,7 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                         onClose?.(true);
                       }
                     }}
-                    className="px-6 py-2.5 bg-rose-50 text-rose-600 rounded-xl font-bold text-xs hover:bg-rose-100 transition-all"
+                    className="px-6 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold text-xs hover:bg-rose-100 transition-all"
                   >
                     Reject
                   </button>
@@ -395,13 +378,37 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                 <p className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
                   <AlertCircle className="h-4 w-4" /> Pending Manager Approval
                 </p>
-              )}
-            </div>
-            <button onClick={onClose} className="px-5 py-2 bg-slate-200 text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-300 transition-all">
+              )
+            )}
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button 
+              onClick={() => window.print()}
+              className="px-5 py-2.5 bg-[#0284c7] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#0369a1] transition-all shadow-md"
+            >
+              <Printer className="h-4 w-4" /> Download PDF / Print
+            </button>
+            <button 
+              onClick={() => {
+                if (onSendWhatsApp) {
+                  onSendWhatsApp();
+                } else {
+                  const phoneClean = prospect.phone?.replace(/\D/g, '') || '';
+                  const formattedPhone = phoneClean.length === 10 ? `91${phoneClean}` : phoneClean;
+                  const itemsList = items.map(i => `• ${i.name || i.description} (x${i.quantity || 1}): ₹${Number(i.totalCost || i.amount || 0).toLocaleString()}`).join('\n');
+                  const text = `*QUOTATION: ${template.companyName || 'GMS ADS & MARKETING'}*\n\nHello *${prospect.name || 'Client'}* (${prospect.company || 'N/A'}),\n\nFollowing is the estimate for your requirement:\n\n${itemsList}\n\n--------------------------\n*Subtotal:* ₹${Number(subtotal).toLocaleString()}\n*TOTAL AMOUNT:* ₹${Math.round(totalAmount).toLocaleString()}\n--------------------------\n\nRegards,\n*GMS Sales Team*`;
+                  window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(text)}`, '_blank');
+                }
+              }}
+              className="px-5 py-2.5 bg-[#25d366] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#1ebd5b] transition-all shadow-md"
+            >
+              <MessageCircle className="h-4 w-4" /> Send via WhatsApp
+            </button>
+            <button onClick={onClose} className="px-5 py-2.5 bg-slate-200 text-slate-700 rounded-xl font-bold text-xs hover:bg-slate-300 transition-all">
               Close
             </button>
           </div>
-        )}
+        </div>
 
       </div>
     </div>,
@@ -412,9 +419,11 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
 
 // ─── View Invoice Modal matching exact Tax Invoice PDF format ───────────────────
 export const ViewInvoiceModal = ({ order, onClose }) => {
+  const { profile } = useCompanyProfile();
   if (!order) return null;
 
-  const companySnapshot = order.companySnapshot || {};
+  const rawCompany = order.companySnapshot || order.companyDetails || {};
+  const companySnapshot = { ...profile, ...rawCompany, bankDetails: { ...profile?.bankDetails, ...(rawCompany.bankDetails || {}) } };
   const clientSnapshot = order.clientSnapshot || order.prospect || {};
   const lineItems = order.lineItems || [];
   
@@ -511,7 +520,8 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                   <p className="text-xs sm:text-[13px] text-slate-800 font-normal mt-0.5">
                     <span className="font-semibold">Mobile:</span> {companySnapshot.contactPhone || companySnapshot.mobile || '9985330008'}{'   '}
                     <span className="font-semibold ml-3">GSTIN:</span> {companySnapshot.gstin || '36AAQFG7654Q2ZB'}{'   '}
-                    <span className="font-semibold ml-3">PAN Number:</span> {companySnapshot.panNumber || 'AAQFG7654Q'}
+                    <span className="font-semibold ml-3">PAN Number:</span> {companySnapshot.panNumber || 'AAQFG7654Q'}{'   '}
+                    <span className="font-semibold ml-3">REG/CIN:</span> {companySnapshot.regNumber || profile?.regNumber || 'REG-2024-GMS-881'}
                   </p>
                 </div>
               </div>
@@ -638,6 +648,16 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                       <p>{termsText}</p>
                     )}
                   </div>
+                  {companySnapshot.bankDetails && (
+                    <div className="mt-4 pt-3 border-t border-slate-200 text-slate-800">
+                      <p className="font-bold text-slate-900 mb-0.5">Bank Account Details:</p>
+                      <p><span className="font-semibold">Bank:</span> {companySnapshot.bankDetails.bankName}</p>
+                      <p><span className="font-semibold">Account Name:</span> {companySnapshot.bankDetails.accountName}</p>
+                      <p><span className="font-semibold">A/C No:</span> {companySnapshot.bankDetails.accountNumber}</p>
+                      <p><span className="font-semibold">IFSC:</span> {companySnapshot.bankDetails.ifscCode}</p>
+                      {companySnapshot.bankDetails.branch && <p><span className="font-semibold">Branch:</span> {companySnapshot.bankDetails.branch}</p>}
+                    </div>
+                  )}
                 </div>
 
                 {/* Totals Table */}

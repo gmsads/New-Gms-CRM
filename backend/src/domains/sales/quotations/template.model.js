@@ -10,6 +10,7 @@ const quotationTemplateSchema = new mongoose.Schema({
   gstNumber: { type: String },
   gstin: { type: String },
   panNumber: { type: String },
+  regNumber: { type: String },
   contactEmail: { type: String },
   contactPhone: { type: String },
   email: { type: String },

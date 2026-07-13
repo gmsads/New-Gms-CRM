@@ -12,6 +12,7 @@ exports.getTemplate = async (req, res) => {
         address: '123 Business Avenue, Tech Park',
         gstNumber: '27AABCU9603R1ZX',
         panNumber: 'AABCU9603R',
+        regNumber: 'REG-2024-GMS-881',
         bankDetails: {
           bankName: 'HDFC Bank',
           accountNumber: '50200012345678',

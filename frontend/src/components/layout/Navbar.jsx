@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bell, Search, Menu, LogOut } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useCompanyProfile } from '../../context/CompanyProfileContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { getRoleDashboardPath } from './Sidebar';
 
@@ -27,6 +28,7 @@ const ROLE_COLORS = {
 
 const Navbar = ({ onMenuClick }) => {
   const { user, logout } = useAuth();
+  const { profile } = useCompanyProfile();
   const navigate = useNavigate();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -46,7 +48,7 @@ const Navbar = ({ onMenuClick }) => {
           <Menu className="w-5 h-5" />
         </button>
         <Link to={getRoleDashboardPath(user?.role)} className="md:hidden flex items-center cursor-pointer ml-1">
-          <img src="/logo.png" alt="GMS Logo" className="h-10 w-auto object-contain" />
+          <img src={profile?.logoUrl || '/logo.png'} alt={profile?.companyName || 'CRM Logo'} className="h-10 w-auto object-contain" />
         </Link>
         <div className="relative hidden sm:flex flex-1 max-w-[200px] items-center">
           <Search className="absolute left-3 w-3.5 h-3.5 text-muted-foreground" />

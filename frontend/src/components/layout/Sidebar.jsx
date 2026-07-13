@@ -8,6 +8,7 @@ import {
   Image as ImageIcon, MapPin, Activity, PhoneCall, Zap
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useCompanyProfile } from '../../context/CompanyProfileContext';
 import { prospectApi, orderApi, appointmentApi, approvalApi, paymentApi } from '../../services/api';
 
 export const getRoleDashboardPath = (role) => {
@@ -106,6 +107,16 @@ const menuConfig = [
       { title: 'Quotation Changes', path: '/quotation-management/changes', icon: Settings },
     ]
   },
+  { 
+    title: 'Invoice Management',   
+    icon: FileText,         
+    path: '/invoice-management', 
+    roles: ['ADMIN','MD_CEO','ACCOUNTS'],
+    subItems: [
+      { title: 'Invoices & Billing', path: '/invoice-management/list', icon: FileText },
+      { title: 'Invoice Branding', path: '/invoice-management/changes', icon: Settings },
+    ]
+  },
   { title: 'Catalog',          icon: FileText,        path: '/brochures',   roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','SALES_EXEC','SR_SALES_EXEC'] },
   { title: 'Quotations',       icon: Quote,           path: '/quotations',  roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','FIELD_EXEC','AGENT'] },
   { title: 'HR Control Panel', icon: ShieldCheck,     path: '/admin-hr',  roles: ['ADMIN','MD_CEO'] },
@@ -154,7 +165,8 @@ const adminMenuConfig = [
       { title: 'Order Verification', path: '/approvals/order-verification', icon: ShieldCheck },
       { title: 'Task Assignments', path: '/tasks', icon: CheckSquare },
       { title: 'Vendor Management', path: '/vendors', icon: Truck },
-      { title: 'Quotation Management', path: '/quotation-management/changes', icon: FileText }
+      { title: 'Quotation Management', path: '/quotation-management/changes', icon: FileText },
+      { title: 'Invoice Management', path: '/invoice-management/list', icon: FileText }
     ]
   },
   {
@@ -175,7 +187,8 @@ const adminMenuConfig = [
       { title: 'Payment Verification', path: '/approvals/payment-verification', icon: ShieldCheck },
       { title: 'Advance Payment Approvals', path: '/approvals/advance-payments', icon: ShieldCheck },
       { title: 'Transactions', path: '/finance/transactions', icon: IndianRupee },
-      { title: 'Refunds', path: '/finance/refunds', icon: IndianRupee }
+      { title: 'Refunds', path: '/finance/refunds', icon: IndianRupee },
+      { title: 'Invoice Management', path: '/invoice-management/list', icon: FileText }
     ]
   },
   {
@@ -300,6 +313,7 @@ const NavItem = ({ item, setOpen, level = 0 }) => {
 
 const Sidebar = ({ isOpen, setOpen }) => {
   const { user } = useAuth();
+  const { profile } = useCompanyProfile();
   
   const [prospectCount, setProspectCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
@@ -822,7 +836,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
       >
         <div className="flex items-center justify-center w-full h-16 border-b shrink-0 relative">
           <Link to={getRoleDashboardPath(user?.role)} onClick={() => setOpen(false)} className="flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity">
-            <img src="/logo.png" alt="GMS Logo" className="h-18 pt-2.5 w-auto object-contain" />
+            <img src={profile?.logoUrl || '/logo.png'} alt={profile?.companyName || 'CRM Logo'} className="h-18 pt-2.5 w-auto object-contain" />
           </Link>
           <button onClick={() => setOpen(false)} className="md:hidden absolute right-4 text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />

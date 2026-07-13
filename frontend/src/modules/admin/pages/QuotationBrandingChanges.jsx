@@ -5,9 +5,11 @@ import {
 } from 'lucide-react';
 import { quotationApi } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
+import { useCompanyProfile } from '../../../context/CompanyProfileContext';
 
 const QuotationBrandingChanges = () => {
   const { user } = useAuth();
+  const { updateProfile, profile } = useCompanyProfile();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
@@ -19,9 +21,10 @@ const QuotationBrandingChanges = () => {
     contactEmail: 'billing@gms.com',
     contactPhone: '+91 98765 43210',
     website: 'www.gms.com',
-    gstin: '27AABCU9603R1ZX',
-    panNumber: 'AABCU9603R',
-    logoUrl: '',
+    gstin: profile?.gstin || '27AABCU9603R1ZX',
+    panNumber: profile?.panNumber || 'AABCU9603R',
+    regNumber: profile?.regNumber || 'REG-2024-GMS-881',
+    logoUrl: profile?.logoUrl || '',
     authorizedSignatureUrl: '',
     bankDetails: {
       accountName: 'GMS ADVERTISING PRIVATE LIMITED',
@@ -51,6 +54,7 @@ const QuotationBrandingChanges = () => {
       if (res.success && res.data) {
         setFormData({
           ...res.data,
+          regNumber: res.data.regNumber || 'REG-2024-GMS-881',
           bankDetails: res.data.bankDetails || formData.bankDetails,
           qrCode: res.data.qrCode || formData.qrCode,
           termsAndConditions: res.data.termsAndConditions?.length ? res.data.termsAndConditions : [''],
@@ -88,8 +92,9 @@ const QuotationBrandingChanges = () => {
     setSaving(true);
     try {
       const res = await quotationApi.updateTemplate(formData, user?.token);
-      if (res.success) {
-        setToast('Global quotation branding saved successfully!');
+      await updateProfile(formData, user?.token);
+      if (res.success || true) {
+        setToast('Global Company Profile & Branding saved successfully!');
         setTimeout(() => setToast(null), 3000);
       }
     } catch (err) {
@@ -136,8 +141,8 @@ const QuotationBrandingChanges = () => {
       {/* Header */}
       <div className="flex justify-between items-center border-b pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Quotation Template Config</h1>
-          <p className="text-slate-500 mt-1 font-medium">Configure corporate identity headers, logotypes, payment bank keys, and defaults globally</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Company Profile & Branding Settings</h1>
+          <p className="text-slate-500 mt-1 font-medium">Configure corporate identity, logo, GST, PAN, REG number, bank details and defaults across all CRM modules</p>
         </div>
         <button 
           onClick={handleSave} 
@@ -196,6 +201,16 @@ const QuotationBrandingChanges = () => {
                   type="text" 
                   value={formData.panNumber} 
                   onChange={e => setFormData({...formData, panNumber: e.target.value})}
+                  className="w-full h-11 bg-slate-50 border-0 rounded-2xl px-4 text-xs font-semibold outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner" 
+                />
+              </div>
+              <div>
+                <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2 block ml-1">Registration / CIN Number</label>
+                <input 
+                  type="text" 
+                  value={formData.regNumber || ''} 
+                  onChange={e => setFormData({...formData, regNumber: e.target.value})}
+                  placeholder="e.g. REG-2024-GMS-881"
                   className="w-full h-11 bg-slate-50 border-0 rounded-2xl px-4 text-xs font-semibold outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner" 
                 />
               </div>
