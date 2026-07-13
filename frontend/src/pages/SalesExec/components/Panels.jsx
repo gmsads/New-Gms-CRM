@@ -1233,11 +1233,16 @@ export const CreateOrderModal = ({
     onSubmit({
       ...formData,
       lineItems,
+      invoiceDate: formData.orderDate || new Date().toISOString().split('T')[0],
       designFileUrl: items[0]?.designFileUrl || designFile || null,
       clientSnapshot: {
         name: formData.name,
         phone: formData.phone,
         company: formData.company,
+        address: formData.location || client?.address || client?.billingAddress || `${formData.state || 'Telangana'}, India`,
+        shippingAddress: client?.shippingAddress || formData.location || client?.address || `${formData.state || 'Telangana'}, India`,
+        gstin: formData.gstNumber || client?.gstin || client?.gstNumber || 'Unregistered',
+        state: formData.state || client?.state || 'Telangana'
       },
       payment: {
         rawSubtotal,

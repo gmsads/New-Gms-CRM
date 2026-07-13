@@ -51,6 +51,22 @@ const printStyles = `
   }
 `;
 
+const formatUKDate = (dateVal) => {
+  if (!dateVal) return new Date().toLocaleDateString('en-GB');
+  if (typeof dateVal === 'string') {
+    const trimmed = dateVal.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const [y, m, d] = trimmed.split('-');
+      return `${d}/${m}/${y}`;
+    }
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+      return trimmed;
+    }
+  }
+  const d = new Date(dateVal);
+  return isNaN(d.getTime()) ? String(dateVal) : d.toLocaleDateString('en-GB');
+};
+
 export const ViewQuotationModal = ({ quotation, onClose }) => {
   const auth = useAuth();
   const user = auth?.user;
@@ -75,7 +91,7 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
 
   // Dates & IDs
   const quoteNo = quotation.quotationId || quotation.quotationNumber || quotation._id?.slice(-6)?.toUpperCase() || '2292';
-  const quoteDate = quotation.quotationDate || (quotation.createdAt ? new Date(quotation.createdAt).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'));
+  const quoteDate = formatUKDate(quotation.quotationDate || quotation.date || quotation.createdAt || new Date());
   
   // Place of supply and tax breakdown (CGST+SGST vs IGST)
   const placeOfSupply = prospect.state || prospect.placeOfSupply || 'Telangana';
@@ -156,26 +172,30 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
               </div>
 
               {/* BILL TO & SHIP TO */}
-              <div className="grid grid-cols-2 gap-6 py-5 px-1 border-b border-slate-100 text-xs sm:text-[13px]">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">BILL TO</h3>
-                  <p className="font-bold text-slate-900 text-[13.5px]">{prospect.company || prospect.name || 'CLIENT COMPANY'}</p>
-                  <p className="text-slate-800 mt-0.5 leading-snug">
-                    {prospect.address || 'Ground ,First Floor, 5-4-156, 157, 173, to 176 179 to 184 /2, 184/2A/1 GF & 5-4-1, T-19 Towers, Ranigunj, Secunderabad, Hyderabad, Telangana, pin: 500003'}
-                  </p>
-                  <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {prospect.phone || 'N/A'}</p>
-                  <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {prospect.gstin || '36AAGCE1517R1ZA'}</p>
-                  {prospect.panNumber && <p className="text-slate-800"><span className="font-semibold">PAN Number:</span> {prospect.panNumber}</p>}
-                  <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {placeOfSupply}</p>
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">SHIP TO</h3>
-                  <p className="font-bold text-slate-900 text-[13.5px]">{prospect.company || prospect.name || 'CLIENT COMPANY'}</p>
-                  <p className="text-slate-800 mt-0.5 leading-snug">
-                    {prospect.shippingAddress || prospect.address || '8-40/1, Dammaiguda Rd, Narayana Puri Colony, Sai Priya Colony, Dammaiguda, Secunderabad, Telangana 500083, K.V.Rangareddy, Telangana, 500032'}
-                  </p>
-                </div>
-              </div>
+              {(() => {
+                const isSample = !prospect.company && !prospect.name;
+                const billAddr = prospect.address || prospect.location || prospect.billingAddress || (isSample ? 'Ground ,First Floor, 5-4-156, 157, 173, to 176 179 to 184 /2, 184/2A/1 GF & 5-4-1, T-19 Towers, Ranigunj, Secunderabad, Hyderabad, Telangana, pin: 500003' : (prospect.city ? `${prospect.city}, ${placeOfSupply}` : `${placeOfSupply}, India`));
+                const shipAddr = prospect.shippingAddress || prospect.address || prospect.location || prospect.billingAddress || (isSample ? '8-40/1, Dammaiguda Rd, Narayana Puri Colony, Sai Priya Colony, Dammaiguda, Secunderabad, Telangana 500083, K.V.Rangareddy, Telangana, 500032' : billAddr);
+                const gstin = prospect.gstin || prospect.gstNumber || (isSample ? '36AAGCE1517R1ZA' : 'Unregistered');
+                return (
+                  <div className="grid grid-cols-2 gap-6 py-5 px-1 border-b border-slate-100 text-xs sm:text-[13px]">
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">BILL TO</h3>
+                      <p className="font-bold text-slate-900 text-[13.5px]">{prospect.company || prospect.name || 'CLIENT COMPANY'}</p>
+                      <p className="text-slate-800 mt-0.5 leading-snug">{billAddr}</p>
+                      <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {prospect.phone || 'N/A'}</p>
+                      <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {gstin}</p>
+                      {prospect.panNumber && <p className="text-slate-800"><span className="font-semibold">PAN Number:</span> {prospect.panNumber}</p>}
+                      <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {placeOfSupply}</p>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">SHIP TO</h3>
+                      <p className="font-bold text-slate-900 text-[13.5px]">{prospect.company || prospect.name || 'CLIENT COMPANY'}</p>
+                      <p className="text-slate-800 mt-0.5 leading-snug">{shipAddr}</p>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Table Section */}
               <div className="mt-4">
@@ -385,8 +405,9 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
 
   // Dates & IDs
   const invoiceNo = order.invoiceNumber || order.orderNumber || order.orderId || order._id?.slice(-6)?.toUpperCase() || '2074';
-  const invoiceDate = order.invoiceDate ? new Date(order.invoiceDate).toLocaleDateString('en-GB') : (order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'));
-  const dueDate = order.dueDate ? new Date(order.dueDate).toLocaleDateString('en-GB') : (order.createdAt ? new Date(new Date(order.createdAt).getTime() + 30*24*60*60*1000).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB'));
+  const invoiceDate = formatUKDate(order.invoiceDate || order.orderDate || order.date || order.createdAt || new Date());
+  const dueDateVal = order.dueDate || (order.invoiceDate || order.orderDate || order.date || order.createdAt ? new Date(new Date(order.invoiceDate || order.orderDate || order.date || order.createdAt).getTime() + 30*24*60*60*1000) : new Date());
+  const dueDate = formatUKDate(dueDateVal);
 
   // Place of supply and tax breakdown
   const placeOfSupply = clientSnapshot.state || clientSnapshot.placeOfSupply || 'Tamil Nadu';
@@ -480,25 +501,29 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
               </div>
 
               {/* BILL TO & SHIP TO */}
-              <div className="grid grid-cols-2 gap-6 py-5 px-1 border-b border-slate-100 text-xs sm:text-[13px]">
-                <div>
-                  <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">BILL TO</h3>
-                  <p className="font-bold text-slate-900 text-[13.5px]">{clientSnapshot.company || clientSnapshot.name || 'CLIENT COMPANY'}</p>
-                  <p className="text-slate-800 mt-0.5 leading-snug">
-                    {clientSnapshot.address || 'NO. 23B, HALLS ROAD, KLPPAUK, CHENNAI,600010, Chennai, Tamil Nadu, 600010'}
-                  </p>
-                  <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {clientSnapshot.phone || 'N/A'}</p>
-                  <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {clientSnapshot.gstin || '33AAACW7753P2ZP'}</p>
-                  <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {placeOfSupply}</p>
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">SHIP TO</h3>
-                  <p className="font-bold text-slate-900 text-[13.5px]">{clientSnapshot.company || clientSnapshot.name || 'CLIENT COMPANY'}</p>
-                  <p className="text-slate-800 mt-0.5 leading-snug">
-                    {clientSnapshot.shippingAddress || clientSnapshot.address || 'NO. 23B, HALLS ROAD, KLPPAUK, CHENNAI,600010, Chennai, Tamil Nadu, 600010'}
-                  </p>
-                </div>
-              </div>
+              {(() => {
+                const isSample = !clientSnapshot.company && !clientSnapshot.name;
+                const billAddr = clientSnapshot.address || clientSnapshot.location || clientSnapshot.billingAddress || order.location || order.address || (isSample ? 'NO. 23B, HALLS ROAD, KLPPAUK, CHENNAI,600010, Chennai, Tamil Nadu, 600010' : (clientSnapshot.city ? `${clientSnapshot.city}, ${placeOfSupply}` : `${placeOfSupply}, India`));
+                const shipAddr = clientSnapshot.shippingAddress || clientSnapshot.address || clientSnapshot.location || clientSnapshot.billingAddress || order.shippingAddress || order.location || order.address || (isSample ? 'NO. 23B, HALLS ROAD, KLPPAUK, CHENNAI,600010, Chennai, Tamil Nadu, 600010' : billAddr);
+                const gstin = clientSnapshot.gstin || clientSnapshot.gstNumber || order.gstNumber || (isSample ? '33AAACW7753P2ZP' : 'Unregistered');
+                return (
+                  <div className="grid grid-cols-2 gap-6 py-5 px-1 border-b border-slate-100 text-xs sm:text-[13px]">
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">BILL TO</h3>
+                      <p className="font-bold text-slate-900 text-[13.5px]">{clientSnapshot.company || clientSnapshot.name || 'CLIENT COMPANY'}</p>
+                      <p className="text-slate-800 mt-0.5 leading-snug">{billAddr}</p>
+                      <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {clientSnapshot.phone || 'N/A'}</p>
+                      <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {gstin}</p>
+                      <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {placeOfSupply}</p>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-xs tracking-wider uppercase mb-1">SHIP TO</h3>
+                      <p className="font-bold text-slate-900 text-[13.5px]">{clientSnapshot.company || clientSnapshot.name || 'CLIENT COMPANY'}</p>
+                      <p className="text-slate-800 mt-0.5 leading-snug">{shipAddr}</p>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Table Section */}
               <div className="mt-4">

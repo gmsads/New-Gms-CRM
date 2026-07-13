@@ -164,12 +164,12 @@ const QuotationBuilder = ({ prospect, onClose, onSave }) => {
     return basePrice;
   };
 
-  const handleProductSelect = (productId) => {
-    if (!productId) return;
-    const product = products.find(p => p._id === productId);
+  const handleProductSelect = (productOrId) => {
+    if (!productOrId) return;
+    const product = typeof productOrId === 'object' ? productOrId : products.find(p => p._id === productOrId);
     if (!product) return;
 
-    const exists = items.find(i => i.product === product._id);
+    const exists = items.find(i => (i.product && (i.product === product._id || i.product._id === product._id)) || i.name === (product.productName || product.name));
     if (exists) {
       setSelectedProduct('');
       return; 
@@ -179,8 +179,9 @@ const QuotationBuilder = ({ prospect, onClose, onSave }) => {
     const slabPrice = getProductSlabPrice(product, moq);
     
     setItems([...items, {
-      product: product._id,
-      name: product.productName || product.name,
+      product: product._id || product.id,
+      name: product.productName || product.name || 'Selected Item',
+      description: product.description || product.productName || product.name || '',
       originalPrice: slabPrice,
       unitPrice: slabPrice,
       quantity: moq,
@@ -347,18 +348,22 @@ Sales Executive`;
     const previewQuoteObj = {
       templateSnapshot: template || {},
       prospect: prospect || {},
-      items: items.map(it => ({
-        name: it.name || it.description || 'ITEM',
-        description: it.description || it.name,
-        details: it.details || '',
-        quantity: Number(it.qty || it.quantity || 1),
-        unitCost: Number(it.rate || it.unitCost || 0),
-        taxAmount: Number(it.taxAmount || (Number(it.qty || 1) * Number(it.rate || 0) * 0.18)),
-        totalCost: Number(it.amount || it.totalCost || (Number(it.qty || 1) * Number(it.rate || 0)))
-      })),
+      items: items.map(it => {
+        const q = Number(it.qty || it.quantity || 1);
+        const rate = Number(it.rate || it.unitCost || it.unitPrice || 0);
+        return {
+          name: it.name || it.description || 'ITEM',
+          description: it.description || it.name,
+          details: it.details || '',
+          quantity: q,
+          unitCost: rate,
+          taxAmount: Number(it.taxAmount !== undefined ? it.taxAmount : (q * rate * (it.taxRate ? it.taxRate / 100 : 0.18))),
+          totalCost: Number(it.amount !== undefined ? it.amount : (it.totalCost !== undefined ? it.totalCost : q * rate))
+        };
+      }),
       subtotal: subtotal,
       discount: { amount: discountAmount, type: discountType, value: discountValue },
-      tax: { enabled: true, amount: 0 },
+      tax: { enabled: true, amount: taxAmount },
       totalAmount: finalTotal,
       notes: notes || template?.termsAndConditions?.[0] || '70% ADVANCE PAYMENT NEED TO START WORK',
       quotationDate: new Date().toLocaleDateString('en-GB')
@@ -568,7 +573,7 @@ Sales Executive`;
               <div className="flex-1 relative">
                 <select 
                   value={selectedProduct}
-                  onChange={e => addItem(e.target.value)}
+                  onChange={e => handleProductSelect(e.target.value)}
                   className="w-full h-11 border-2 border-dashed border-indigo-300 text-indigo-600 rounded-lg bg-indigo-50/30 px-4 outline-none cursor-pointer text-sm font-bold hover:bg-indigo-50 transition-colors appearance-none"
                 >
                   <option value="" disabled>+ Select Product / Service to Add</option>
@@ -825,7 +830,7 @@ Sales Executive`;
         onClose={() => setIsCatalogueOpen(false)}
         mode="single"
         onSelectProduct={(product) => {
-          addItem(product._id);
+          handleProductSelect(product);
         }}
       />
       {renderPreviewModal()}
