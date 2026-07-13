@@ -145,25 +145,51 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
             {/* Top Section */}
             <div>
               {/* Header: Logo & Company Address */}
-              <div className="flex items-start justify-between gap-6 pb-4">
-                {template.logoUrl ? (
-                  <img src={template.logoUrl} alt="Logo" className="h-16 object-contain max-w-[140px]" />
-                ) : (
-                  <DefaultLogo />
-                )}
-                <div className="flex-1 text-left pl-2">
-                  <h1 className="text-2xl sm:text-[26px] font-bold text-[#0284c7] tracking-tight leading-tight">
-                    {template.companyName || 'Global Marketing Solutions'}
+              <div className="flex items-stretch justify-between gap-6 pb-5 border-b border-slate-200/80">
+                {/* Logo Container: Centered Horizontally & Vertically */}
+                <div className="w-[160px] sm:w-[185px] shrink-0 flex items-center justify-center pr-5 border-r border-slate-200">
+                  {template.logoUrl ? (
+                    <img src={template.logoUrl} alt="Logo" className="max-h-20 w-auto object-contain max-w-full mx-auto my-auto" />
+                  ) : (
+                    <div className="flex items-center justify-center w-full h-full my-auto">
+                      <DefaultLogo />
+                    </div>
+                  )}
+                </div>
+
+                {/* Company Details Content */}
+                <div className="flex-1 text-left pl-1 sm:pl-3 flex flex-col justify-center">
+                  <h1 className="text-2xl sm:text-[27px] font-extrabold text-[#0284c7] tracking-tight leading-tight">
+                    {template.companyName || profile?.companyName || 'Global Marketing Solutions Pvt Ltd'}
                   </h1>
-                  <p className="text-xs sm:text-[13px] text-slate-800 font-normal leading-relaxed mt-1">
-                    {template.address || 'Ho.no 18-1-337/B/12 Rajiv Gandhi Nagar,Uppuguda Hyderabad 500053, Telangana,'}
+                  <p className="text-xs sm:text-[13px] text-slate-700 font-medium leading-relaxed mt-1">
+                    {template.address || profile?.address || '2nd floor, Plot no 204, Kamineni Hospital Bypass Rd, Suvidha Arcade, RTC Colony, L. B. Nagar, Hyderabad, Telangana, PIN:500060.'}
                   </p>
-                  <p className="text-xs sm:text-[13px] text-slate-800 font-normal mt-0.5">
-                    <span className="font-semibold">Mobile:</span> {template.contactPhone || template.mobile || '9985330008'}{'   '}
-                    <span className="font-semibold ml-3">GSTIN:</span> {template.gstin || '36AAQFG7654Q2ZB'}{'   '}
-                    <span className="font-semibold ml-3">PAN Number:</span> {template.panNumber || 'AAQFG7654Q'}{'   '}
-                    <span className="font-semibold ml-3">REG/CIN:</span> {template.regNumber || profile?.regNumber || 'REG-2024-GMS-881'}
-                  </p>
+                  
+                  {/* Row 1: Mobile & Email */}
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-[13px] text-slate-800 font-normal mt-2.5 pt-2 border-t border-slate-100">
+                    <div>
+                      <span className="font-bold text-slate-900">Mobile:</span> {template.contactPhone || template.mobile || profile?.contactPhone || profile?.mobile || '+91 98765 43210'}
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900">Email:</span> {template.contactEmail || template.email || profile?.contactEmail || profile?.email || 'info@globalmarketingsolutions.in'}
+                    </div>
+                  </div>
+
+                  {/* Row 2: GSTIN, PAN, REG/CIN */}
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-[13px] text-slate-800 font-normal mt-1">
+                    <div>
+                      <span className="font-bold text-slate-900">GSTIN:</span> {template.gstin || profile?.gstin || '36AAGCE2149M1Z8'}
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900">PAN Number:</span> {template.panNumber || profile?.panNumber || 'AABCU9603R'}
+                    </div>
+                    {(template.regNumber || profile?.regNumber) && (
+                      <div>
+                        <span className="font-bold text-slate-900">REG/CIN:</span> {template.regNumber || profile?.regNumber || 'REG-2024-GMS-881'}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -531,25 +557,51 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
               </div>
 
               {/* Header: Logo & Company Address */}
-              <div className="flex items-start justify-between gap-6 pb-4">
-                {companySnapshot.logoUrl ? (
-                  <img src={companySnapshot.logoUrl} alt="Logo" className="h-16 object-contain max-w-[140px]" />
-                ) : (
-                  <DefaultLogo />
-                )}
-                <div className="flex-1 text-left pl-2">
-                  <h1 className="text-2xl sm:text-[26px] font-bold text-[#0284c7] tracking-tight leading-tight">
-                    {companySnapshot.companyName || 'Global Marketing Solutions'}
+              <div className="flex items-stretch justify-between gap-6 pb-5 border-b border-slate-200/80">
+                {/* Logo Container: Centered Horizontally & Vertically */}
+                <div className="w-[160px] sm:w-[185px] shrink-0 flex items-center justify-center pr-5 border-r border-slate-200">
+                  {companySnapshot.logoUrl ? (
+                    <img src={companySnapshot.logoUrl} alt="Logo" className="max-h-20 w-auto object-contain max-w-full mx-auto my-auto" />
+                  ) : (
+                    <div className="flex items-center justify-center w-full h-full my-auto">
+                      <DefaultLogo />
+                    </div>
+                  )}
+                </div>
+
+                {/* Company Details Content */}
+                <div className="flex-1 text-left pl-1 sm:pl-3 flex flex-col justify-center">
+                  <h1 className="text-2xl sm:text-[27px] font-extrabold text-[#0284c7] tracking-tight leading-tight">
+                    {companySnapshot.companyName || profile?.companyName || 'Global Marketing Solutions Pvt Ltd'}
                   </h1>
-                  <p className="text-xs sm:text-[13px] text-slate-800 font-normal leading-relaxed mt-1">
-                    {companySnapshot.address || 'Ho.no 18-1-337/B/12 Rajiv Gandhi Nagar,Uppuguda Hyderabad 500053, Telangana,'}
+                  <p className="text-xs sm:text-[13px] text-slate-700 font-medium leading-relaxed mt-1">
+                    {companySnapshot.address || profile?.address || '2nd floor, Plot no 204, Kamineni Hospital Bypass Rd, Suvidha Arcade, RTC Colony, L. B. Nagar, Hyderabad, Telangana, PIN:500060.'}
                   </p>
-                  <p className="text-xs sm:text-[13px] text-slate-800 font-normal mt-0.5">
-                    <span className="font-semibold">Mobile:</span> {companySnapshot.contactPhone || companySnapshot.mobile || '9985330008'}{'   '}
-                    <span className="font-semibold ml-3">GSTIN:</span> {companySnapshot.gstin || '36AAQFG7654Q2ZB'}{'   '}
-                    <span className="font-semibold ml-3">PAN Number:</span> {companySnapshot.panNumber || 'AAQFG7654Q'}{'   '}
-                    <span className="font-semibold ml-3">REG/CIN:</span> {companySnapshot.regNumber || profile?.regNumber || 'REG-2024-GMS-881'}
-                  </p>
+                  
+                  {/* Row 1: Mobile & Email */}
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-[13px] text-slate-800 font-normal mt-2.5 pt-2 border-t border-slate-100">
+                    <div>
+                      <span className="font-bold text-slate-900">Mobile:</span> {companySnapshot.contactPhone || companySnapshot.mobile || profile?.contactPhone || profile?.mobile || '+91 98765 43210'}
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900">Email:</span> {companySnapshot.contactEmail || companySnapshot.email || profile?.contactEmail || profile?.email || 'info@globalmarketingsolutions.in'}
+                    </div>
+                  </div>
+
+                  {/* Row 2: GSTIN, PAN, REG/CIN */}
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-[13px] text-slate-800 font-normal mt-1">
+                    <div>
+                      <span className="font-bold text-slate-900">GSTIN:</span> {companySnapshot.gstin || profile?.gstin || '36AAGCE2149M1Z8'}
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900">PAN Number:</span> {companySnapshot.panNumber || profile?.panNumber || 'AABCU9603R'}
+                    </div>
+                    {(companySnapshot.regNumber || profile?.regNumber) && (
+                      <div>
+                        <span className="font-bold text-slate-900">REG/CIN:</span> {companySnapshot.regNumber || profile?.regNumber || 'REG-2024-GMS-881'}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
