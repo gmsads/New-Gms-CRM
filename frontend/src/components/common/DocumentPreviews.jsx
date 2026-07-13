@@ -1,5 +1,6 @@
 import React from 'react';
-import { Eye, Printer, X, FileText, AlertCircle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Eye, Printer, X, FileText, AlertCircle, MessageCircle } from 'lucide-react';
 import { numberToWords } from '../../utils/numberToWords';
 import { useAuth } from '../../context/AuthContext';
 import { quotationApi } from '../../services/api';
@@ -67,7 +68,7 @@ const formatUKDate = (dateVal) => {
   return isNaN(d.getTime()) ? String(dateVal) : d.toLocaleDateString('en-GB');
 };
 
-export const ViewQuotationModal = ({ quotation, onClose }) => {
+export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
   const auth = useAuth();
   const user = auth?.user;
   if (!quotation) return null;
@@ -102,8 +103,8 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
 
   const notesText = quotation.notes || template.termsAndConditions?.[0] || '70% ADVANCE PAYMENT NEED TO START WORK';
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
       <style>{printStyles}</style>
       <div className="bg-slate-100 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] text-slate-800">
         
@@ -115,12 +116,28 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
             </div>
             <h2 className="text-lg font-black text-slate-900">Quotation Preview</h2>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap justify-end">
             <button 
               onClick={() => window.print()}
               className="px-5 py-2 bg-[#0284c7] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#0369a1] transition-all shadow-md"
             >
               <Printer className="h-4 w-4" /> Download PDF / Print
+            </button>
+            <button 
+              onClick={() => {
+                if (onSendWhatsApp) {
+                  onSendWhatsApp();
+                } else {
+                  const phoneClean = prospect.phone?.replace(/\D/g, '') || '';
+                  const formattedPhone = phoneClean.length === 10 ? `91${phoneClean}` : phoneClean;
+                  const itemsList = items.map(i => `• ${i.name || i.description} (x${i.quantity || 1}): ₹${Number(i.totalCost || i.amount || 0).toLocaleString()}`).join('\n');
+                  const text = `*QUOTATION: ${template.companyName || 'GMS ADS & MARKETING'}*\n\nHello *${prospect.name || 'Client'}* (${prospect.company || 'N/A'}),\n\nFollowing is the estimate for your requirement:\n\n${itemsList}\n\n--------------------------\n*Subtotal:* ₹${Number(subtotal).toLocaleString()}\n*TOTAL AMOUNT:* ₹${Math.round(totalAmount).toLocaleString()}\n--------------------------\n\nRegards,\n*GMS Sales Team*`;
+                  window.open(`https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodeURIComponent(text)}`, '_blank');
+                }
+              }}
+              className="px-5 py-2 bg-[#25d366] text-white rounded-xl font-bold text-xs flex items-center gap-2 hover:bg-[#1ebd5b] transition-all shadow-md"
+            >
+              <MessageCircle className="h-4 w-4" /> Send via WhatsApp
             </button>
             {onClose && (
               <button 
@@ -161,12 +178,12 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
                 </div>
               </div>
 
-              {/* Quotation Metadata Bar */}
-              <div className="bg-[#f0f6fa] border-t-[3.5px] border-[#0284c7] py-2 px-5 mt-3 flex justify-between items-center text-xs sm:text-[13px] font-normal text-slate-900">
+              {/* Title & Quotation Info Banner */}
+              <div className="bg-[#f0f6fa] border-t-[3.5px] border-[#0284c7] py-2 px-5 mt-3 grid grid-cols-2 gap-4 text-xs sm:text-[13px] font-normal text-slate-900">
                 <div>
                   <span className="font-bold">Quotation No.:</span> {quoteNo}
                 </div>
-                <div>
+                <div className="text-right">
                   <span className="font-bold">Quotation Date:</span> {quoteDate}
                 </div>
               </div>
@@ -233,22 +250,21 @@ export const ViewQuotationModal = ({ quotation, onClose }) => {
                           </td>
                           <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
                             <div>{itemTax.toLocaleString('en-IN')}</div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">(18%)</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5 font-normal">(18% GST)</div>
                           </td>
-                          <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
+                          <td className="py-3 px-3 text-right font-bold text-slate-900 whitespace-nowrap">
                             {itemAmt.toLocaleString('en-IN')}
                           </td>
                         </tr>
                       );
                     })}
                   </tbody>
-                  {/* Subtotal Row */}
                   <tfoot>
                     <tr className="border-t-2 border-b-2 border-slate-900 font-bold text-slate-900">
                       <td className="py-2.5 px-3 uppercase">SUBTOTAL</td>
                       <td className="py-2.5 px-3 text-center">{totalQty}</td>
-                      <td className="py-2.5 px-3 text-right">₹ {taxAmount.toLocaleString('en-IN')}</td>
-                      <td className="py-2.5 px-3 text-right"></td>
+                      <td className="py-2.5 px-3"></td>
+                      <td className="py-2.5 px-3"></td>
                       <td className="py-2.5 px-3 text-right">₹ {subtotal.toLocaleString('en-IN')}</td>
                     </tr>
                   </tfoot>
@@ -420,8 +436,8 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
     '1) Payment should be Crossed and Made to "GLOBAL MARKETING SOLUTIONS", AXIS BANK, BRANCH: Champapet, A/C: 917020030786090, IFSCcode:UTIB0001305'
   ];
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
       <style>{printStyles}</style>
       <div className="bg-slate-100 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[96vh] text-slate-800">
         
@@ -663,6 +679,7 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

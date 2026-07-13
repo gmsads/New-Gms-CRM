@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Settings, Search, Plus, Trash2, Calendar, Phone, Mail, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Settings, Search, Plus, Trash2, Calendar, Phone, Mail, ShoppingBag, Eye, Printer, MessageCircle } from 'lucide-react';
 import { productApi, quotationApi } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import { ProductCatalogueModal } from './ProductCatalogueModal';
@@ -58,6 +58,9 @@ const QuotationBuilder = ({ prospect, onClose, onSave }) => {
   });
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [addGst, setAddGst] = useState(false);
+  const [clientGstNumber, setClientGstNumber] = useState(prospect?.gstin || prospect?.gstNumber || '');
+  const [clientPanNumber, setClientPanNumber] = useState(prospect?.panNumber || '');
   
   const [template, setTemplate] = useState(null);
 
@@ -143,8 +146,8 @@ const QuotationBuilder = ({ prospect, onClose, onSave }) => {
   }
   
   const taxableAmount = totalBeforeDiscount - discountAmount;
-  const gstAmount = 0; // GST is completely removed
-  const finalTotal = taxableAmount;
+  const gstAmount = addGst ? (taxableAmount * 0.18) : 0;
+  const finalTotal = taxableAmount + gstAmount;
 
   // -- Handlers --
   const getProductSlabPrice = (product, qty) => {
@@ -311,11 +314,11 @@ Sales Executive`;
         subtotal,
         discount: { type: discountType, value: Number(discountValue), amount: discountAmount },
         tax: {
-          enabled: false,
-          rate: 0,
-          cgst: 0,
-          sgst: 0,
-          amount: 0
+          enabled: addGst,
+          rate: addGst ? 18 : 0,
+          cgst: addGst ? gstAmount / 2 : 0,
+          sgst: addGst ? gstAmount / 2 : 0,
+          amount: gstAmount
         },
         additionalCharges: showAdditional ? additionalCharges : [],
         totalAmount: finalTotal,
@@ -347,7 +350,11 @@ Sales Executive`;
     
     const previewQuoteObj = {
       templateSnapshot: template || {},
-      prospect: prospect || {},
+      prospect: {
+        ...(prospect || {}),
+        gstin: clientGstNumber || prospect?.gstin || prospect?.gstNumber || '',
+        panNumber: clientPanNumber || prospect?.panNumber || ''
+      },
       items: items.map(it => {
         const q = Number(it.qty || it.quantity || 1);
         const rate = Number(it.rate || it.unitCost || it.unitPrice || 0);
@@ -357,13 +364,13 @@ Sales Executive`;
           details: it.details || '',
           quantity: q,
           unitCost: rate,
-          taxAmount: Number(it.taxAmount !== undefined ? it.taxAmount : (q * rate * (it.taxRate ? it.taxRate / 100 : 0.18))),
+          taxAmount: Number(it.taxAmount !== undefined ? it.taxAmount : (q * rate * (addGst ? 0.18 : 0))),
           totalCost: Number(it.amount !== undefined ? it.amount : (it.totalCost !== undefined ? it.totalCost : q * rate))
         };
       }),
       subtotal: subtotal,
       discount: { amount: discountAmount, type: discountType, value: discountValue },
-      tax: { enabled: true, amount: taxAmount },
+      tax: { enabled: addGst, amount: gstAmount },
       totalAmount: finalTotal,
       notes: notes || template?.termsAndConditions?.[0] || '70% ADVANCE PAYMENT NEED TO START WORK',
       quotationDate: new Date().toLocaleDateString('en-GB')
@@ -372,7 +379,11 @@ Sales Executive`;
     return (
       <ViewQuotationModal 
         quotation={previewQuoteObj} 
-        onClose={() => setIsPreviewOpen(false)} 
+        onClose={() => setIsPreviewOpen(false)}
+        onSendWhatsApp={() => {
+          setIsPreviewOpen(false);
+          handleSend();
+        }}
       />
     );
   };
@@ -395,15 +406,25 @@ Sales Executive`;
               onClick={() => setIsPreviewOpen(true)}
               className="flex items-center gap-2 px-4 py-2 border border-indigo-200 rounded-lg text-indigo-600 hover:bg-indigo-50 bg-white shadow-sm transition-all text-sm font-semibold"
             >
-              Preview
+              <Eye className="h-4 w-4" /> Preview
+            </button>
+            <button 
+              type="button"
+              onClick={() => {
+                setIsPreviewOpen(true);
+                setTimeout(() => window.print(), 600);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-all text-sm font-bold"
+            >
+              <Printer className="h-4 w-4" /> Download
             </button>
             <button 
               type="button"
               onClick={handleSend} 
               disabled={saving} 
-              className="px-8 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-md shadow-emerald-200 transition-all text-sm disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-md shadow-emerald-200 transition-all text-sm disabled:opacity-50"
             >
-              {saving ? 'Sending...' : 'Send'}
+              <MessageCircle className="h-4 w-4" /> {saving ? 'Sending...' : 'Send'}
             </button>
           </div>
         </div>
@@ -814,13 +835,91 @@ Sales Executive`;
                 <span className="text-rose-500 font-bold">- ₹{discountAmount.toLocaleString()}</span>
               </div>
               
-              <div className="flex flex-col gap-3 mt-2 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+              {/* GST Checkbox Section */}
+              <div className="mt-4 border border-gray-200 rounded-xl p-3 bg-gray-50/60 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-gray-800 text-xs">
+                    <input 
+                      type="checkbox" 
+                      checked={addGst} 
+                      onChange={e => setAddGst(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span>Add GST (18%)</span>
+                  </label>
+                  {addGst && <span className="font-bold text-gray-800">₹{Math.round(gstAmount).toLocaleString()}</span>}
+                </div>
+                {addGst && (
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 animate-in slide-in-from-top-1 duration-150">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 mb-1">GST NUMBER (GSTIN)</label>
+                      <input 
+                        type="text" 
+                        value={clientGstNumber} 
+                        onChange={e => setClientGstNumber(e.target.value)}
+                        placeholder="e.g. 36AAQFG7654Q1Z1" 
+                        className="w-full h-8 px-2 border border-gray-300 rounded text-xs font-semibold uppercase outline-none focus:border-indigo-500 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-500 mb-1">PAN NUMBER</label>
+                      <input 
+                        type="text" 
+                        value={clientPanNumber} 
+                        onChange={e => setClientPanNumber(e.target.value)}
+                        placeholder="e.g. AAQFG7654Q" 
+                        className="w-full h-8 px-2 border border-gray-300 rounded text-xs font-semibold uppercase outline-none focus:border-indigo-500 bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3 mt-4 bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
                 <div className="flex justify-between items-center">
                   <span className="font-black text-gray-900 text-lg uppercase tracking-wider">Total Amount</span>
                   <span className="font-black text-indigo-700 text-2xl">₹{Math.round(finalTotal).toLocaleString()}</span>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Footer Action Bar at end of pop-up */}
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex flex-wrap items-center justify-between gap-4 shrink-0 rounded-b-xl">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 border border-gray-300 text-gray-600 font-bold rounded-xl hover:bg-gray-100 transition-all text-xs"
+          >
+            Cancel
+          </button>
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsPreviewOpen(true)}
+              className="px-5 py-2.5 bg-gray-800 text-white font-bold rounded-xl hover:bg-gray-900 transition-all flex items-center gap-2 text-xs shadow-md"
+            >
+              <Eye className="h-4 w-4 text-blue-400" /> Preview
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsPreviewOpen(true);
+                setTimeout(() => window.print(), 600);
+              }}
+              className="px-5 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center gap-2 text-xs shadow-md"
+            >
+              <Printer className="h-4 w-4" /> Download
+            </button>
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={saving || items.length === 0}
+              className="px-6 py-2.5 bg-[#25d366] text-white font-black rounded-xl hover:bg-[#1ebd5b] transition-all flex items-center gap-2 text-xs shadow-md disabled:opacity-50"
+            >
+              <MessageCircle className="h-4 w-4" /> {saving ? 'Sending...' : 'Send via WhatsApp'}
+            </button>
           </div>
         </div>
       </div>

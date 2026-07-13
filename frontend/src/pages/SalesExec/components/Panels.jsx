@@ -2524,6 +2524,10 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
   const [activeItemIndex, setActiveItemIndex] = useState(null);
   const [clientTypes, setClientTypes] = useState([]);
   const [productList, setProductList] = useState([]);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [taxEnabled, setTaxEnabled] = useState(true);
+  const [clientGstNumber, setClientGstNumber] = useState(prospect?.gstin || prospect?.gstNumber || '');
+  const [clientPanNumber, setClientPanNumber] = useState(prospect?.panNumber || '');
 
   React.useEffect(() => {
     Promise.all([
@@ -2599,7 +2603,9 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
     setItems([...items, { product: "", qty: 1, unitPrice: 0 }]);
   const removeItem = (index) => setItems(items.filter((_, i) => i !== index));
 
-  const total = items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
+  const subtotal = items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
+  const gstAmount = taxEnabled ? (subtotal * 0.18) : 0;
+  const total = subtotal + gstAmount;
 
   const handleSelectFromCatalogue = (prodObj) => {
     const name = prodObj.productName || prodObj.name;
@@ -2793,30 +2799,117 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
             ))}
           </div>
 
-          <div className="flex justify-end pt-2 border-t">
-            <p className="text-lg font-bold text-slate-900">
-              Total Estimate:{" "}
-              <span className="text-blue-700">₹{total.toLocaleString()}</span>
-            </p>
+          <div className="pt-4 border-t space-y-3">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800">
+                <input 
+                  type="checkbox" 
+                  checked={taxEnabled} 
+                  onChange={e => setTaxEnabled(e.target.checked)} 
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" 
+                />
+                <span>Apply GST (18%)</span>
+              </label>
+              {taxEnabled && <span className="font-bold text-slate-700 text-xs">+₹{Math.round(gstAmount).toLocaleString()}</span>}
+            </div>
+
+            {taxEnabled && (
+              <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50/80 rounded-xl border border-slate-200 animate-in slide-in-from-top-1 duration-150">
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">GST Number (GSTIN)</label>
+                  <input 
+                    type="text" 
+                    value={clientGstNumber} 
+                    onChange={e => setClientGstNumber(e.target.value)}
+                    placeholder="e.g. 36AAQFG7654Q1Z1" 
+                    className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold uppercase outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">PAN Number</label>
+                  <input 
+                    type="text" 
+                    value={clientPanNumber} 
+                    onChange={e => setClientPanNumber(e.target.value)}
+                    placeholder="e.g. AAQFG7654Q" 
+                    className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold uppercase outline-none focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-sm font-semibold text-slate-600">Subtotal: ₹{subtotal.toLocaleString()}</span>
+              <p className="text-lg font-bold text-slate-900">
+                Total Estimate:{" "}
+                <span className="text-blue-700">₹{Math.round(total).toLocaleString()}</span>
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="pt-4 flex justify-between shrink-0">
+        <div className="pt-4 border-t flex flex-wrap items-center justify-between gap-3 shrink-0">
           <button
             onClick={onClose}
-            className="h-10 px-6 rounded text-slate-600 font-semibold text-sm border hover:bg-slate-50"
+            className="h-10 px-5 rounded-xl text-slate-600 font-bold text-xs border border-slate-300 hover:bg-slate-100 transition-all"
           >
             Cancel
           </button>
-          <button
-            onClick={() => onSubmit({ prospect, items, total })}
-            className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 flex items-center gap-2"
-            style={{ background: "#25d366" }}
-          >
-            <MessageCircle className="h-4 w-4" /> Send via WhatsApp
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setIsPreviewOpen(true)}
+              className="h-10 px-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all flex items-center gap-2 text-xs shadow-md"
+            >
+              <Eye className="h-4 w-4 text-blue-400" /> Preview
+            </button>
+            <button
+              onClick={() => {
+                setIsPreviewOpen(true);
+                setTimeout(() => window.print(), 600);
+              }}
+              className="h-10 px-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all flex items-center gap-2 text-xs shadow-md"
+            >
+              <Printer className="h-4 w-4" /> Download
+            </button>
+            <button
+              onClick={() => onSubmit({ prospect: { ...prospect, gstin: clientGstNumber, panNumber: clientPanNumber }, items, total, taxEnabled })}
+              className="h-10 px-5 rounded-xl text-white font-bold text-xs transition-colors hover:opacity-90 flex items-center gap-2 shadow-md"
+              style={{ background: "#25d366" }}
+            >
+              <MessageCircle className="h-4 w-4" /> Send via WhatsApp
+            </button>
+          </div>
         </div>
       </div>
+
+      {isPreviewOpen && (
+        <ViewQuotationModal
+          quotation={{
+            templateSnapshot: {},
+            prospect: {
+              ...(prospect || {}),
+              gstin: clientGstNumber || prospect?.gstin || '',
+              panNumber: clientPanNumber || prospect?.panNumber || ''
+            },
+            items: items.map(i => ({
+              name: i.product || 'ITEM',
+              description: i.product,
+              quantity: Number(i.qty || 1),
+              unitCost: Number(i.unitPrice || 0),
+              taxAmount: taxEnabled ? (Number(i.qty || 1) * Number(i.unitPrice || 0) * 0.18) : 0,
+              totalCost: Number(i.qty || 1) * Number(i.unitPrice || 0)
+            })),
+            subtotal: subtotal,
+            tax: { enabled: taxEnabled, amount: gstAmount },
+            totalAmount: total
+          }}
+          onClose={() => setIsPreviewOpen(false)}
+          onSendWhatsApp={() => {
+            setIsPreviewOpen(false);
+            onSubmit({ prospect: { ...prospect, gstin: clientGstNumber, panNumber: clientPanNumber }, items, total, taxEnabled });
+          }}
+        />
+      )}
 
       <ProductCatalogueModal
         isOpen={isCatalogueOpen}

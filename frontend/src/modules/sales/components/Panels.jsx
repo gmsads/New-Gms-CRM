@@ -2022,6 +2022,9 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
   const [discountValue, setDiscountValue] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [clientGstNumber, setClientGstNumber] = useState(prospect?.gstin || prospect?.gstNumber || '');
+  const [clientPanNumber, setClientPanNumber] = useState(prospect?.panNumber || '');
 
   const getProductPriceForClientType = (product, clientType) => {
     if (!product) return 0;
@@ -2347,6 +2350,30 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                   </div>
                   <input type="checkbox" checked={taxEnabled} onChange={e => setTaxEnabled(e.target.checked)} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
                 </div>
+                {taxEnabled && (
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50/80 rounded-2xl border border-slate-100 animate-in slide-in-from-top-1 duration-150">
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-slate-400 mb-1">GST Number (GSTIN)</label>
+                      <input 
+                        type="text" 
+                        value={clientGstNumber} 
+                        onChange={e => setClientGstNumber(e.target.value)}
+                        placeholder="e.g. 36AAQFG7654Q1Z1" 
+                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-black uppercase text-slate-400 mb-1">PAN Number</label>
+                      <input 
+                        type="text" 
+                        value={clientPanNumber} 
+                        onChange={e => setClientPanNumber(e.target.value)}
+                        placeholder="e.g. AAQFG7654Q" 
+                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <p className="text-[9px] font-black text-slate-400 ml-1">DISCOUNT VALUE</p>
                   <div className="flex gap-2">
@@ -2404,21 +2431,68 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
               </div>
             </div>
 
-            <div className="mt-auto pt-8 space-y-4">
+            <div className="mt-auto pt-6 space-y-3">
               {error && <p className="text-[10px] text-rose-500 font-black text-center animate-bounce">{error}</p>}
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => setIsPreviewOpen(true)}
+                  className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-md"
+                >
+                  <Eye className="h-4 w-4 text-blue-400" /> PREVIEW
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsPreviewOpen(true);
+                    setTimeout(() => window.print(), 600);
+                  }}
+                  className="w-full h-14 bg-blue-600 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-md"
+                >
+                  <Printer className="h-4 w-4" /> DOWNLOAD
+                </button>
+              </div>
               <button 
                 onClick={handleSend} disabled={loading}
-                className="w-full h-16 bg-emerald-500 text-white rounded-3xl font-black text-sm flex items-center justify-center gap-3 hover:bg-emerald-600 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-200/50 disabled:opacity-50"
+                className="w-full h-14 bg-emerald-500 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-3 hover:bg-emerald-600 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-200/50 disabled:opacity-50"
               >
-                <MessageCircle className="h-6 w-6" /> {loading ? 'SENDING...' : 'SEND VIA WHATSAPP'}
+                <MessageCircle className="h-5 w-5" /> {loading ? 'SENDING...' : 'SEND VIA WHATSAPP'}
               </button>
-              <button onClick={onClose} className="w-full h-14 bg-white text-slate-400 rounded-2xl font-black text-xs hover:bg-slate-50 transition-all border border-slate-200">
+              <button onClick={onClose} className="w-full h-12 bg-white text-slate-400 rounded-2xl font-black text-[11px] hover:bg-slate-50 transition-all border border-slate-200">
                 DISCARD & CANCEL
               </button>
             </div>
           </div>
         </div>
       </div>
+      
+      {isPreviewOpen && (
+        <ViewQuotationModal
+          quotation={{
+            templateSnapshot: {},
+            prospect: {
+              ...(prospect || {}),
+              gstin: clientGstNumber || prospect?.gstin || '',
+              panNumber: clientPanNumber || prospect?.panNumber || ''
+            },
+            items: items.map(i => ({
+              name: i.name || 'ITEM',
+              description: i.name,
+              quantity: Number(i.qty || 1),
+              unitCost: Number(i.unitPrice || 0),
+              taxAmount: taxEnabled ? (Number(i.qty || 1) * Number(i.unitPrice || 0) * 0.18) : 0,
+              totalCost: Number(i.qty || 1) * Number(i.unitPrice || 0)
+            })),
+            subtotal: subtotal,
+            discount: { amount: discountAmount, type: discountType, value: discountValue },
+            tax: { enabled: taxEnabled, amount: gstAmount },
+            totalAmount: total
+          }}
+          onClose={() => setIsPreviewOpen(false)}
+          onSendWhatsApp={() => {
+            setIsPreviewOpen(false);
+            handleSend();
+          }}
+        />
+      )}
       
       <ProductCatalogueModal
         isOpen={isCatalogueOpen}
