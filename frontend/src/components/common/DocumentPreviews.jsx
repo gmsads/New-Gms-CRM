@@ -96,9 +96,17 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
   const quoteNo = quotation.quotationId || quotation.quotationNumber || quotation._id?.slice(-6)?.toUpperCase() || '2292';
   const quoteDate = formatUKDate(quotation.quotationDate || quotation.date || quotation.createdAt || new Date());
   
-  // Place of supply and tax breakdown (CGST+SGST vs IGST)
-  const placeOfSupply = prospect.state || prospect.placeOfSupply || 'Telangana';
-  const isIntrastate = placeOfSupply.toLowerCase().includes('telangana') || (prospect.gstin && prospect.gstin.startsWith('36'));
+  // Place of supply and tax breakdown (CGST+SGST vs IGST based on Supplier GSTIN state vs POS)
+  const supplierGst = template.gstin || profile?.gstin || '36AAQFG7654Q2ZB';
+  const supplierStateCode = supplierGst.replace(/\D/g, '').slice(0, 2) || '36';
+  const supplierStateName = supplierStateCode === '36' ? 'Telangana' : (template.state || profile?.state || 'Telangana');
+
+  const clientGst = prospect.gstin || prospect.gstNumber || '';
+  const clientStateCode = clientGst ? clientGst.replace(/\D/g, '').slice(0, 2) : '';
+  const placeOfSupply = prospect.placeOfSupply || prospect.state || 'Telangana';
+  
+  const isIntrastate = (clientStateCode && clientStateCode === supplierStateCode) || (!clientStateCode && (placeOfSupply.toLowerCase().includes(supplierStateName.toLowerCase()) || placeOfSupply.toLowerCase().includes('telangana')));
+  
   const cgstAmount = isIntrastate ? taxAmount / 2 : 0;
   const sgstAmount = isIntrastate ? taxAmount / 2 : 0;
   const igstAmount = !isIntrastate ? taxAmount : 0;
@@ -190,7 +198,7 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                       {phone && <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {phone}</p>}
                       {gstin && <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {gstin}</p>}
                       {pan && <p className="text-slate-800"><span className="font-semibold">PAN Number:</span> {pan}</p>}
-                      {showPlaceOfSupply && <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {showPlaceOfSupply}</p>}
+                      {showPlaceOfSupply && <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {showPlaceOfSupply} ({isIntrastate ? 'Intra-State' : 'Inter-State'})</p>}
                     </div>
                     {(companyName || shipAddr) && (
                       <div>
@@ -293,17 +301,17 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                     {isIntrastate ? (
                       <>
                         <div className="flex justify-between font-normal text-slate-900">
-                          <span>CGST @9%</span>
+                          <span>CGST @9% (Intra-State)</span>
                           <span>₹ {cgstAmount.toLocaleString('en-IN')}</span>
                         </div>
                         <div className="flex justify-between font-normal text-slate-900">
-                          <span>SGST @9%</span>
+                          <span>SGST @9% (Intra-State)</span>
                           <span>₹ {sgstAmount.toLocaleString('en-IN')}</span>
                         </div>
                       </>
                     ) : (
                       <div className="flex justify-between font-normal text-slate-900">
-                        <span>IGST @18%</span>
+                        <span>IGST @18% (Inter-State)</span>
                         <span>₹ {igstAmount.toLocaleString('en-IN')}</span>
                       </div>
                     )}
@@ -441,15 +449,34 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
 
   const receivedAmount = order.totalPaid !== undefined ? Number(order.totalPaid) : 0;
 
-  // Dates & IDs
+  // Dates & IDs (Follow exact guidelines: Delivery Date -> Invoice Date -> Due Date = Invoice Date + Credit Period)
   const invoiceNo = order.invoiceNumber || order.orderNumber || order.orderId || order._id?.slice(-6)?.toUpperCase() || '2074';
-  const invoiceDate = formatUKDate(order.invoiceDate || order.orderDate || order.date || order.createdAt || new Date());
-  const dueDateVal = order.dueDate || (order.invoiceDate || order.orderDate || order.date || order.createdAt ? new Date(new Date(order.invoiceDate || order.orderDate || order.date || order.createdAt).getTime() + 30*24*60*60*1000) : new Date());
+  
+  // 1. Delivery Date from order form
+  const rawDeliveryDateVal = order.deliveryDate || order.lineItems?.[0]?.deliveryDate || order.orderDate || order.date || order.createdAt || new Date();
+  const deliveryDate = formatUKDate(rawDeliveryDateVal);
+
+  // 2. Invoice Date (Bill Date / Date of Invoice - date on which invoice is raised/issued)
+  const rawInvoiceDateVal = order.invoiceDate || order.billDate || order.orderDate || order.createdAt || new Date();
+  const rawInvoiceDate = new Date(rawInvoiceDateVal);
+  const invoiceDate = formatUKDate(rawInvoiceDateVal);
+
+  // 3. Due Date = Invoice Date + Credit Period (or explicit order.dueDate)
+  const creditDays = Number(order.creditDays || order.creditPeriod || (order.orderType === 'corporate' ? 30 : 30));
+  const dueDateVal = order.dueDate ? new Date(order.dueDate) : new Date(rawInvoiceDate.getTime() + creditDays * 24 * 60 * 60 * 1000);
   const dueDate = formatUKDate(dueDateVal);
 
-  // Place of supply and tax breakdown
-  const placeOfSupply = clientSnapshot.state || clientSnapshot.placeOfSupply || 'Tamil Nadu';
-  const isIntrastate = placeOfSupply.toLowerCase().includes('telangana') || (clientSnapshot.gstin && clientSnapshot.gstin.startsWith('36'));
+  // Place of supply and tax breakdown (Compare supplier location with POS)
+  const supplierGst = companySnapshot.gstin || profile?.gstin || '36AAQFG7654Q2ZB';
+  const supplierStateCode = supplierGst.replace(/\D/g, '').slice(0, 2) || '36';
+  const supplierStateName = supplierStateCode === '36' ? 'Telangana' : (companySnapshot.state || profile?.state || 'Telangana');
+
+  const clientGst = clientSnapshot.gstin || clientSnapshot.gstNumber || order.gstNumber || '';
+  const clientStateCode = clientGst ? clientGst.replace(/\D/g, '').slice(0, 2) : '';
+  const placeOfSupply = clientSnapshot.placeOfSupply || clientSnapshot.state || order.state || 'Telangana';
+  
+  const isIntrastate = (clientStateCode && clientStateCode === supplierStateCode) || (!clientStateCode && (placeOfSupply.toLowerCase().includes(supplierStateName.toLowerCase()) || placeOfSupply.toLowerCase().includes('telangana')));
+  
   const cgstAmount = isIntrastate ? taxAmount / 2 : 0;
   const sgstAmount = isIntrastate ? taxAmount / 2 : 0;
   const igstAmount = !isIntrastate ? taxAmount : 0;
@@ -527,14 +554,17 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
               </div>
 
               {/* Invoice Metadata Bar */}
-              <div className="bg-[#f0f6fa] border-t-[3.5px] border-[#0284c7] py-2 px-5 mt-3 grid grid-cols-3 gap-2 text-xs sm:text-[13px] font-normal text-slate-900">
+              <div className="bg-[#f0f6fa] border-t-[3.5px] border-[#0284c7] py-2 px-5 mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs sm:text-[13px] font-normal text-slate-900">
                 <div>
                   <span className="font-bold">Invoice No.:</span> {invoiceNo}
                 </div>
-                <div className="text-center">
+                <div>
+                  <span className="font-bold">Delivery Date:</span> {deliveryDate}
+                </div>
+                <div>
                   <span className="font-bold">Invoice Date:</span> {invoiceDate}
                 </div>
-                <div className="text-right">
+                <div className="sm:text-right">
                   <span className="font-bold">Due Date:</span> {dueDate}
                 </div>
               </div>
@@ -560,7 +590,7 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                       {phone && <p className="text-slate-800 mt-1"><span className="font-semibold">Mobile:</span> {phone}</p>}
                       {gstin && <p className="text-slate-800"><span className="font-semibold">GSTIN:</span> {gstin}</p>}
                       {pan && <p className="text-slate-800"><span className="font-semibold">PAN Number:</span> {pan}</p>}
-                      {showPlaceOfSupply && <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {showPlaceOfSupply}</p>}
+                      {showPlaceOfSupply && <p className="text-slate-800"><span className="font-semibold">Place of Supply:</span> {showPlaceOfSupply} ({isIntrastate ? 'Intra-State' : 'Inter-State'})</p>}
                     </div>
                     {(companyName || shipAddr) && (
                       <div>
@@ -613,7 +643,7 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                           </td>
                           <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
                             <div>{itemTax.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">(18%)</div>
+                            <div className="text-[11px] text-slate-500 mt-0.5">{isIntrastate ? '(CGST 9% + SGST 9%)' : '(IGST 18%)'}</div>
                           </td>
                           <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
                             {itemAmt.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
@@ -640,7 +670,7 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                 {/* Terms and Conditions */}
                 <div>
                   <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-1">TERMS AND CONDITIONS</h4>
-                  <p className="font-bold text-slate-800 text-[12.5px] mt-1">TERMS AND CONDITIONS:</p>
+                  <p className="font-bold text-slate-800 text-[12.5px] mt-1">TERMS AND CONDITIONS (Credit Period: Net {creditDays} Days):</p>
                   <div className="text-slate-800 font-normal mt-0.5 leading-relaxed space-y-1">
                     {Array.isArray(termsText) ? (
                       termsText.map((term, i) => <p key={i}>{term}</p>)
@@ -670,17 +700,17 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                     {isIntrastate ? (
                       <>
                         <div className="flex justify-between font-normal text-slate-900">
-                          <span>CGST @9%</span>
+                          <span>CGST @9% (Intra-State)</span>
                           <span>₹ {cgstAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
                         </div>
                         <div className="flex justify-between font-normal text-slate-900">
-                          <span>SGST @9%</span>
+                          <span>SGST @9% (Intra-State)</span>
                           <span>₹ {sgstAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
                         </div>
                       </>
                     ) : (
                       <div className="flex justify-between font-normal text-slate-900">
-                        <span>IGST @18%</span>
+                        <span>IGST @18% (Inter-State)</span>
                         <span>₹ {igstAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
                       </div>
                     )}

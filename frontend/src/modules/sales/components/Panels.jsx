@@ -912,7 +912,9 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     executiveName: executiveName || '',
     orderDate: new Date().toISOString().split('T')[0],
     orderType: getInitialOrderType(client?.clientType),
+    hasGst: false,
     gstNumber: '',
+    panNumber: '',
     company: client?.company || client?.businessName || '',
     name: client?.name || client?.contactPerson || '',
     phone: client?.phone || '',
@@ -1063,8 +1065,11 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     
     if (!formData.location) newErrors.location = 'Required';
     if (!formData.state) newErrors.state = 'Required';
-    if (!formData.pincode) newErrors.pincode = 'Required';
-    else if (formData.pincode.length !== 6) newErrors.pincode = 'Enter 6 digits';
+    if (formData.pincode && formData.pincode.length !== 6) newErrors.pincode = 'Enter 6 digits';
+    if (formData.hasGst) {
+      if (!formData.gstNumber) newErrors.gstNumber = 'Required';
+      if (!formData.panNumber) newErrors.panNumber = 'Required';
+    }
 
     if (!advance || Number(advance) <= 0) {
       newErrors.advance = 'Required';
@@ -1242,10 +1247,14 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
         name: formData.name,
         phone: formData.phone,
         company: formData.company,
+        contactPerson: formData.name,
         address: formData.location || client?.address || client?.billingAddress || `${formData.state || 'Telangana'}, India`,
         shippingAddress: client?.shippingAddress || formData.location || client?.address || `${formData.state || 'Telangana'}, India`,
-        gstin: formData.gstNumber || client?.gstin || client?.gstNumber || 'Unregistered',
-        state: formData.state || client?.state || 'Telangana'
+        gstin: formData.hasGst ? (formData.gstNumber || client?.gstin || client?.gstNumber || '') : 'Unregistered',
+        panNumber: formData.hasGst ? (formData.panNumber || client?.panNumber || '') : '',
+        state: formData.state || client?.state || 'Telangana',
+        placeOfSupply: formData.state || client?.state || 'Telangana',
+        pincode: formData.pincode || ''
       },
       payment: {
         rawSubtotal,
@@ -1355,13 +1364,46 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                 {errors.state && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.state}</p>}
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Pincode *</label>
-                <input name="pincode" value={formData.pincode} onChange={handleChange} className={`h-9 w-full rounded border ${errors.pincode ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} maxLength={6} />
+                <label className="text-xs font-bold text-slate-800 mb-1 block">Pincode (Optional)</label>
+                <input name="pincode" value={formData.pincode} onChange={handleChange} placeholder="e.g. 500001" className={`h-9 w-full rounded border ${errors.pincode ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} maxLength={6} />
                 {errors.pincode && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.pincode}</p>}
               </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">GST Number (Optional)</label>
-                <input name="gstNumber" value={formData.gstNumber} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-green-500" />
+              <div className="col-span-1 sm:col-span-2 md:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 my-1">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800 text-xs select-none">
+                  <input 
+                    type="checkbox" 
+                    checked={formData.hasGst} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, hasGst: e.target.checked }))} 
+                    className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                  />
+                  <span>Client has GST / Register under GST (Click to open GST & PAN inputs)</span>
+                </label>
+                {formData.hasGst && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-200 animate-in fade-in duration-200">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 mb-1 block">GST Number *</label>
+                      <input 
+                        name="gstNumber" 
+                        value={formData.gstNumber} 
+                        onChange={handleChange} 
+                        placeholder="e.g. 36AAQFG7654Q1Z1"
+                        className={`h-9 w-full rounded border ${errors.gstNumber ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500 font-mono uppercase`} 
+                      />
+                      {errors.gstNumber && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.gstNumber}</p>}
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 mb-1 block">PAN Number *</label>
+                      <input 
+                        name="panNumber" 
+                        value={formData.panNumber} 
+                        onChange={handleChange} 
+                        placeholder="e.g. AAQFG7654Q"
+                        className={`h-9 w-full rounded border ${errors.panNumber ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500 font-mono uppercase`} 
+                      />
+                      {errors.panNumber && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.panNumber}</p>}
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="text-xs font-bold text-slate-800 mb-1 block">Birth Date (Optional)</label>
