@@ -3,6 +3,7 @@ import { ArrowLeft, Settings, Search, Plus, Trash2, Calendar, Phone, Mail, Shopp
 import { productApi, quotationApi } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import { ProductCatalogueModal } from './ProductCatalogueModal';
+import { ViewQuotationModal } from '../../../components/common/DocumentPreviews';
 
 const QuotationBuilder = ({ prospect, onClose, onSave }) => {
   const { user } = useAuth();
@@ -339,168 +340,35 @@ Sales Executive`;
     return null;
   };
 
-  // -- Helper to render local preview modal --
+  // -- Helper to render local preview modal matching exact Quotation PDF format --
   const renderPreviewModal = () => {
     if (!isPreviewOpen) return null;
     
-    const previewItems = items;
-    const previewSubtotal = subtotal;
-    const previewDiscountAmount = discountAmount;
-    const previewAdditionalCharges = showAdditional ? additionalCharges : [];
-    const previewTotalAmount = finalTotal;
+    const previewQuoteObj = {
+      templateSnapshot: template || {},
+      prospect: prospect || {},
+      items: items.map(it => ({
+        name: it.name || it.description || 'ITEM',
+        description: it.description || it.name,
+        details: it.details || '',
+        quantity: Number(it.qty || it.quantity || 1),
+        unitCost: Number(it.rate || it.unitCost || 0),
+        taxAmount: Number(it.taxAmount || (Number(it.qty || 1) * Number(it.rate || 0) * 0.18)),
+        totalCost: Number(it.amount || it.totalCost || (Number(it.qty || 1) * Number(it.rate || 0)))
+      })),
+      subtotal: subtotal,
+      discount: { amount: discountAmount, type: discountType, value: discountValue },
+      tax: { enabled: true, amount: 0 },
+      totalAmount: finalTotal,
+      notes: notes || template?.termsAndConditions?.[0] || '70% ADVANCE PAYMENT NEED TO START WORK',
+      quotationDate: new Date().toLocaleDateString('en-GB')
+    };
     
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300 text-slate-800">
-        <div className="bg-slate-100 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] text-slate-800">
-          
-          <div className="bg-white border-b px-8 py-6 flex justify-between items-center shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center">
-                <ShoppingBag className="h-5 w-5 text-blue-400" />
-              </div>
-              <h2 className="text-xl font-black text-slate-900">Quotation Preview</h2>
-            </div>
-            <button onClick={() => setIsPreviewOpen(false)} className="h-10 w-10 rounded-xl border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-all">
-              <span className="text-xl font-bold">×</span>
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-10">
-            {/* Document Sheet */}
-            <div className="bg-white shadow-xl rounded-sm aspect-[1/1.414] w-full p-10 flex flex-col border border-slate-200">
-              <div className="flex justify-between items-start mb-10">
-                <div className="flex gap-4 items-start">
-                  {template?.logoUrl && (
-                    <img src={template.logoUrl} alt="Logo" className="h-12 object-contain max-w-[100px]" />
-                  )}
-                  <div>
-                    <h1 className="text-xl font-black text-slate-900 tracking-tighter">{template?.companyName || 'GMS ADS & MARKETING'}</h1>
-                    <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{template?.address || 'Advertising • Branding • Digital'}</p>
-                    <p className="text-[8px] font-bold text-slate-500 mt-1">
-                      {template?.contactEmail || template?.email || 'hello@gms.com'} | {template?.contactPhone || template?.mobile || '+91 98765 43210'}
-                    </p>
-                    {template?.gstin && (
-                      <p className="text-[8px] font-bold text-slate-500 mt-0.5">GSTIN: {template.gstin}</p>
-                    )}
-                    {template?.panNumber && (
-                      <p className="text-[8px] font-bold text-slate-500 mt-0.5">PAN: {template.panNumber}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-slate-900 uppercase">#DRAFT</p>
-                  <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">{quoteDate}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6 mb-10 border-y py-6 border-slate-100">
-                <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Client Details</p>
-                  <p className="text-[11px] font-black text-slate-900 mt-2">{prospect?.name || 'Client'}</p>
-                  <p className="text-[9px] font-bold text-slate-500">{prospect?.company || 'N/A'}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Contact Information</p>
-                  <p className="text-[10px] font-black text-slate-900 mt-2">{prospect?.phone}</p>
-                </div>
-              </div>
-
-              <div className="flex-1">
-                <div className="overflow-x-auto w-full pb-4">
-<table className="w-full text-[10px]">
-                  <thead>
-                    <tr className="border-b-2 border-slate-900">
-                      <th className="py-3 text-left">DESCRIPTION</th>
-                      <th className="py-3 text-center">QTY</th>
-                      <th className="py-3 text-right">AMOUNT</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {previewItems.map((it, idx) => (
-                      <tr key={idx}>
-                        <td className="py-3 font-black text-slate-700">{it.name}</td>
-                        <td className="py-3 text-center text-slate-500">{it.quantity}</td>
-                        <td className="py-3 text-right font-bold text-slate-900">₹{(Number(it.quantity || 1) * Number(it.unitPrice || 0)).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-</div>
-              </div>
-
-              <div className="mt-10 pt-6 border-t-2 border-slate-100 space-y-3">
-                <div className="flex justify-between text-[10px]">
-                  <span className="text-slate-400 font-bold uppercase">Subtotal</span>
-                  <span className="font-black text-slate-900">₹{previewSubtotal.toLocaleString()}</span>
-                </div>
-                {previewDiscountAmount > 0 && (
-                  <div className="flex justify-between text-[10px] text-rose-500">
-                    <span className="font-bold uppercase">Discount ({discountType === 'PERCENT' ? `${discountValue}%` : 'Flat'})</span>
-                    <span className="font-black">-₹{previewDiscountAmount.toLocaleString()}</span>
-                  </div>
-                )}
-                {showAdditional && previewAdditionalCharges.map((charge, idx) => (
-                  <div key={idx} className="flex justify-between text-[10px] text-slate-600">
-                    <span className="font-bold uppercase">{charge.name || 'Charges'}</span>
-                    <span className="font-black">₹{charge.amount.toLocaleString()}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between items-center pt-6 border-t border-slate-900 mt-4">
-                  <span className="text-sm font-black uppercase tracking-widest">Grand Total</span>
-                  <span className="text-2xl font-black text-blue-600">₹{Math.round(previewTotalAmount).toLocaleString()}</span>
-                </div>
-              </div>
-              
-              <div className="mt-8 grid grid-cols-3 gap-6 text-[8px] border-t pt-4 border-slate-100">
-                {showBank ? (
-                  <div>
-                    <p className="font-black text-slate-400 uppercase tracking-widest mb-1">Bank Details</p>
-                    <p className="font-bold text-slate-900">{bankDetails.accountName}</p>
-                    <p className="text-slate-500">A/C: {bankDetails.accountNo}</p>
-                    <p className="text-slate-500">{bankDetails.bankName} - IFSC: {bankDetails.ifsc}</p>
-                  </div>
-                ) : <div />}
-                {terms ? (
-                  <div>
-                    <p className="font-black text-slate-400 uppercase tracking-widest mb-1">Terms & Conditions</p>
-                    <p className="text-slate-500 whitespace-pre-line leading-relaxed">{terms}</p>
-                  </div>
-                ) : <div />}
-                <div className="text-right flex flex-col items-end justify-end">
-                  <p className="font-black text-slate-400 uppercase tracking-widest mb-1">Authorized Signatory</p>
-                  {template?.authorizedSignatureUrl ? (
-                    <img src={template.authorizedSignatureUrl} alt="Signature" className="h-8 object-contain my-1" />
-                  ) : (
-                    <div className="h-8" />
-                  )}
-                  <p className="font-bold text-slate-800">For {template?.companyName || 'GMS ADS & MARKETING'}</p>
-                </div>
-              </div>
-
-              <div className="mt-auto pt-6 text-center border-t border-slate-100">
-                <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">This is a draft preview of the quotation document.</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white border-t p-6 flex justify-end gap-3 shrink-0">
-            <button 
-              type="button"
-              onClick={() => setIsPreviewOpen(false)}
-              className="px-6 py-3 bg-gray-200 text-gray-700 rounded-2xl font-black text-xs hover:bg-gray-300 transition-all"
-            >
-              Back to Editor
-            </button>
-            <button 
-              type="button"
-              onClick={handleSend}
-              className="px-8 py-3 bg-emerald-600 text-white rounded-2xl font-black text-xs flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-md"
-            >
-              Save & Send via WhatsApp
-            </button>
-          </div>
-        </div>
-      </div>
+      <ViewQuotationModal 
+        quotation={previewQuoteObj} 
+        onClose={() => setIsPreviewOpen(false)} 
+      />
     );
   };
 

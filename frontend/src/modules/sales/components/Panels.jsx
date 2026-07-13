@@ -14,6 +14,7 @@ import {
 } from '../../../services/api';
 import { ProductCatalogueModal } from '../../../pages/SalesExec/components/ProductCatalogueModal';
 import { exportOrdersToExcel } from '../../../utils/orderExcel';
+import { ViewQuotationModal, ViewInvoiceModal } from '../../../components/common/DocumentPreviews';
 
 // ─── Appointment Hub ──────────────────────────────────────────────────────────
 export const AppointmentHub = ({ appointments = [], onSchedule }) => (
@@ -2463,189 +2464,15 @@ export const UpdateStatusModal = ({ prospect, newStatus, onClose, onSubmit }) =>
   );
 };
 
-// ─── View Quotation Modal (Premium Preview) ───────────────────────────────────
-export const ViewQuotationModal = ({ quotation, onClose }) => {
-  const { user } = useAuth();
-  if (!quotation) return null;
-  const { prospect, items, subtotal, discount, tax, totalAmount, createdAt, quotationId } = quotation;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="bg-slate-100 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
-        
-        <div className="bg-white border-b px-8 py-6 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-slate-900 flex items-center justify-center">
-              <Eye className="h-5 w-5 text-blue-400" />
-            </div>
-            <h2 className="text-xl font-black text-slate-900">Quotation Preview</h2>
-          </div>
-          <button onClick={onClose} className="h-10 w-10 rounded-xl border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-all">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-10">
-          {/* Document Sheet */}
-          <div className="bg-white shadow-xl rounded-sm aspect-[1/1.414] w-full p-10 flex flex-col border border-slate-200">
-            <div className="flex justify-between items-start mb-10">
-              <div>
-                <h1 className="text-xl font-black text-slate-900 tracking-tighter">{quotation.templateSnapshot?.companyName || 'GMS ADS & MARKETING'}</h1>
-                <p className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest">{quotation.templateSnapshot?.address || 'Advertising • Branding • Digital'}</p>
-                {(quotation.templateSnapshot?.contactEmail || quotation.templateSnapshot?.contactPhone) && (
-                  <p className="text-[8px] font-bold text-slate-500 mt-1">
-                    {quotation.templateSnapshot?.contactPhone} | {quotation.templateSnapshot?.contactEmail}
-                  </p>
-                )}
-                {quotation.templateSnapshot?.gstin && (
-                  <p className="text-[8px] font-bold text-slate-500 mt-0.5">GSTIN: {quotation.templateSnapshot.gstin}</p>
-                )}
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-black text-slate-900 uppercase">#{quotationId || quotation._id.slice(-6).toUpperCase()}</p>
-                <p className="text-[8px] font-bold text-slate-500 uppercase mt-1">{new Date(createdAt).toLocaleDateString()}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6 mb-10 border-y py-6 border-slate-100">
-              <div>
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Client Details</p>
-                <p className="text-[11px] font-black text-slate-900 mt-2">{prospect?.name || 'Client'}</p>
-                <p className="text-[9px] font-bold text-slate-500">{prospect?.company || 'N/A'}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Contact Information</p>
-                <p className="text-[10px] font-black text-slate-900 mt-2">{prospect?.phone}</p>
-              </div>
-            </div>
-
-            <div className="flex-1">
-              <table className="w-full text-[10px]">
-                <thead>
-                  <tr className="border-b-2 border-slate-900">
-                    <th className="py-3 text-left">DESCRIPTION</th>
-                    <th className="py-3 text-center">QTY</th>
-                    <th className="py-3 text-right">AMOUNT</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {items.map((it, idx) => (
-                    <tr key={idx}>
-                      <td className="py-3 font-black text-slate-700">{it.name}</td>
-                      <td className="py-3 text-center text-slate-500">{it.quantity}</td>
-                      <td className="py-3 text-right font-bold text-slate-900">₹{(it.totalCost || 0).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-10 pt-6 border-t-2 border-slate-100 space-y-3">
-              <div className="flex justify-between text-[10px]">
-                <span className="text-slate-400 font-bold uppercase">Subtotal</span>
-                <span className="font-black text-slate-900">₹{(subtotal || 0).toLocaleString()}</span>
-              </div>
-              {discount?.amount > 0 && (
-                <div className="flex justify-between text-[10px] text-rose-500">
-                  <span className="font-bold uppercase">Discount ({discount.type === 'PERCENT' ? `${discount.value}%` : 'Flat'})</span>
-                  <span className="font-black">-₹{(discount.amount || 0).toLocaleString()}</span>
-                </div>
-              )}
-              {tax?.enabled && tax?.amount > 0 && (
-                <div className="flex justify-between text-[10px] text-slate-500">
-                  <span className="font-bold uppercase">GST (18%)</span>
-                  <span className="font-black">₹{(tax.amount || 0).toLocaleString()}</span>
-                </div>
-              )}
-              {quotation.additionalCharges?.map((charge, idx) => (
-                <div key={idx} className="flex justify-between text-[10px] text-slate-600">
-                  <span className="font-bold uppercase">{charge.name}</span>
-                  <span className="font-black">₹{(charge.amount || 0).toLocaleString()}</span>
-                </div>
-              ))}
-              <div className="flex justify-between items-center pt-6 border-t border-slate-900 mt-4">
-                <span className="text-sm font-black uppercase tracking-widest">Grand Total</span>
-                <span className="text-2xl font-black text-blue-600">₹{Math.round(totalAmount || 0).toLocaleString()}</span>
-              </div>
-            </div>
-            
-            <div className="mt-8 grid grid-cols-2 gap-6 text-[8px]">
-              {quotation.templateSnapshot?.bankDetails && (
-                <div>
-                  <p className="font-black text-slate-400 uppercase tracking-widest mb-1">Bank Details</p>
-                  <p className="font-bold text-slate-900">{quotation.templateSnapshot.bankDetails.accountName}</p>
-                  <p className="text-slate-500">A/C: {quotation.templateSnapshot.bankDetails.accountNumber}</p>
-                  <p className="text-slate-500">{quotation.templateSnapshot.bankDetails.bankName} - IFSC: {quotation.templateSnapshot.bankDetails.ifscCode}</p>
-                </div>
-              )}
-              {quotation.templateSnapshot?.termsAndConditions?.length > 0 && (
-                <div>
-                  <p className="font-black text-slate-400 uppercase tracking-widest mb-1">Terms & Conditions</p>
-                  <ul className="list-decimal pl-3 space-y-0.5 text-slate-500">
-                    {quotation.templateSnapshot.termsAndConditions.map((term, i) => (
-                      <li key={i}>{term}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-auto pt-6 text-center border-t border-slate-100">
-              <p className="text-[7px] font-bold text-slate-400 uppercase tracking-widest">This is a computer-generated quotation. No signature is required.</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white border-t p-6 flex justify-between shrink-0">
-          <div>
-            {quotation.requiresApproval && quotation.status === 'Draft' && ['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user?.role) && (
-              <div className="flex gap-3">
-                <button 
-                  onClick={async () => {
-                    if (window.confirm('Approve this quotation?')) {
-                      await quotationApi.updateStatus(quotation._id || quotation.id, { status: 'Approved' }, user?.token);
-                      onClose(true);
-                    }
-                  }}
-                  className="px-6 py-3 bg-emerald-500 text-white rounded-2xl font-black text-xs hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-200"
-                >
-                  Approve Quotation
-                </button>
-                <button 
-                  onClick={async () => {
-                    const reason = window.prompt('Reason for rejection:');
-                    if (reason !== null) {
-                      await quotationApi.update(quotation._id || quotation.id, { status: 'Rejected', notes: reason }, user?.token);
-                      onClose(true);
-                    }
-                  }}
-                  className="px-6 py-3 bg-rose-50 text-rose-600 rounded-2xl font-black text-xs hover:bg-rose-100 transition-all"
-                >
-                  Reject
-                </button>
-              </div>
-            )}
-            {quotation.requiresApproval && quotation.status === 'Draft' && !['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user?.role) && (
-              <p className="text-xs font-bold text-amber-600 mt-3 flex items-center gap-1.5"><AlertCircle className="h-4 w-4"/> Pending Manager Approval</p>
-            )}
-          </div>
-          <button 
-            onClick={() => window.print()}
-            className="px-8 py-3 bg-slate-900 text-white rounded-2xl font-black text-xs flex items-center gap-2 hover:scale-105 transition-all"
-          >
-            <Printer className="h-4 w-4" /> Download PDF / Print
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// Re-export exact PDF format modals
+export { ViewQuotationModal, ViewInvoiceModal };
 
 // ─── Order Details Modal ─────────────────────────────────────────────────────
 export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerificationSuccess, hideVerification }) => {
   const { user } = useAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
 
   React.useEffect(() => {
     const fetchOrder = async () => {
@@ -2872,10 +2699,13 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
               🛡 Verify Order
             </button>
           )}
-          <button onClick={() => window.print()} className="h-9 px-4 rounded-xl border bg-white text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors"><Printer className="h-3.5 w-3.5" /> Print Invoice</button>
+          <button onClick={() => setShowInvoicePreview(true)} className="h-9 px-4 rounded-xl border bg-white text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors"><Printer className="h-3.5 w-3.5" /> Print Invoice</button>
           <button onClick={onClose} className="h-9 px-8 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors">Close View</button>
         </div>
       </div>
+      {showInvoicePreview && order && (
+        <ViewInvoiceModal order={order} onClose={() => setShowInvoicePreview(false)} />
+      )}
     </div>
   );
 };

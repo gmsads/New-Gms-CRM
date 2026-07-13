@@ -29,6 +29,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { appointmentApi, orderApi, productApi } from "../../../services/api";
 import { ProductCatalogueModal } from "./ProductCatalogueModal";
 import { exportOrdersToExcel } from "../../../utils/orderExcel";
+import { ViewQuotationModal, ViewInvoiceModal } from "../../../components/common/DocumentPreviews";
 
 // ─── Appointment Hub ──────────────────────────────────────────────────────────
 export const AppointmentHub = ({ appointments = [], onSchedule }) => (
@@ -2966,6 +2967,7 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
   const { user } = useAuth();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false);
 
   React.useEffect(() => {
     const fetchOrder = async () => {
@@ -3439,7 +3441,7 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
               </button>
             )}
             <button
-              onClick={() => window.print()}
+              onClick={() => setShowInvoicePreview(true)}
               className="h-9 px-4 rounded-xl border bg-white text-xs font-bold text-slate-700 flex items-center gap-2 hover:bg-slate-50 transition-colors"
             >
               <Printer className="h-3.5 w-3.5" /> Print Invoice
@@ -3453,6 +3455,9 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
           </div>
         </div>
       </div>
+      {showInvoicePreview && order && (
+        <ViewInvoiceModal order={order} onClose={() => setShowInvoicePreview(false)} />
+      )}
     </div>
   );
 };
