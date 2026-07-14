@@ -10,7 +10,7 @@ import { quotationApi } from '../../services/api';
 const DefaultLogo = () => (
   <div className="flex flex-col items-center shrink-0 w-[110px] select-none">
     <div className="relative flex items-center justify-center mb-0.5">
-      <svg className="w-12 h-10 text-[#1d4ed8]" viewBox="0 0 60 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg className="w-15 h-15 text-[#1d4ed8]" viewBox="0 0 60 50" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M10 25C10 14 20 6 35 6C45 6 52 11 54 18" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" />
         <path d="M54 18L46 13M54 18L49 26" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" />
         <path d="M50 26C50 37 40 45 25 45C15 45 8 40 6 33" stroke="#e11d48" strokeWidth="4.5" strokeLinecap="round" />
@@ -145,9 +145,9 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
             {/* Top Section */}
             <div>
               {/* Header: Logo & Company Address */}
-              <div className="flex items-stretch justify-between gap-6 pb-5 border-b border-slate-200/80">
+              <div className="flex items-stretch justify-between gap-6 pb-4">
                 {/* Logo Container: Centered Horizontally & Vertically */}
-                <div className="w-[160px] sm:w-[185px] shrink-0 flex items-center justify-center pr-5 border-r border-slate-200">
+                <div className="w-[160px] sm:w-[185px] shrink-0 flex items-center justify-center pr-5">
                   {template.logoUrl ? (
                     <img src={template.logoUrl} alt="Logo" className="max-h-20 w-auto object-contain max-w-full mx-auto my-auto" />
                   ) : (
@@ -160,14 +160,14 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                 {/* Company Details Content */}
                 <div className="flex-1 text-left pl-1 sm:pl-3 flex flex-col justify-center">
                   <h1 className="text-2xl sm:text-[27px] font-extrabold text-[#0284c7] tracking-tight leading-tight">
-                    {template.companyName || profile?.companyName || 'Global Marketing Solutions Pvt Ltd'}
+                    {template.companyName || profile?.companyName || 'Global Marketing Solutions'}
                   </h1>
                   <p className="text-xs sm:text-[13px] text-slate-700 font-medium leading-relaxed mt-1">
                     {template.address || profile?.address || '2nd floor, Plot no 204, Kamineni Hospital Bypass Rd, Suvidha Arcade, RTC Colony, L. B. Nagar, Hyderabad, Telangana, PIN:500060.'}
                   </p>
                   
                   {/* Row 1: Mobile & Email */}
-                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-[13px] text-slate-800 font-normal mt-2.5 pt-2 border-t border-slate-100">
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-[13px] text-slate-800 font-normal mt-2">
                     <div>
                       <span className="font-bold text-slate-900">Mobile:</span> {template.contactPhone || template.mobile || profile?.contactPhone || profile?.mobile || '+91 98765 43210'}
                     </div>
@@ -176,7 +176,7 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                     </div>
                   </div>
 
-                  {/* Row 2: GSTIN, PAN, REG/CIN */}
+                  {/* Row 2: GSTIN, PAN */}
                   <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-[13px] text-slate-800 font-normal mt-1">
                     <div>
                       <span className="font-bold text-slate-900">GSTIN:</span> {template.gstin || profile?.gstin || '36AAGCE2149M1Z8'}
@@ -184,11 +184,6 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                     <div>
                       <span className="font-bold text-slate-900">PAN Number:</span> {template.panNumber || profile?.panNumber || 'AABCU9603R'}
                     </div>
-                    {(template.regNumber || profile?.regNumber) && (
-                      <div>
-                        <span className="font-bold text-slate-900">REG/CIN:</span> {template.regNumber || profile?.regNumber || 'REG-2024-GMS-881'}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -557,9 +552,9 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
               </div>
 
               {/* Header: Logo & Company Address */}
-              <div className="flex items-stretch justify-between gap-6 pb-5 border-b border-slate-200/80">
+              <div className="flex items-stretch justify-between gap-6 pb-4">
                 {/* Logo Container: Centered Horizontally & Vertically */}
-                <div className="w-[160px] sm:w-[185px] shrink-0 flex items-center justify-center pr-5 border-r border-slate-200">
+                <div className="w-[160px] sm:w-[185px] shrink-0 flex items-center justify-center pr-5">
                   {companySnapshot.logoUrl ? (
                     <img src={companySnapshot.logoUrl} alt="Logo" className="max-h-20 w-auto object-contain max-w-full mx-auto my-auto" />
                   ) : (
@@ -579,7 +574,7 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                   </p>
                   
                   {/* Row 1: Mobile & Email */}
-                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-[13px] text-slate-800 font-normal mt-2.5 pt-2 border-t border-slate-100">
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-[13px] text-slate-800 font-normal mt-2">
                     <div>
                       <span className="font-bold text-slate-900">Mobile:</span> {companySnapshot.contactPhone || companySnapshot.mobile || profile?.contactPhone || profile?.mobile || '+91 98765 43210'}
                     </div>
@@ -588,7 +583,7 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                     </div>
                   </div>
 
-                  {/* Row 2: GSTIN, PAN, REG/CIN */}
+                  {/* Row 2: GSTIN, PAN */}
                   <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs sm:text-[13px] text-slate-800 font-normal mt-1">
                     <div>
                       <span className="font-bold text-slate-900">GSTIN:</span> {companySnapshot.gstin || profile?.gstin || '36AAGCE2149M1Z8'}
@@ -596,27 +591,19 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                     <div>
                       <span className="font-bold text-slate-900">PAN Number:</span> {companySnapshot.panNumber || profile?.panNumber || 'AABCU9603R'}
                     </div>
-                    {(companySnapshot.regNumber || profile?.regNumber) && (
-                      <div>
-                        <span className="font-bold text-slate-900">REG/CIN:</span> {companySnapshot.regNumber || profile?.regNumber || 'REG-2024-GMS-881'}
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
 
               {/* Invoice Metadata Bar */}
-              <div className="bg-[#f0f6fa] border-t-[3.5px] border-[#0284c7] py-2 px-5 mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs sm:text-[13px] font-normal text-slate-900">
+              <div className="bg-[#f0f6fa] border-t-[3.5px] border-[#0284c7] py-2 px-5 mt-3 grid grid-cols-3 gap-2 text-xs sm:text-[13px] font-normal text-slate-900">
                 <div>
                   <span className="font-bold">Invoice No.:</span> {invoiceNo}
                 </div>
-                <div>
-                  <span className="font-bold">Delivery Date:</span> {deliveryDate}
-                </div>
-                <div>
+                <div className="text-center">
                   <span className="font-bold">Invoice Date:</span> {invoiceDate}
                 </div>
-                <div className="sm:text-right">
+                <div className="text-right">
                   <span className="font-bold">Due Date:</span> {dueDate}
                 </div>
               </div>
