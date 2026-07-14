@@ -8,9 +8,9 @@ import { quotationApi } from '../../services/api';
 
 // Default GMS Company Logo SVG component matching the PDF logo
 const DefaultLogo = () => (
-  <div className="flex flex-col items-center shrink-0 w-[110px] select-none">
+  <div className="flex flex-col items-center shrink-0 w-[80px] select-none">
     <div className="relative flex items-center justify-center mb-0.5">
-      <svg className="w-15 h-15 text-[#1d4ed8]" viewBox="0 0 60 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg className="w-10 h-10 text-[#1d4ed8]" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M10 25C10 14 20 6 35 6C45 6 52 11 54 18" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" />
         <path d="M54 18L46 13M54 18L49 26" stroke="currentColor" strokeWidth="4.5" strokeLinecap="round" />
         <path d="M50 26C50 37 40 45 25 45C15 45 8 40 6 33" stroke="#e11d48" strokeWidth="4.5" strokeLinecap="round" />

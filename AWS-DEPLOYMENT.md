@@ -40,6 +40,8 @@ To secure the application with HTTPS:
    sudo apt install nginx certbot python3-certbot-nginx
    sudo certbot --nginx -d crm.globalmarketingsolutions.in
    ```
+4. **Important Notice for Host Nginx Upload Limit:**
+   If you run Nginx on the Ubuntu host proxying traffic to Docker, you **must** add `client_max_body_size 50m;` inside your `/etc/nginx/sites-available/default` (or your domain configuration file in `/etc/nginx/sites-enabled/`) within the `server { ... }` block and run `sudo systemctl reload nginx`. Without this, Nginx on the Ubuntu host (`nginx/1.28.3`) will block any order or design file submission larger than 1MB with `413 Request Entity Too Large`.
 
 ## 4. Persistent Volumes & Uploads
 The `docker-compose.yml` mounts the following named volumes to ensure data survives container restarts and rebuilds:

@@ -6,6 +6,7 @@ const OrderApproval = require('../../domains/approvals/approval.model');
 const { createAuditLog } = require('../../guards/audit.helper');
 const orderWorkflow = require('../../services/workflows/orderWorkflow.service');
 const { getAccessibleUserIds } = require('../../utils/team.helper');
+const { saveBase64ToFileIfDataUrl } = require('../../utils/fileStorage.helper');
 
 const getReqContext = (req) => ({
   ipAddress: req.ip,
@@ -645,6 +646,23 @@ exports.create = async (req, res) => {
   try {
     const body = req.body;
 
+    if (body.designFileUrl) {
+      body.designFileUrl = await saveBase64ToFileIfDataUrl(body.designFileUrl, 'orders/designs', req);
+    }
+    if (Array.isArray(body.lineItems)) {
+      for (const item of body.lineItems) {
+        if (item.designFileUrl) {
+          item.designFileUrl = await saveBase64ToFileIfDataUrl(item.designFileUrl, 'orders/designs', req);
+        }
+      }
+    }
+    if (body.initialPayment && body.initialPayment.proofUrl) {
+      body.initialPayment.proofUrl = await saveBase64ToFileIfDataUrl(body.initialPayment.proofUrl, 'payments/proofs', req);
+    }
+    if (body.payment && body.payment.paymentProof) {
+      body.payment.paymentProof = await saveBase64ToFileIfDataUrl(body.payment.paymentProof, 'payments/proofs', req);
+    }
+
     // Intelligent Prospect Matching
     let prospectId = body.prospect;
     if (!prospectId) {
@@ -869,6 +887,16 @@ exports.update = async (req, res) => {
     if (existing?.orderType === 'Historical') {
       return res.status(400).json({ success: false, message: 'Historical orders are completed old data and disabled for workflow modification' });
     }
+    if (req.body.designFileUrl) {
+      req.body.designFileUrl = await saveBase64ToFileIfDataUrl(req.body.designFileUrl, 'orders/designs', req);
+    }
+    if (Array.isArray(req.body.lineItems)) {
+      for (const item of req.body.lineItems) {
+        if (item.designFileUrl) {
+          item.designFileUrl = await saveBase64ToFileIfDataUrl(item.designFileUrl, 'orders/designs', req);
+        }
+      }
+    }
     const order = await orderWorkflow.updateOrder(req.params.id, req.body, req.user, getReqContext(req));
     res.json({ success: true, data: order });
   } catch (err) {
@@ -884,8 +912,12 @@ exports.updateLineItem = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Historical orders are completed old data and disabled for workflow modification' });
     }
     const { id, itemIndex } = req.params;
-    const { designerStatus, designFileUrl, operationStatus, operationFileUrl, serviceStatus, serviceFileUrl } = req.body;
+    let { designerStatus, designFileUrl, operationStatus, operationFileUrl, serviceStatus, serviceFileUrl } = req.body;
     
+    if (designFileUrl) designFileUrl = await saveBase64ToFileIfDataUrl(designFileUrl, 'orders/designs', req);
+    if (operationFileUrl) operationFileUrl = await saveBase64ToFileIfDataUrl(operationFileUrl, 'orders/operations', req);
+    if (serviceFileUrl) serviceFileUrl = await saveBase64ToFileIfDataUrl(serviceFileUrl, 'orders/services', req);
+
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ success: false, message: 'Order not found.' });
     if (!order.lineItems || !order.lineItems[itemIndex]) {
@@ -1098,7 +1130,10 @@ const { recordPayment } = require('../../workflows/payment.workflow');
 
 exports.addPayment = async (req, res) => {
   try {
-    const { amount, method, proofUrl, proofType, reference, paymentType, notes } = req.body;
+    let { amount, method, proofUrl, proofType, reference, paymentType, notes } = req.body;
+    if (proofUrl) {
+      proofUrl = await saveBase64ToFileIfDataUrl(proofUrl, 'payments/proofs', req);
+    }
     
     const { payment, order } = await recordPayment({
       orderId: req.params.id,

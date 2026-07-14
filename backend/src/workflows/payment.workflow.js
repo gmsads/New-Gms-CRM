@@ -16,6 +16,7 @@ const Payment  = require('../domains/payments/payment.model');
 const Order    = require('../domains/orders/order.model');
 const eventBus = require('../core/events/eventBus.service');
 const domainEvents = require('../core/events/domainEvents');
+const { saveBase64ToFileIfDataUrl } = require('../utils/fileStorage.helper');
 
 // ─── Step 1: Record a payment ─────────────────────────────────────────────────
 /**
@@ -27,6 +28,7 @@ const domainEvents = require('../core/events/domainEvents');
  */
 const recordPayment = async (data, user) => {
   const { orderId, amount, method, proofUrl, proofType, reference, paymentType, notes } = data;
+  const cleanProofUrl = await saveBase64ToFileIfDataUrl(proofUrl, 'payments/proofs');
 
   // Load order
   const order = await Order.findById(orderId);
@@ -49,7 +51,7 @@ const recordPayment = async (data, user) => {
     amount:      Number(amount),
     method,
     reference,
-    proofUrl,
+    proofUrl: cleanProofUrl,
     proofType,
     paymentType: paymentType || (order.advancePaid === 0 ? 'Advance' : 'Partial'),
     collectedBy: user._id,
@@ -62,7 +64,7 @@ const recordPayment = async (data, user) => {
   order.paymentRecords.push({
     amount,
     method,
-    proofUrl,
+    proofUrl: cleanProofUrl,
     receivedAt:  new Date(),
     receivedBy:  user._id,
     paymentId:   payment._id,

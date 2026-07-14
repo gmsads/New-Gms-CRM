@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Order = require('../../domains/orders/order.model');
 const DesignAsset = require('../../domains/design/asset.model');
+const { saveBase64ToFileIfDataUrl } = require('../../utils/fileStorage.helper');
 
 // Helper to sanitize the order and return just the service
 const mapToDesignerDTO = (order, itemIndex) => {
@@ -180,6 +181,8 @@ exports.uploadServiceFile = async (req, res) => {
     const hostUrl = `${req.protocol}://${req.get('host')}`;
     if (req.files && req.files.designAsset && req.files.designAsset[0]) {
       fileUrl = `${hostUrl}/uploads/design/${req.files.designAsset[0].filename}`;
+    } else if (fileUrl) {
+      fileUrl = await saveBase64ToFileIfDataUrl(fileUrl, 'design', req);
     }
 
     if (!fileUrl) {

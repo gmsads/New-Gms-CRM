@@ -98,16 +98,6 @@ const menuConfig = [
     ]
   },
   { 
-    title: 'Quotation Management',   
-    icon: Quote,         
-    path: '/quotation-management', 
-    roles: ['ADMIN','MD_CEO'],
-    subItems: [
-      { title: 'Quotations', path: '/quotation-management/list', icon: FileText },
-      { title: 'Quotation Changes', path: '/quotation-management/changes', icon: Settings },
-    ]
-  },
-  { 
     title: 'Invoice Management',   
     icon: FileText,         
     path: '/invoice-management', 
@@ -165,7 +155,6 @@ const adminMenuConfig = [
       { title: 'Order Verification', path: '/approvals/order-verification', icon: ShieldCheck },
       { title: 'Task Assignments', path: '/tasks', icon: CheckSquare },
       { title: 'Vendor Management', path: '/vendors', icon: Truck },
-      { title: 'Quotation Management', path: '/quotation-management/changes', icon: FileText },
       { title: 'Invoice Management', path: '/invoice-management/list', icon: FileText }
     ]
   },
