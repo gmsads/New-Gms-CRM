@@ -93,7 +93,7 @@ export const TeamDataView = ({ viewType = 'orders' }) => {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
           {viewType === 'orders' && ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role) && (
             <button
               onClick={() => setShowImportModal(true)}

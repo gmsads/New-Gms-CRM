@@ -22,6 +22,9 @@ import {
   Phone,
   Eye,
   ShoppingBag,
+  Filter,
+  Search,
+  RefreshCw,
 } from "lucide-react";
 import { requirementTypes } from "../data/mockData";
 
@@ -124,6 +127,7 @@ export const OrderList = ({
   compact,
   hideCompleted,
   onBulkImport,
+  loading = false,
 }) => {
   const { user } = useAuth();
   const [updatingLineItem, setUpdatingLineItem] = useState(null);
@@ -147,6 +151,8 @@ export const OrderList = ({
   const [statusFilter, setStatusFilter] = useState("All");
   const [paymentFilter, setPaymentFilter] = useState("All");
   const [monthFilter, setMonthFilter] = useState("All Months");
+  const [yearFilter, setYearFilter] = useState("All Years");
+  const [showFilters, setShowFilters] = useState(false);
   const months = [
     "All Months",
     "January",
@@ -162,6 +168,13 @@ export const OrderList = ({
     "November",
     "December",
   ];
+
+  const activeFiltersCount = [
+    yearFilter !== "All Years",
+    monthFilter !== "All Months",
+    statusFilter !== "All",
+    paymentFilter !== "All",
+  ].filter(Boolean).length;
 
   const filteredOrders = (orders || []).filter((o) => {
     // Hide Pending_Approval orders from general lists for Sales Execs
@@ -201,106 +214,185 @@ export const OrderList = ({
   return (
     <div className="space-y-4">
       {/* Filters and Controls */}
+      {/* Filters and Controls */}
       {!compact && (
-        <div className="rounded-xl border bg-white shadow-sm p-4">
-          <div className="flex gap-4 mb-4">
-            <div className="flex flex-col gap-1 w-48">
-              <label className="text-sm font-medium text-slate-700">
-                Year:
-              </label>
-              <select className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]">
-                <option>All Years</option>
-                <option>2026</option>
-              </select>
+        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden transition-all duration-200">
+          <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3.5 bg-slate-50/50">
+            <div className="relative flex-1 min-w-0 w-full md:max-w-md">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by order ID, client name..."
+                className="h-10.5 w-full rounded-xl border border-slate-200/80 bg-white pl-10 pr-4 text-sm font-medium placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
-            <div className="flex flex-col gap-1 w-48">
-              <label className="text-sm font-medium text-slate-700">
-                Month:
-              </label>
-              <select
-                value={monthFilter}
-                onChange={(e) => setMonthFilter(e.target.value)}
-                className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]"
-              >
-                {months.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1 w-48">
-              <label className="text-sm font-medium text-slate-700">
-                Status:
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]"
-              >
-                <option value="All">All Statuses</option>
-                <option value="Confirmed">Confirmed</option>
-                <option value="In Production">In Production</option>
-                <option value="Design Review">Design Review</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1 w-48">
-              <label className="text-sm font-medium text-slate-700">
-                Payment:
-              </label>
-              <select
-                value={paymentFilter}
-                onChange={(e) => setPaymentFilter(e.target.value)}
-                className="h-10 rounded border border-slate-300 px-3 text-sm outline-none focus:border-[#003366]"
-              >
-                <option value="All">All Payments</option>
-                <option value="Pending">Pending</option>
-                <option value="Partial">Partial</option>
-                <option value="Paid">Paid</option>
-              </select>
-            </div>
-          </div>
 
-          <div className="mb-4">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by order ID, client name..."
-              className="h-12 w-full rounded-full border border-slate-300 px-6 text-sm outline-none focus:border-[#003366]"
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={handleExportExcel}
-              className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm"
-              style={{ background: "#4caf50" }}
-            >
-              <FileText className="h-4 w-4" /> Export to Excel
-            </button>
-            {onBulkImport && (
+            <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap sm:flex-nowrap justify-end">
               <button
-                onClick={() => onBulkImport()}
-                className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm"
-                style={{ background: "#1976d2" }}
+                type="button"
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center justify-center gap-2 h-10.5 px-4 rounded-xl text-xs font-bold border transition-all shadow-sm flex-1 sm:flex-initial whitespace-nowrap ${
+                  showFilters || activeFiltersCount > 0
+                    ? "bg-blue-600 border-blue-600 text-white shadow-blue-100"
+                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300"
+                }`}
               >
-                <FileText className="h-4 w-4" /> Import from Excel
+                <Filter className="h-3.5 w-3.5" />
+                <span>Filters</span>
+                {activeFiltersCount > 0 && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none ${
+                      showFilters || activeFiltersCount > 0
+                        ? "bg-white text-blue-600"
+                        : "bg-blue-600 text-white"
+                    }`}
+                  >
+                    {activeFiltersCount}
+                  </span>
+                )}
               </button>
-            )}
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90"
-              style={{ background: "#00acc1" }}
-            >
-              <Printer className="h-4 w-4" /> Print Report
-            </button>
+
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                className="flex items-center justify-center gap-2 h-10.5 px-4 rounded-xl text-white font-bold text-xs transition-colors hover:opacity-95 shadow-sm flex-1 sm:flex-initial whitespace-nowrap"
+                style={{ background: "#4caf50" }}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Export to Excel</span>
+                <span className="sm:hidden">Export</span>
+              </button>
+
+              {onBulkImport && (
+                <button
+                  type="button"
+                  onClick={() => onBulkImport()}
+                  className="flex items-center justify-center gap-2 h-10.5 px-4 rounded-xl text-white font-bold text-xs transition-colors hover:opacity-95 shadow-sm flex-1 sm:flex-initial whitespace-nowrap"
+                  style={{ background: "#1976d2" }}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Import from Excel</span>
+                  <span className="sm:hidden">Import</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex items-center justify-center gap-2 h-10.5 px-4 rounded-xl text-white font-bold text-xs transition-colors hover:opacity-95 shadow-sm flex-1 sm:flex-initial whitespace-nowrap"
+                style={{ background: "#00acc1" }}
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Print Report</span>
+                <span className="sm:hidden">Print</span>
+              </button>
+            </div>
           </div>
+
+          {showFilters && (
+            <div className="p-4 border-t border-slate-100 bg-white animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Filter Criteria
+                </span>
+                {activeFiltersCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setYearFilter("All Years");
+                      setMonthFilter("All Months");
+                      setStatusFilter("All");
+                      setPaymentFilter("All");
+                    }}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
+                  >
+                    <RefreshCw className="h-3 w-3" /> Reset all filters
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+                <div className="flex flex-col gap-1.5 w-full min-w-0">
+                  <label className="text-xs font-bold text-slate-600">
+                    Year
+                  </label>
+                  <select
+                    value={yearFilter}
+                    onChange={(e) => setYearFilter(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white transition-colors"
+                  >
+                    <option>All Years</option>
+                    <option>2026</option>
+                    <option>2025</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5 w-full min-w-0">
+                  <label className="text-xs font-bold text-slate-600">
+                    Month
+                  </label>
+                  <select
+                    value={monthFilter}
+                    onChange={(e) => setMonthFilter(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white transition-colors"
+                  >
+                    {months.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5 w-full min-w-0">
+                  <label className="text-xs font-bold text-slate-600">
+                    Status
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white transition-colors"
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="In Production">In Production</option>
+                    <option value="Design Review">Design Review</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5 w-full min-w-0">
+                  <label className="text-xs font-bold text-slate-600">
+                    Payment Status
+                  </label>
+                  <select
+                    value={paymentFilter}
+                    onChange={(e) => setPaymentFilter(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white transition-colors"
+                  >
+                    <option value="All">All Payments</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Partial">Partial</option>
+                    <option value="Paid">Paid</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border-b gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 border-b gap-3.5">
           <div>
             <h3 className="font-bold text-base">🧾 My Orders</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -308,18 +400,18 @@ export const OrderList = ({
             </p>
           </div>
           {isVerifier && !compact && (
-            <div className="flex p-1 bg-slate-100 rounded-xl w-fit shrink-0">
+            <div className="flex flex-wrap sm:flex-nowrap p-1 bg-slate-100 rounded-xl w-full sm:w-fit overflow-x-auto gap-1">
               <button
                 type="button"
                 onClick={() => setVerificationTab('All')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${verificationTab === 'All' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center justify-center whitespace-nowrap ${verificationTab === 'All' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 All Orders
               </button>
               <button
                 type="button"
                 onClick={() => setVerificationTab('Pending')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${verificationTab === 'Pending' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${verificationTab === 'Pending' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Pending Verification
                 {pendingVerificationCount > 0 && (
@@ -331,7 +423,12 @@ export const OrderList = ({
             </div>
           )}
         </div>
-        {filteredOrders.length === 0 ? (
+        {loading ? (
+          <div className="p-12 text-center text-slate-500 flex flex-col items-center justify-center min-h-[220px]">
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mb-3" />
+            <span className="text-sm font-semibold">Loading orders...</span>
+          </div>
+        ) : filteredOrders.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground text-sm">
             <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
             No orders match your filters
@@ -432,18 +529,18 @@ export const OrderList = ({
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-3 items-center">
+                <div className="flex flex-wrap gap-2 mt-3 items-center justify-start">
                   <button
                     onClick={() => onUploadPayment?.(order)}
-                    className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-blue-50 text-blue-700 text-xs font-medium hover:bg-blue-100 transition-colors"
+                    className="flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition-colors flex-1 sm:flex-initial whitespace-nowrap"
                   >
-                    <Upload className="h-3 w-3" /> Upload Payment
+                    <Upload className="h-3.5 w-3.5" /> Upload Payment
                   </button>
                   <button
                     onClick={() => onViewDetails?.(order)}
-                    className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-muted text-muted-foreground text-xs font-medium hover:bg-muted/80 transition-colors"
+                    className="flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition-colors flex-1 sm:flex-initial whitespace-nowrap"
                   >
-                    <FileText className="h-3 w-3" /> View Details
+                    <FileText className="h-3.5 w-3.5" /> View Details
                   </button>
                   {isVerifier && order.verificationStatus === 'Pending' && (
                     <button 
@@ -461,7 +558,7 @@ export const OrderList = ({
                           }
                         }
                       }} 
-                      className="flex items-center gap-1.5 h-7 px-3 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors shadow-sm ml-auto animate-bounce"
+                      className="flex items-center justify-center gap-1.5 h-8 px-4 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm sm:ml-auto w-full sm:w-auto whitespace-nowrap animate-bounce"
                     >
                       🛡 Verify Order
                     </button>

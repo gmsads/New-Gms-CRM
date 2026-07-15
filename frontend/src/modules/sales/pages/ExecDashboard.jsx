@@ -852,8 +852,6 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
     fetchOrders(true, [], localFilters);
   };
   
-  if (loading && orders.length === 0) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -861,7 +859,7 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
           <h1 className="text-3xl sm:text-2xl font-black text-slate-900 tracking-tight">{isTeamMode ? 'Orders List' : 'My Orders'}</h1>
           <p className="text-sm text-slate-500 font-medium mt-1">Track order status and payments</p>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
           {!isTeamMode && ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role) && (
             <button
               onClick={() => setShowImportModal(true)}
@@ -879,6 +877,7 @@ export const SalesOrders = ({ isTeamMode = false, globalFilters = {} }) => {
       </div>
       <OrderList 
         orders={orders} 
+        loading={loading}
         onUploadPayment={oFlow.setPaymentOrder} 
         onViewDetails={oFlow.setSelectedOrder} 
         onLineItemUpdated={() => fetchOrders(true, [], localFilters)}
