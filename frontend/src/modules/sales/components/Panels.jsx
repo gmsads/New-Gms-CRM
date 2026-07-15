@@ -224,179 +224,77 @@ export const OrderList = ({
     <div className="space-y-4">
       {/* Filters and Controls */}
       {!compact && (
-        <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden print:hidden transition-all duration-200">
-          <div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3.5 bg-slate-50/50">
-            <div className="relative flex-1 min-w-0 w-full md:max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-              <input
-                value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search by order ID, client name..."
-                className="h-10.5 w-full rounded-xl border border-slate-200/80 bg-white pl-10 pr-4 text-sm font-medium placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1">
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4 print:hidden mb-4 transition-all">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+            <div className="flex flex-col gap-1.5 min-w-0">
+              <label className="text-sm font-bold text-slate-700">Year:</label>
+              <select value={yearFilter} onChange={e => setYearFilter(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
+                <option>All Years</option>
+                <option>2026</option>
+                <option>2025</option>
+              </select>
             </div>
-
-            <div className="flex items-center gap-2.5 w-full md:w-auto flex-wrap sm:flex-nowrap justify-end">
-              <button
-                type="button"
-                onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center justify-center gap-2 h-10.5 px-4 rounded-xl text-xs font-bold border transition-all shadow-sm flex-1 sm:flex-initial whitespace-nowrap ${
-                  showFilters || activeFiltersCount > 0
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-blue-100'
-                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                }`}
-              >
-                <Filter className="h-3.5 w-3.5" />
-                <span>Filters</span>
-                {activeFiltersCount > 0 && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none ${
-                    showFilters || activeFiltersCount > 0 ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'
-                  }`}>
-                    {activeFiltersCount}
-                  </span>
+            <div className="flex flex-col gap-1.5 min-w-0">
+              <label className="text-sm font-bold text-slate-700">Month:</label>
+              <select value={monthFilter} onChange={e => setMonthFilter(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
+                {months.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5 min-w-0">
+              <label className="text-sm font-bold text-slate-700">Order Type:</label>
+              <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white capitalize">
+                <option value="All">All Types</option>
+                {clientTypes.length === 0 ? (
+                  [
+                    "retail", "retail-agent", "renewal", "renewal-agent",
+                    "agent", "corporate", "corporate-renewal", "website", "walk-in"
+                  ].map(t => <option key={t} value={t}>{t}</option>)
+                ) : (
+                  clientTypes.map(ct => <option key={ct._id || ct.key} value={ct.key}>{ct.name}</option>)
                 )}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExportExcel}
-                className="flex items-center justify-center gap-2 h-10.5 px-4 rounded-xl text-white font-bold text-xs transition-colors hover:opacity-95 shadow-sm flex-1 sm:flex-initial whitespace-nowrap"
-                style={{ background: '#4caf50' }}
-              >
-                <FileText className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Export to Excel</span>
-                <span className="sm:hidden">Export</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePrintReport}
-                className="flex items-center justify-center gap-2 h-10.5 px-4 rounded-xl text-white font-bold text-xs transition-colors hover:opacity-95 shadow-sm flex-1 sm:flex-initial whitespace-nowrap"
-                style={{ background: '#00acc1' }}
-              >
-                <Printer className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Print Report</span>
-                <span className="sm:hidden">Print</span>
-              </button>
+              </select>
             </div>
+            <div className="flex flex-col gap-1.5 min-w-0">
+              <label className="text-sm font-bold text-slate-700">Payment:</label>
+              <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
+                <option value="All">All Payments</option>
+                <option value="Pending">Pending</option>
+                <option value="Partial">Partial</option>
+                <option value="Paid">Paid</option>
+              </select>
+            </div>
+            {uniqueEmployees.length > 0 && (
+              <div className="flex flex-col gap-1.5 min-w-0">
+                <label className="text-sm font-bold text-slate-700">All Employees:</label>
+                <select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
+                  <option value="All Employees">All Employees</option>
+                  {uniqueEmployees.map(emp => <option key={emp} value={emp}>{emp}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          
+          <div className="mb-4 relative">
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search by order ID, client name..."
+              className="h-11 w-full rounded-full border border-slate-300 px-5 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 placeholder:text-slate-400 bg-white shadow-sm"
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
-          {showFilters && (
-            <div className="p-4 border-t border-slate-100 bg-white animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Filter Criteria</span>
-                {activeFiltersCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setYearFilter('All Years');
-                      setMonthFilter('All Months');
-                      setTypeFilter('All');
-                      setPaymentFilter('All');
-                      setEmployeeFilter('All Employees');
-                    }}
-                    className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
-                  >
-                    <RefreshCw className="h-3 w-3" /> Reset all filters
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
-                <div className="flex flex-col gap-1.5 w-full min-w-0">
-                  <label className="text-xs font-bold text-slate-600">Year</label>
-                  <select
-                    value={yearFilter}
-                    onChange={e => setYearFilter(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white transition-colors"
-                  >
-                    <option>All Years</option>
-                    <option>2026</option>
-                    <option>2025</option>
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1.5 w-full min-w-0">
-                  <label className="text-xs font-bold text-slate-600">Month</label>
-                  <select
-                    value={monthFilter}
-                    onChange={e => setMonthFilter(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white transition-colors"
-                  >
-                    {months.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1.5 w-full min-w-0">
-                  <label className="text-xs font-bold text-slate-600">Order Type</label>
-                  <select
-                    value={typeFilter}
-                    onChange={e => setTypeFilter(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white transition-colors capitalize"
-                  >
-                    <option value="All">All Types</option>
-                    {clientTypes.length === 0 ? (
-                      [
-                        "retail",
-                        "retail-agent",
-                        "renewal",
-                        "renewal-agent",
-                        "agent",
-                        "corporate",
-                        "corporate-renewal",
-                        "website",
-                        "walk-in",
-                      ].map((t) => (
-                        <option key={t} value={t}>
-                          {t}
-                        </option>
-                      ))
-                    ) : (
-                      clientTypes.map((ct) => (
-                        <option key={ct._id || ct.key} value={ct.key}>
-                          {ct.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-
-                <div className="flex flex-col gap-1.5 w-full min-w-0">
-                  <label className="text-xs font-bold text-slate-600">Payment Status</label>
-                  <select
-                    value={paymentFilter}
-                    onChange={e => setPaymentFilter(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white transition-colors"
-                  >
-                    <option value="All">All Payments</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Partial">Partial</option>
-                    <option value="Paid">Paid</option>
-                  </select>
-                </div>
-
-                {uniqueEmployees.length > 0 && (
-                  <div className="flex flex-col gap-1.5 w-full min-w-0 sm:col-span-2 md:col-span-1">
-                    <label className="text-xs font-bold text-slate-600">Assigned Employee</label>
-                    <select
-                      value={employeeFilter}
-                      onChange={e => setEmployeeFilter(e.target.value)}
-                      className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 text-xs font-semibold text-slate-700 outline-none focus:border-blue-600 focus:bg-white transition-colors"
-                    >
-                      <option value="All Employees">All Employees</option>
-                      {uniqueEmployees.map(emp => (
-                        <option key={emp} value={emp}>{emp}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={handleExportExcel} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded shadow-sm text-white font-bold text-sm transition-opacity hover:opacity-90 whitespace-nowrap" style={{ background: '#4caf50' }}>
+              <FileText className="h-4 w-4" /> Export to Excel
+            </button>
+            <button type="button" onClick={handlePrintReport} className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded shadow-sm text-white font-bold text-sm transition-opacity hover:opacity-90 whitespace-nowrap" style={{ background: '#00acc1' }}>
+              <Printer className="h-4 w-4" /> Print Report
+            </button>
+          </div>
         </div>
       )}
 

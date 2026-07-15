@@ -20,8 +20,11 @@ export default function LeadPool() {
   const [statusFilter, setStatusFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
-  const [distMethod, setDistMethod] = useState('Round Robin');
+  const [distMethod, setDistMethod] = useState('Assign To Single Employee');
   const [targetUser, setTargetUser] = useState('');
+  const [selectedExecutives, setSelectedExecutives] = useState([]);
+  
+  const salesExecutives = users.filter(u => ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'AGENT', 'SALES_MANAGER'].includes(u.role));
 
   // New Lead Modal
   const [showNewModal, setShowNewModal] = useState(false);
@@ -45,10 +48,14 @@ export default function LeadPool() {
 
   const handleDistributeSelected = () => {
     if (selectedIds.length === 0) return;
+    if (distMethod === 'Selected Executives' && selectedExecutives.length === 0) {
+      return alert('Please select at least one executive.');
+    }
     leadApi.distributePoolLeads({
       leadIds: selectedIds,
       method: distMethod,
-      singleUserId: distMethod === 'Assign To Single Employee' ? targetUser : undefined
+      singleUserId: distMethod === 'Assign To Single Employee' ? targetUser : undefined,
+      selectedUserIds: distMethod === 'Selected Executives' ? selectedExecutives : undefined
     }, user.token)
       .then(res => {
         if (res.success) {
@@ -214,11 +221,16 @@ export default function LeadPool() {
           <div className="flex items-center gap-2 text-xs">
             <select
               value={distMethod}
-              onChange={e => setDistMethod(e.target.value)}
+              onChange={e => {
+                setDistMethod(e.target.value);
+                if (e.target.value === 'Selected Executives' && selectedExecutives.length === 0 && salesExecutives.length > 0) {
+                  setSelectedExecutives([salesExecutives[0]._id]);
+                }
+              }}
               className="bg-background border rounded-lg px-2.5 py-1.5 font-semibold"
             >
-              <option value="Round Robin">Round Robin</option>
-              <option value="Assign To Single Employee">Assign To Single Employee</option>
+              <option value="Assign To Single Employee">Assign to single sales executive</option>
+              <option value="Selected Executives">Assign to selected executives</option>
             </select>
             {distMethod === 'Assign To Single Employee' && (
               <select
@@ -226,8 +238,31 @@ export default function LeadPool() {
                 onChange={e => setTargetUser(e.target.value)}
                 className="bg-background border rounded-lg px-2.5 py-1.5 font-semibold"
               >
-                {users.map(u => <option key={u._id} value={u._id}>{u.name} ({u.role})</option>)}
+                {salesExecutives.map(u => <option key={u._id} value={u._id}>{u.name} ({u.role})</option>)}
               </select>
+            )}
+            {distMethod === 'Selected Executives' && (
+              <div className="relative group">
+                <button className="bg-background border rounded-lg px-3 py-1.5 font-semibold text-xs flex items-center gap-2">
+                  {selectedExecutives.length} selected <span className="text-[10px]">▼</span>
+                </button>
+                <div className="absolute top-full left-0 mt-1 bg-card border rounded-xl shadow-xl w-64 max-h-60 overflow-y-auto p-2 hidden group-hover:block z-50">
+                  {salesExecutives.map(u => (
+                    <label key={u._id} className="flex items-center gap-2 p-1.5 hover:bg-muted/50 rounded cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedExecutives.includes(u._id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedExecutives([...selectedExecutives, u._id]);
+                          else setSelectedExecutives(selectedExecutives.filter(id => id !== u._id));
+                        }}
+                        className="rounded border-border text-primary focus:ring-primary"
+                      />
+                      <span className="text-xs">{u.name} ({u.role})</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             )}
             <button
               onClick={handleDistributeSelected}

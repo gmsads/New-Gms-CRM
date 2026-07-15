@@ -208,7 +208,7 @@ class LeadController {
   // POST /api/telecrm/leads/distribute
   async distributePoolLeads(req, res, next) {
     try {
-      const { leadIds, method = 'Round Robin', singleUserId } = req.body;
+      const { leadIds, method = 'Round Robin', singleUserId, selectedUserIds } = req.body;
       if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
         return res.status(400).json({ success: false, message: 'leadIds array required.' });
       }
@@ -216,6 +216,7 @@ class LeadController {
         leadIds,
         method,
         singleUserId,
+        selectedUserIds,
         actorId: req.user._id
       });
       res.json({ success: true, data: distRes, message: `Successfully distributed ${distRes.assignedCount || 0} leads.` });

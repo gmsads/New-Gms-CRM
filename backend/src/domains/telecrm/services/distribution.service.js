@@ -11,7 +11,7 @@ class DistributionService {
    * distributeImportedLeads
    * Handles 4 Import Distribution Modes
    */
-  async distributeImportedLeads({ leadIds, method, singleUserId, employeeNameMap, actorId }) {
+  async distributeImportedLeads({ leadIds, method, singleUserId, selectedUserIds, employeeNameMap, actorId }) {
     if (!leadIds || leadIds.length === 0) return { assignedCount: 0, skippedCount: 0 };
 
     const batchId = `IMPORT-BATCH-${Date.now()}`;
@@ -65,6 +65,43 @@ class DistributionService {
           assignedTo: agent._id,
           assignedBy: actorId,
           method: 'Round Robin',
+          batchId
+        });
+      });
+
+      if (bulkOps.length > 0) {
+        await Lead.bulkWrite(bulkOps);
+        await LeadAssignment.insertMany(assignmentLogs);
+      }
+      return { assignedCount: leadIds.length, batchId };
+    }
+
+    if (method === 'Selected Executives' && selectedUserIds && selectedUserIds.length > 0) {
+      const agents = await User.find({ 
+        _id: { $in: selectedUserIds },
+        status: { $in: ['ACTIVE', 'PROBATION'] }
+      }).select('_id').lean();
+
+      if (agents.length === 0) {
+        return { assignedCount: 0, message: 'No active sales executives found among selected users.' };
+      }
+
+      const bulkOps = [];
+      const assignmentLogs = [];
+
+      leadIds.forEach((leadId, index) => {
+        const agent = agents[index % agents.length];
+        bulkOps.push({
+          updateOne: {
+            filter: { _id: leadId },
+            update: { $set: { assignedEmployee: agent._id, assignedDate: new Date() } }
+          }
+        });
+        assignmentLogs.push({
+          leadId,
+          assignedTo: agent._id,
+          assignedBy: actorId,
+          method: 'Selected Executives',
           batchId
         });
       });

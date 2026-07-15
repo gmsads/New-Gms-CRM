@@ -8,15 +8,16 @@ import { UploadCloud, ShieldAlert, CheckCircle2, Users, ArrowRight, X, FileSprea
 export const ImportPreviewModal = ({ isOpen, previewData, users = [], onClose, onCommit }) => {
   if (!isOpen || !previewData) return null;
 
+  const salesExecutives = users.filter(u => ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'AGENT', 'SALES_MANAGER'].includes(u.role));
   const [resolution, setResolution] = useState('Skip');
   const [distMethod, setDistMethod] = useState('Round Robin');
-  const [singleUserId, setSingleUserId] = useState(users[0]?._id || '');
+  const [singleUserId, setSingleUserId] = useState(salesExecutives[0]?._id || '');
 
   useEffect(() => {
-    if (!singleUserId && users && users.length > 0) {
-      setSingleUserId(users[0]._id);
+    if (!singleUserId && salesExecutives.length > 0) {
+      setSingleUserId(salesExecutives[0]._id);
     }
-  }, [users, singleUserId]);
+  }, [salesExecutives, singleUserId]);
 
   const handleCommit = () => {
     onCommit({
@@ -100,7 +101,7 @@ export const ImportPreviewModal = ({ isOpen, previewData, users = [], onClose, o
             </h4>
             <div className="grid grid-cols-4 gap-3">
               {[
-                { id: 'Round Robin', label: 'Round Robin', desc: 'Equally distribute among agents.' },
+                { id: 'Round Robin', label: 'Round Robin', desc: 'Equally distribute among all Sales Executives.' },
                 { id: 'Assign To Single Employee', label: 'Single Employee', desc: 'Assign all to one executive.' },
                 { id: 'Employee Mapping', label: 'Excel Mapping', desc: 'Auto-map Excel names to CRM users.' },
                 { id: 'Keep Unassigned', label: 'Keep Unassigned', desc: 'Send to Lead Pool Master for manual distribution.' }
@@ -129,7 +130,7 @@ export const ImportPreviewModal = ({ isOpen, previewData, users = [], onClose, o
                   onChange={(e) => setSingleUserId(e.target.value)}
                   className="bg-background border rounded-lg px-3 py-1.5 text-xs font-bold"
                 >
-                  {users.map(u => <option key={u._id} value={u._id}>{u.name} ({u.role})</option>)}
+                  {salesExecutives.map(u => <option key={u._id} value={u._id}>{u.name} ({u.role})</option>)}
                 </select>
               </div>
             )}
