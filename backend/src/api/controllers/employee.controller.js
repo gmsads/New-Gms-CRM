@@ -30,7 +30,9 @@ exports.getEmployees = async (req, res) => {
       ];
     }
     const skip = (page - 1) * limit;
-    const isSimple = req.query.simple === 'true' || req.query.dropdown === 'true';
+    const authorizedFullAccess = ['HR', 'ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'BRANCH_HEAD'];
+    const hasFullAccess = req.user && authorizedFullAccess.includes(req.user.role);
+    const isSimple = req.query.simple === 'true' || req.query.dropdown === 'true' || !hasFullAccess;
     let query = User.find(filter);
     if (isSimple) {
       query = query.select('_id name email role department status').sort('name');

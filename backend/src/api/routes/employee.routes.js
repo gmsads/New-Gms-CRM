@@ -6,7 +6,7 @@ const { protect, authorize, preventRoleEscalation, hrOnly, adminOnly } = require
 const upload = require('../../core/middlewares/upload.middleware');
 
 router.use(protect);
-router.get('/', authorize('HR', 'ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'BRANCH_HEAD'), c.getEmployees);
+router.get('/', c.getEmployees);
 router.get('/:id', hrOnly, c.getEmployee);
 router.post('/', hrOnly, upload.fields([{ name: 'profileImage', maxCount: 1 }, { name: 'documents', maxCount: 10 }]), preventRoleEscalation, c.createEmployee);
 router.put('/:id', hrOnly, upload.fields([{ name: 'profileImage', maxCount: 1 }, { name: 'documents', maxCount: 10 }]), preventRoleEscalation, c.updateEmployee);
