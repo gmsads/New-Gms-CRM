@@ -113,7 +113,7 @@ const menuConfig = [
   { title: 'Vendor Portal',    icon: FileText,        path: '/vendors',   roles: ['ADMIN','VENDOR','OPERATION_MANAGER'] },
   { title: 'Analytics',        icon: PieChart,        path: '/analytics', roles: ['ADMIN','SALES_MANAGER','SR_SALES_MANAGER','OPERATION_MANAGER'] },
   { title: 'IT & Systems',     icon: Server,          path: '/it',        roles: ['ADMIN','IT'] },
-  { title: 'Settings',         icon: Settings,        path: '/settings',  roles: ['ALL'] },
+  { title: 'Settings',         icon: Settings,        path: '/settings',  roles: ['ADMIN', 'MD_CEO'] },
 ];
 
 const adminMenuConfig = [
@@ -422,7 +422,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     { title: 'Quotations',    icon: Quote,           path: '/quotations',  badge: null },
     { title: 'Leaves',        icon: Calendar,        path: '/leaves',    badge: null },
     { title: 'Performance',   icon: BarChart2,       path: '/performance', badge: null },
-    { title: 'Settings',      icon: Settings,        path: '/settings',    badge: null },
+//     { title: 'Settings',      icon: Settings,        path: '/settings',    badge: null },
   ];
 
   const dynamicAccountantMenu = [
@@ -431,7 +431,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     { title: 'Payments',      icon: IndianRupee,     path: '/approvals',  badge: paymentPendingCount > 0 ? paymentPendingCount.toString() : null },
     { title: 'Tasks',         icon: CheckSquare,     path: '/tasks',      badge: null },
     { title: 'Performance',   icon: BarChart2,       path: '/performance', badge: null },
-    { title: 'Settings',      icon: Settings,        path: '/settings',   badge: null },
+//     { title: 'Settings',      icon: Settings,        path: '/settings',   badge: null },
   ];
 
   const dynamicDesignerMenu = [
@@ -484,7 +484,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
       ]
     },
     { title: 'Notifications', icon: Bell, path: '/design/notifications' },
-    { title: 'Profile', icon: Settings, path: '/settings' }
+//     { title: 'Profile', icon: Settings, path: '/settings' }
   ];
 
   const dynamicProductionManagerMenu = [
@@ -513,7 +513,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     { title: 'Service Handover', icon: Truck, path: '/production/manager/handover' },
     { title: 'Reports', icon: BarChart2, path: '/production/manager/reports' },
     { title: 'Notifications', icon: Bell, path: '/production/manager/notifications' },
-    { title: 'Profile', icon: Settings, path: '/settings' }
+//     { title: 'Profile', icon: Settings, path: '/settings' }
   ];
 
   const dynamicProductionExecMenu = [
@@ -532,7 +532,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     { title: 'Issue Reporting', icon: Megaphone, path: '/production/executive/issues' },
     { title: 'Quantity Tracking', icon: BarChart2, path: '/production/executive/quantity' },
     { title: 'Notifications', icon: Bell, path: '/production/executive/notifications' },
-    { title: 'Profile', icon: Settings, path: '/settings' }
+//     { title: 'Profile', icon: Settings, path: '/settings' }
   ];
 
   const dynamicServiceManagerMenu = [
@@ -611,7 +611,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     { title: 'Upload Proofs', icon: ImageIcon, path: '/service/executive/proofs' },
     { title: 'Client Confirmation', icon: CheckCircle, path: '/service/executive/confirmation' },
     { title: 'Notifications', icon: Bell, path: '/service/executive/notifications' },
-    { title: 'Profile', icon: Settings, path: '/settings' }
+//     { title: 'Profile', icon: Settings, path: '/settings' }
   ];
 
   const dynamicHRMenu = [
@@ -626,7 +626,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     { title: 'Training', path: '/hr/training', icon: CheckSquare },
     { title: 'Exit Mgmt', path: '/hr/exit', icon: Users },
     { title: 'Reports', path: '/hr/reports', icon: PieChart },
-    { title: 'Settings', icon: Settings, path: '/settings' }
+//     { title: 'Settings', icon: Settings, path: '/settings' }
   ];
 
   const isSalesManager = user.role === 'SALES_MANAGER' || user.role === 'SR_SALES_MANAGER';
@@ -852,7 +852,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
               <p className="text-[11px] font-bold tracking-[0.08em] uppercase text-muted-foreground px-3 mb-3 mt-4 border-t pt-6">
                 System
               </p>
-              <NavItem item={{ title: 'Settings', icon: Settings, path: '/settings' }} setOpen={setOpen} />
+//               <NavItem item={{ title: 'Settings', icon: Settings, path: '/settings' }} setOpen={setOpen} />
               
               {dynamicPermissionsModules.length > 0 && (
                 <>
