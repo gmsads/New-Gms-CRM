@@ -796,9 +796,8 @@ exports.verifyOrder = async (req, res) => {
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'You are not authorized to verify orders.' });
     }
-
-    if (order.status !== 'Confirmed') {
-      return res.status(400).json({ success: false, message: 'Order must be confirmed before it can be verified.' });
+    if (order.verificationStatus !== 'Pending') {
+      return res.status(400).json({ success: false, message: 'Order is not pending verification.' });
     }
 
     order.verificationStatus = 'Verified';

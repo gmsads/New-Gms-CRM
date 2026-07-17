@@ -113,15 +113,10 @@ exports.approve = async (req, res) => {
       order.advanceApproved   = true;
       order.advanceApprovedBy = req.user._id;
       
-      // Advance approved, now confirm the order or move to design
+      // Advance approved, now confirm the order.
       order.status = 'Confirmed';
       order.verificationStatus = 'Pending';
-      if (order.designRequired) {
-        order.status = 'Design_Pending';
-        order.designStatus = 'Pending';
-        order.designRequestedAt = new Date();
-      }
-
+      
       order.addTimelineEvent(
         'Low Advance Approved',
         `Approved by ${req.user.name} via OrderApprovals portal.`,
