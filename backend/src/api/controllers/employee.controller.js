@@ -16,7 +16,7 @@ const notifyAdmins = async (type, title, message, relatedEntity) => {
 // ── GET /api/employees ───────────────────────────────────────────
 exports.getEmployees = async (req, res) => {
   try {
-    const { status, role, department, search, reportingManager, page = 1, limit = 20 } = req.query;
+    const { status, role, department, search, reportingManager, page = 1, limit = 1000 } = req.query;
     const filter = {};
     if (status) filter.status = status;
     if (role) filter.role = role;
@@ -43,10 +43,31 @@ exports.getEmployees = async (req, res) => {
         .populate('reportingManager', 'name role')
         .sort('-createdAt');
     }
-    const [employees, total] = await Promise.all([
+    let [employees, total] = await Promise.all([
       query.skip(skip).limit(Number(limit)).lean(),
       User.countDocuments(filter),
     ]);
+
+    // Sort employees by Role as requested: CEO, MD, COO, MANAGERS, and Executives
+    const roleOrder = [
+      'CEO', 'MD_CEO', 'COO', 'ADMIN', 'HR',
+      'SR_SALES_MANAGER', 'SALES_MANAGER', 'OPERATION_MANAGER', 'PRODUCTION_MANAGER', 'SERVICE_MANAGER', 'BRANCH_HEAD',
+      'SR_SALES_EXEC', 'SALES_EXEC', 'FIELD_EXEC', 'OPERATION_EXEC', 'PRODUCTION_EXEC', 'SERVICE_EXEC',
+      'DESIGNER', 'AGENT', 'VENDOR', 'IT', 'ACCOUNTS'
+    ];
+    
+    employees.sort((a, b) => {
+      let indexA = roleOrder.indexOf(a.role);
+      let indexB = roleOrder.indexOf(b.role);
+      if (indexA === -1) indexA = 999;
+      if (indexB === -1) indexB = 999;
+      
+      if (indexA !== indexB) {
+        return indexA - indexB;
+      }
+      return 0; // retain original sort order for ties
+    });
+
     res.json({ employees, total, page: Number(page), pages: Math.ceil(total / limit) });
   } catch (err) {
     res.status(500).json({ message: err.message });
