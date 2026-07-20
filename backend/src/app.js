@@ -27,7 +27,7 @@ app.use(cors({
 }));
 
 // Handle preflight for all routes
-app.options('*', cors());
+app.options('/{*splat}', cors());
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
