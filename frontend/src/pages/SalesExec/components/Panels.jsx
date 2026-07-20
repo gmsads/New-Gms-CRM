@@ -34,6 +34,15 @@ import { ProductCatalogueModal } from "./ProductCatalogueModal";
 import { exportOrdersToExcel } from "../../../utils/orderExcel";
 import { ViewQuotationModal, ViewInvoiceModal } from "../../../components/common/DocumentPreviews";
 
+const getAbsoluteUrl = (path) => {
+  if (!path) return path;
+  if (path.startsWith('http')) return path;
+  let url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  if (url === '/api') url = 'http://localhost:5000/api';
+  if (url.startsWith('/')) url = window.location.origin + url;
+  return url.replace(/\/api$/, '') + path;
+};
+
 // ─── Appointment Hub ──────────────────────────────────────────────────────────
 export const AppointmentHub = ({ appointments = [], onSchedule }) => (
   <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">

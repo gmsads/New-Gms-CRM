@@ -4,6 +4,15 @@ import { approvalApi, paymentApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Badge from '../components/ui/Badge';
 
+const getAbsoluteUrl = (path) => {
+  if (!path) return path;
+  if (path.startsWith('http')) return path;
+  let url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  if (url === '/api') url = 'http://localhost:5000/api';
+  if (url.startsWith('/')) url = window.location.origin + url;
+  return url.replace(/\/api$/, '') + path;
+};
+
 const Approvals = () => {
   const { user } = useAuth();
   
@@ -361,10 +370,10 @@ const Approvals = () => {
                       {pmtRecord.proofUrl ? (
                         <div
                           className="w-40 h-40 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-inner group relative cursor-zoom-in"
-                          onClick={() => window.open(pmtRecord.proofUrl)}
+                          onClick={() => window.open(getAbsoluteUrl(pmtRecord.proofUrl))}
                         >
                           <img
-                            src={pmtRecord.proofUrl}
+                            src={getAbsoluteUrl(pmtRecord.proofUrl)}
                             alt="Payment proof"
                             className="w-full h-full object-cover"
                           />
@@ -525,10 +534,10 @@ const Approvals = () => {
                   {selectedPayment.proofUrl ? (
                     <div
                       className="w-44 h-44 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-inner group relative cursor-zoom-in"
-                      onClick={() => window.open(selectedPayment.proofUrl)}
+                      onClick={() => window.open(getAbsoluteUrl(selectedPayment.proofUrl))}
                     >
                       <img
-                        src={selectedPayment.proofUrl}
+                        src={getAbsoluteUrl(selectedPayment.proofUrl)}
                         alt="Payment proof"
                         className="w-full h-full object-cover"
                         onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
@@ -551,7 +560,7 @@ const Approvals = () => {
                   )}
                   {selectedPayment.proofUrl && (
                     <a
-                      href={selectedPayment.proofUrl}
+                      href={getAbsoluteUrl(selectedPayment.proofUrl)}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-2 flex items-center gap-1 text-[10px] font-black text-blue-500 hover:underline uppercase tracking-widest"

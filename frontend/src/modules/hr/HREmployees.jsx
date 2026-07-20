@@ -11,8 +11,9 @@ const DEPTS = ['Sales','Operations','Design & Creative','Field','IT','Accounts',
 const BLANK = { name:'', email:'', phone:'', role:'', department:'', employmentType:'FULL_TIME' };
 
 const getBaseUrl = () => {
-  if (import.meta.env.VITE_API_URL === '/api') return ''; // Uses relative path, handled by proxy or same domain
-  const url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  let url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  if (url === '/api') url = 'http://localhost:5000/api';
+  if (url.startsWith('/')) url = window.location.origin + url;
   return url.replace(/\/api$/, '');
 };
 const BASE_URL = getBaseUrl();

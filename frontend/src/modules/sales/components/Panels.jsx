@@ -16,6 +16,15 @@ import { ProductCatalogueModal } from '../../../pages/SalesExec/components/Produ
 import { exportOrdersToExcel } from '../../../utils/orderExcel';
 import { ViewQuotationModal, ViewInvoiceModal } from '../../../components/common/DocumentPreviews';
 
+const getAbsoluteUrl = (path) => {
+  if (!path) return path;
+  if (path.startsWith('http')) return path;
+  let url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  if (url === '/api') url = 'http://localhost:5000/api';
+  if (url.startsWith('/')) url = window.location.origin + url;
+  return url.replace(/\/api$/, '') + path;
+};
+
 // ─── Appointment Hub ──────────────────────────────────────────────────────────
 export const AppointmentHub = ({ appointments = [], onSchedule }) => (
   <div className="rounded-2xl border bg-white shadow-sm overflow-hidden">
@@ -2836,7 +2845,7 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
                           </td>
                           <td className="py-2">
                             {pay.proofUrl ? (
-                              <a href={pay.proofUrl} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">View Receipt</a>
+                              <a href={getAbsoluteUrl(pay.proofUrl)} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">View Receipt</a>
                             ) : '-'}
                           </td>
                           <td className="py-2 text-slate-500">

@@ -3,6 +3,15 @@ import { ShieldCheck, CheckCircle2, XCircle, RefreshCw, ShoppingCart, IndianRupe
 import api, { approvalApi } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 
+const getAbsoluteUrl = (path) => {
+  if (!path) return path;
+  if (path.startsWith('http')) return path;
+  let url = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  if (url === '/api') url = 'http://localhost:5000/api';
+  if (url.startsWith('/')) url = window.location.origin + url;
+  return url.replace(/\/api$/, '') + path;
+};
+
 const AdvancePaymentApprovals = () => {
   const { user } = useAuth();
   const [approvals, setApprovals] = useState([]);
@@ -176,8 +185,8 @@ const AdvancePaymentApprovals = () => {
                     <div className="shrink-0">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Payment Proof</p>
                       {pmtRecord.proofUrl ? (
-                        <div className="w-32 h-32 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-inner group relative cursor-zoom-in" onClick={() => window.open(pmtRecord.proofUrl)}>
-                          <img src={pmtRecord.proofUrl} alt="proof" className="w-full h-full object-cover" />
+                        <div className="w-32 h-32 rounded-2xl overflow-hidden border-2 border-slate-100 shadow-inner group relative cursor-zoom-in" onClick={() => window.open(getAbsoluteUrl(pmtRecord.proofUrl))}>
+                          <img src={getAbsoluteUrl(pmtRecord.proofUrl)} alt="proof" className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <span className="text-[10px] font-bold text-white uppercase">View</span>
                           </div>
