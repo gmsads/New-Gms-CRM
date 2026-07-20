@@ -301,10 +301,7 @@ const NavItem = ({ item, setOpen, level = 0 }) => {
 };
 
 const Sidebar = ({ isOpen, setOpen }) => {
-  let { user } = useAuth();
-  if (user && ['CEO', 'MD'].includes(user.role)) {
-    user = { ...user, role: 'MD_CEO' };
-  }
+  const { user } = useAuth();
   const { profile } = useCompanyProfile();
   
   const [prospectCount, setProspectCount] = useState(0);

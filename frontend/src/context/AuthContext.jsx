@@ -36,6 +36,7 @@ export const AuthProvider = ({ children }) => {
     if (stored) {
       try { 
         const parsed = JSON.parse(stored);
+        if (['CEO', 'MD', 'MD_CEO'].includes(parsed.role)) parsed.role = 'ADMIN';
         setUser(parsed);
         workforceEngineService.startTracking(parsed);
       } catch {}
@@ -71,6 +72,8 @@ export const AuthProvider = ({ children }) => {
         }
       }
       if (!res.ok) throw new Error(data.message || 'Login failed.');
+
+      if (['CEO', 'MD', 'MD_CEO'].includes(data.role)) data.role = 'ADMIN';
 
       localStorage.setItem('gms_user', JSON.stringify(data));
       setUser(data);
@@ -148,6 +151,7 @@ export const AuthProvider = ({ children }) => {
           }
         }
         const updated = { ...user, ...data };
+        if (['CEO', 'MD', 'MD_CEO'].includes(updated.role)) updated.role = 'ADMIN';
         localStorage.setItem('gms_user', JSON.stringify(updated));
         setUser(updated);
       }

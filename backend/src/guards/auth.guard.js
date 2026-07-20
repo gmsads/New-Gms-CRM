@@ -52,6 +52,13 @@ const protect = async (req, res, next) => {
     }
 
     user.permissions = userPerms;
+    
+    // Map CEO and MD to ADMIN in memory for this request lifecycle
+    // This gives them exactly the same access and permissions as ADMIN everywhere.
+    if (['CEO', 'MD', 'MD_CEO'].includes(user.role)) {
+      user.role = 'ADMIN';
+    }
+
     req.user = user;
     next();
   } catch (err) {

@@ -75,15 +75,13 @@ const ProtectedRoute = ({ children }) => {
 
 const AuthRoleSwitch = ({ sales, admin }) => {
   const { user } = useAuth();
-  const effectiveRole = ['CEO', 'MD'].includes(user?.role) ? 'MD_CEO' : user?.role;
-  if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'ACCOUNTS'].includes(effectiveRole)) return admin;
+  if (['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'ACCOUNTS'].includes(user?.role)) return admin;
   return sales;
 };
 
 const AdminTeamViewSwitch = ({ viewType, salesElement }) => {
   const { user } = useAuth();
-  const effectiveRole = ['CEO', 'MD'].includes(user?.role) ? 'MD_CEO' : user?.role;
-  if (['ADMIN', 'MD_CEO'].includes(effectiveRole)) {
+  if (['ADMIN', 'MD_CEO'].includes(user?.role)) {
     return <TeamDataView viewType={viewType} />;
   }
   return salesElement;
