@@ -1007,8 +1007,7 @@ export const CreateOrderModal = ({
     if (formData.pincode && formData.pincode.length !== 6)
       newErrors.pincode = "Enter 6 digits";
     if (formData.hasGst) {
-      if (!formData.gstNumber) newErrors.gstNumber = "Required";
-      if (!formData.panNumber) newErrors.panNumber = "Required";
+      // Optional fields
     }
 
     if (!advance || Number(advance) <= 0) {
@@ -1509,7 +1508,7 @@ export const CreateOrderModal = ({
                 {formData.hasGst && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-200 animate-in fade-in duration-200">
                     <div>
-                      <label className="text-xs font-bold text-slate-800 mb-1 block">GST Number *</label>
+                      <label className="text-xs font-bold text-slate-800 mb-1 block">GST Number (Optional)</label>
                       <input 
                         name="gstNumber" 
                         value={formData.gstNumber} 
@@ -1520,7 +1519,7 @@ export const CreateOrderModal = ({
                       {errors.gstNumber && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.gstNumber}</p>}
                     </div>
                     <div>
-                      <label className="text-xs font-bold text-slate-800 mb-1 block">PAN Number *</label>
+                      <label className="text-xs font-bold text-slate-800 mb-1 block">PAN Number (Optional)</label>
                       <input 
                         name="panNumber" 
                         value={formData.panNumber} 
