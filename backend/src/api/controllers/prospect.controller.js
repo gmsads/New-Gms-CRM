@@ -125,6 +125,7 @@ exports.create = async (req, res) => {
   } catch (err) {
     let message = err.message;
     if (err.code === 11000) message = 'Phone number already exists in our system.';
+    console.error('Prospect Create Error:', err);
     res.status(400).json({ success: false, message });
   }
 };
