@@ -36,7 +36,6 @@ const prospectSchema = new mongoose.Schema(
     // Client/Prospect Type (drives quotation pricing)
     clientType: { 
       type: String, 
-      enum: ['Retail', 'Renewal', 'Corporate', 'Corporate-Renewal', 'Agent', 'Agent-Renewal'], 
       default: 'Retail' 
     },
 
