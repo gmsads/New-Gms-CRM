@@ -6,13 +6,19 @@ class AuditWorkflowService {
    */
   async log(data) {
     try {
+      let prev = data.previousValue;
+      let next = data.newValue;
+
+      if (prev && typeof prev.toObject === 'function') prev = prev.toObject();
+      if (next && typeof next.toObject === 'function') next = next.toObject();
+
       const logEntry = new AuditLog({
         action: data.action,
         performedBy: data.performedBy,
         targetModel: data.targetModel,
         targetId: data.targetId,
-        previousValue: data.previousValue,
-        newValue: data.newValue,
+        previousValue: prev,
+        newValue: next,
         changedFields: data.changedFields || [],
         ipAddress: data.ipAddress,
         userAgent: data.userAgent,
