@@ -662,6 +662,9 @@ exports.create = async (req, res) => {
     if (body.payment && body.payment.paymentProof) {
       body.payment.paymentProof = await saveBase64ToFileIfDataUrl(body.payment.paymentProof, 'payments/proofs', req);
     }
+    if (body.isPO && body.poDocument) {
+      body.poDocument = await saveBase64ToFileIfDataUrl(body.poDocument, 'orders/po', req);
+    }
 
     // Intelligent Prospect Matching
     let prospectId = body.prospect;

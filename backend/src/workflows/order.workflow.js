@@ -104,7 +104,7 @@ const confirmOrder = async (orderId, user) => {
     .reduce((s, p) => s + p.amount, 0);
 
   const advancePct = order.grandTotal > 0 ? (totalAdvanceProvided / order.grandTotal) * 100 : 0;
-  const meetsThreshold = advancePct >= 50 || order.advanceApproved;
+  const meetsThreshold = order.isPO || advancePct >= 50 || order.advanceApproved;
 
   if (!meetsThreshold) {
     // Route to approval queue

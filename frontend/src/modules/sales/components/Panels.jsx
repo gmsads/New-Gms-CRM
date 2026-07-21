@@ -990,6 +990,10 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
   const [advance, setAdvance] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [paymentProof, setPaymentProof] = useState(null);
+  const [isPO, setIsPO] = useState(false);
+  const [poNumber, setPoNumber] = useState('');
+  const [poDate, setPoDate] = useState('');
+  const [poDocument, setPoDocument] = useState(null);
   const [applyGst, setApplyGst] = useState(false);
   const [discount, setDiscount] = useState(0);
   const [errors, setErrors] = useState({});
@@ -1086,12 +1090,19 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
       if (!formData.panNumber) newErrors.panNumber = 'Required';
     }
 
-    if (!advance || Number(advance) <= 0) {
-      newErrors.advance = 'Required';
-    } else if (Number(advance) > totalAmount) {
-      newErrors.advance = 'You enter more then Final Amount';
+    if (isPO) {
+      if (!poNumber) newErrors.poNumber = 'Required';
+      if (!poDate) newErrors.poDate = 'Required';
+      if (!poDocument) newErrors.poDocument = 'Required';
+    } else {
+      if (!advance || Number(advance) <= 0) {
+        newErrors.advance = 'Required';
+      } else if (Number(advance) > totalAmount) {
+        newErrors.advance = 'You enter more then Final Amount';
+      }
+      if (!paymentProof) newErrors.paymentProof = 'Required';
     }
-    if (!paymentProof) newErrors.paymentProof = 'Required';
+
     if (formData.designStatus === 'Design Provided') {
       let missingAny = false;
       items.forEach((item, idx) => {
@@ -1204,6 +1215,32 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     }
   };
 
+  const handlePoDocumentChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPoDocument(reader.result);
+        if (errors.poDocument) setErrors(prev => ({ ...prev, poDocument: null }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handlePOToggle = (checked) => {
+    setIsPO(checked);
+    if (!checked) {
+      setPoNumber('');
+      setPoDate('');
+      setPoDocument(null);
+      setErrors(prev => ({ ...prev, poNumber: null, poDate: null, poDocument: null }));
+    } else {
+      setAdvance('');
+      setPaymentProof(null);
+      setErrors(prev => ({ ...prev, advance: null, paymentProof: null }));
+    }
+  };
+
   const handleDesignFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -1280,16 +1317,20 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
         sgst,
         igst,
         totalAmount,
-        advance: Number(advance),
-        paymentMethod,
-        paymentProof,
-        requiresApproval: advanceLow
+        advance: isPO ? 0 : Number(advance),
+        paymentMethod: isPO ? null : paymentMethod,
+        paymentProof: isPO ? null : paymentProof,
+        requiresApproval: isPO ? false : advanceLow
       },
-      initialPayment: {
+      initialPayment: isPO ? null : {
         amount: Number(advance),
         method: paymentMethod,
         proofUrl: paymentProof
-      }
+      },
+      isPO,
+      poNumber: isPO ? poNumber : null,
+      poDate: isPO ? poDate : null,
+      poDocument: isPO ? poDocument : null
     });
   };
 
@@ -1619,51 +1660,98 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
               </div>
             </div>
           </div>
+          <div className="bg-white p-5 rounded-xl border shadow-sm mb-6">
+            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">Order Processing</h3>
+            <label className="flex items-center gap-2 cursor-pointer w-max">
+              <input type="checkbox" checked={isPO} onChange={(e) => handlePOToggle(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500 cursor-pointer" />
+              <span className="text-sm font-semibold text-slate-800">Purchase Order (PO)</span>
+            </label>
+          </div>
 
           <div className="bg-white p-5 rounded-xl border shadow-sm">
-            <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">4. Advanced Payment & Proof</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-800 mb-1 block">Advance Payment Received (₹) *</label>
-                  <input type="number" value={advance} onChange={e => handleAdvanceChange(e.target.value)} placeholder={`Min 50% (₹${(totalAmount * 0.5).toLocaleString('en-IN')})`} className={`h-10 w-full rounded-lg border bg-slate-50 px-3 text-sm outline-none transition-colors ${errors.advance ? 'border-red-500 bg-red-50' : advanceLow ? 'border-red-400 focus:border-red-500' : 'border-slate-300 focus:border-green-500'}`} />
-                  {errors.advance && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.advance}</p>}
-                  {advanceLow && !errors.advance && (
-                    <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-                      <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                      <span className="font-medium">Advance is below 50% ({advancePct.toFixed(0)}%). Manager approval required.</span>
+            {isPO ? (
+              <>
+                <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">4. Purchase Order Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 mb-1 block">PO Number *</label>
+                      <input type="text" value={poNumber} onChange={e => { setPoNumber(e.target.value); if(errors.poNumber) setErrors(prev => ({...prev, poNumber: null})) }} className={`h-10 w-full rounded-lg border bg-slate-50 px-3 text-sm outline-none transition-colors ${errors.poNumber ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:border-green-500'}`} placeholder="Enter PO Number" />
+                      {errors.poNumber && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.poNumber}</p>}
                     </div>
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-800 mb-1 block">Payment Method</label>
-                  <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-green-500 bg-slate-50">
-                    <option value="Cash">Cash</option>
-                    <option value="PhonePe">PhonePe / UPI</option>
-                    <option value="Bank Transfer">Bank Transfer</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-2 block text-center">Payment Proof (Screenshot/Receipt) *</label>
-                <div className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-slate-50 relative min-h-[120px] transition-colors ${errors.paymentProof ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}>
-                  {paymentProof ? (
-                    <div className="w-full h-full relative">
-                      <img src={paymentProof} alt="Proof" className="w-full h-32 object-contain rounded-lg" />
-                      <button onClick={() => setPaymentProof(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="h-3 w-3" /></button>
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 mb-1 block">PO Date *</label>
+                      <input type="date" value={poDate} onChange={e => { setPoDate(e.target.value); if(errors.poDate) setErrors(prev => ({...prev, poDate: null})) }} className={`h-10 w-full rounded-lg border bg-slate-50 px-3 text-sm outline-none transition-colors ${errors.poDate ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:border-green-500'}`} />
+                      {errors.poDate && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.poDate}</p>}
                     </div>
-                  ) : (
-                    <>
-                      <Image className={`h-8 w-8 mb-2 ${errors.paymentProof ? 'text-red-300' : 'text-slate-300'}`} />
-                      <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
-                      <span className={`text-[10px] font-bold ${errors.paymentProof ? 'text-red-500' : 'text-slate-500'}`}>Click to upload image</span>
-                    </>
-                  )}
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 mb-2 block text-center">PO Document Upload *</label>
+                    <div className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-slate-50 relative min-h-[120px] transition-colors ${errors.poDocument ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}>
+                      {poDocument ? (
+                        <div className="w-full h-full relative">
+                          <img src={poDocument} alt="PO Doc" className="w-full h-32 object-contain rounded-lg" />
+                          <button onClick={() => setPoDocument(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="h-3 w-3" /></button>
+                        </div>
+                      ) : (
+                        <>
+                          <Image className={`h-8 w-8 mb-2 ${errors.poDocument ? 'text-red-300' : 'text-slate-300'}`} />
+                          <input type="file" accept="image/*,application/pdf" onChange={handlePoDocumentChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                          <span className={`text-[10px] font-bold ${errors.poDocument ? 'text-red-500' : 'text-slate-500'}`}>Click to upload PO Document</span>
+                        </>
+                      )}
+                    </div>
+                    {errors.poDocument && <p className="text-[10px] text-red-500 mt-1 font-bold text-center">{errors.poDocument}</p>}
+                  </div>
                 </div>
-                {errors.paymentProof && <p className="text-[10px] text-red-500 mt-1 font-bold text-center">{errors.paymentProof}</p>}
-                <p className="mt-3 text-[10px] text-muted-foreground text-center italic">Remaining balance: ₹{(totalAmount - Number(advance || 0)).toLocaleString('en-IN')}.</p>
-              </div>
-            </div>
+              </>
+            ) : (
+              <>
+                <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">4. Advanced Payment & Proof</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 mb-1 block">Advance Payment Received (₹) *</label>
+                      <input type="number" value={advance} onChange={e => handleAdvanceChange(e.target.value)} placeholder={`Min 50% (₹${(totalAmount * 0.5).toLocaleString('en-IN')})`} className={`h-10 w-full rounded-lg border bg-slate-50 px-3 text-sm outline-none transition-colors ${errors.advance ? 'border-red-500 bg-red-50' : advanceLow ? 'border-red-400 focus:border-red-500' : 'border-slate-300 focus:border-green-500'}`} />
+                      {errors.advance && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.advance}</p>}
+                      {advanceLow && !errors.advance && (
+                        <div className="mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                          <span className="font-medium">Advance is below 50% ({advancePct.toFixed(0)}%). Manager approval required.</span>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 mb-1 block">Payment Method</label>
+                      <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-green-500 bg-slate-50">
+                        <option value="Cash">Cash</option>
+                        <option value="PhonePe">PhonePe / UPI</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 mb-2 block text-center">Payment Proof (Screenshot/Receipt) *</label>
+                    <div className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-slate-50 relative min-h-[120px] transition-colors ${errors.paymentProof ? 'border-red-500 bg-red-50' : 'border-slate-300'}`}>
+                      {paymentProof ? (
+                        <div className="w-full h-full relative">
+                          <img src={paymentProof} alt="Proof" className="w-full h-32 object-contain rounded-lg" />
+                          <button onClick={() => setPaymentProof(null)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="h-3 w-3" /></button>
+                        </div>
+                      ) : (
+                        <>
+                          <Image className={`h-8 w-8 mb-2 ${errors.paymentProof ? 'text-red-300' : 'text-slate-300'}`} />
+                          <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                          <span className={`text-[10px] font-bold ${errors.paymentProof ? 'text-red-500' : 'text-slate-500'}`}>Click to upload image</span>
+                        </>
+                      )}
+                    </div>
+                    {errors.paymentProof && <p className="text-[10px] text-red-500 mt-1 font-bold text-center">{errors.paymentProof}</p>}
+                    <p className="mt-3 text-[10px] text-muted-foreground text-center italic">Remaining balance: ₹{(totalAmount - Number(advance || 0)).toLocaleString('en-IN')}.</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -2714,6 +2802,11 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-bold">{order.orderNumber}</h2>
+                {order.isPO && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-violet-600 text-white">
+                    PO ORDER
+                  </span>
+                )}
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${order.status === 'Completed' ? 'bg-green-500' : 'bg-blue-500'}`}>
                   {order.status.replace('_', ' ')}
                 </span>

@@ -237,6 +237,12 @@ const orderSchema = new mongoose.Schema({
 
   orderType: { type: String }, // retail, renewal, agent, etc.
 
+  // ── Purchase Order
+  isPO: { type: Boolean, default: false },
+  poNumber: { type: String, default: null },
+  poDate: { type: Date, default: null },
+  poDocument: { type: String, default: null },
+
   // ── Line Items & Financials
   lineItems:     [lineItemSchema],
   subtotal:      { type: Number, default: 0 },

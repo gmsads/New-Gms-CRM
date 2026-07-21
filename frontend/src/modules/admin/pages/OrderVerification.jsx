@@ -73,6 +73,7 @@ const OrderVerification = () => {
               <div className="flex-1 min-w-[200px]">
                 <div className="flex items-center gap-3 mb-2">
                   <span className="font-mono text-[10px] font-black text-blue-500 bg-blue-50 px-2.5 py-1 rounded-lg uppercase">{order.orderNumber}</span>
+                  {order.isPO && <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-violet-600 text-white">PO ORDER</span>}
                   <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-50 text-amber-600">Pending Verification</span>
                 </div>
                 <h3 className="text-xl font-black text-slate-900 tracking-tight">{order.clientSnapshot?.name || 'Client'}</h3>
