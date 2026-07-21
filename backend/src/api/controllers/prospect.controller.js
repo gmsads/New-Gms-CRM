@@ -13,7 +13,8 @@ const getReqContext = (req) => ({
 // GET /api/prospects — list with filters
 exports.list = async (req, res) => {
   try {
-    const { stage, priority, assignedTo, search } = req.query;
+    const { stage, priority, search, salesExec } = req.query;
+    let assignedTo = req.query.assignedTo || salesExec; // Aliased to support both frontend components
     const filter = { 'softDelete.isDeleted': { $ne: true } }; // Hide soft deleted
     if (stage) filter.stage = stage;
     if (priority) filter.priority = priority;

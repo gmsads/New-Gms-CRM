@@ -56,8 +56,17 @@ exports.list = async (req, res) => {
       if (!status && (req.user.role === 'SALES_EXEC' || req.user.role === 'SR_SALES_EXEC' || req.user.role === 'FIELD_EXEC')) {
         filter.status = { $ne: 'Pending_Approval' };
       }
-    } else if (salesExec) {
-      filter.salesExec = new mongoose.Types.ObjectId(salesExec);
+    } else {
+      if (salesExec) {
+        filter.salesExec = new mongoose.Types.ObjectId(salesExec);
+      } else if (salesExecName && salesExecName !== 'All Employees') {
+        const matchingUsers = await User.find({ name: salesExecName }).select('_id').lean();
+        if (matchingUsers.length > 0) {
+          filter.salesExec = { $in: matchingUsers.map(u => u._id) };
+        } else {
+          return res.json({ success: true, count: 0, totalCount: 0, hasMore: false, data: [] });
+        }
+      }
     }
 
     if (hideCompleted === 'true') {
