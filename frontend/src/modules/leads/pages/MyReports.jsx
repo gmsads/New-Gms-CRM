@@ -14,7 +14,8 @@ export default function MyReports() {
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   
-  const isMgmt = ['ADMIN', 'CEO', 'MD_CEO', 'COO', 'BRANCH_HEAD', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role);
+  const isExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'AGENT'].includes(user?.role);
+  const isMgmt = !isExec;
   
   const [executiveId, setExecutiveId] = useState('all');
   const [employees, setEmployees] = useState([]);

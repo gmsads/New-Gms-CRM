@@ -358,7 +358,8 @@ class AnalyticsService {
       end.setHours(23, 59, 59, 999);
     }
 
-    const isManagement = ['ADMIN', 'CEO', 'MD_CEO', 'COO', 'BRANCH_HEAD', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(requestorRole);
+    const isExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'AGENT'].includes(requestorRole);
+    const isManagement = !isExec;
     
     // Determine target users
     let targetUserIds = [];
