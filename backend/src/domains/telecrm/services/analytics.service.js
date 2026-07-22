@@ -376,7 +376,8 @@ class AnalyticsService {
     const matchUser = targetUserIds ? { $in: targetUserIds } : { $exists: true };
 
     // 1. KPI Calculations
-    const assignedLeadsPromise = Lead.countDocuments({ assignedEmployee: matchUser, isDeleted: { $ne: true }, createdAt: { $gte: start, $lte: end } });
+    // Exclude leads created by the executive from the 'Assigned' count to avoid double-counting
+    const assignedLeadsPromise = Lead.countDocuments({ assignedEmployee: matchUser, createdBy: { $ne: matchUser }, isDeleted: { $ne: true }, createdAt: { $gte: start, $lte: end } });
     const createdLeadsPromise = Lead.countDocuments({ createdBy: matchUser, isDeleted: { $ne: true }, createdAt: { $gte: start, $lte: end } });
     
     // For calls, we look at LeadCall model
