@@ -7,7 +7,6 @@ import CreateLeadModal from '../components/CreateLeadModal';
 import LeadDetailsDrawer from '../components/LeadDetailsDrawer';
 import { LiveSessionBar } from '../components/EnterpriseTelePanels';
 import { PhoneCall, Flame, Clock, CheckCircle2, Search, Filter, RefreshCw, Zap, Plus, X, SlidersHorizontal, Users, UserCheck } from 'lucide-react';
-import TeleSalesAnalyticsDashboard from './TeleSalesAnalyticsDashboard/Dashboard';
 
 /**
  * MyLeads.jsx — Executive "My Leads Desk"
@@ -15,9 +14,6 @@ import TeleSalesAnalyticsDashboard from './TeleSalesAnalyticsDashboard/Dashboard
  */
 export default function MyLeads() {
   const { user } = useAuth();
-  
-  // Role-Based Switch for Enterprise Dashboard
-  const isManagement = ['ADMIN', 'MD_CEO', 'CEO', 'COO', 'BRANCH_HEAD', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role);
   
   // Ownership Top Toggles: 'assigned' vs 'created'
   const [ownerTab, setOwnerTab] = useState('assigned');
@@ -59,7 +55,7 @@ export default function MyLeads() {
   ];
 
   const fetchMyLeads = () => {
-    if (!user || isManagement) return;
+    if (!user) return;
     setLoading(true);
     
     // Pass tab=assigned or tab=created to trigger strict controller scoping
@@ -206,7 +202,7 @@ export default function MyLeads() {
 
     return () => {
       window.removeEventListener('focus', handleReturnFromCall);
-      window.removeEventListener('visibilitychange', onVisibilityChange);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [activeCallLead, showPostModal]);
 
@@ -300,10 +296,6 @@ export default function MyLeads() {
       })
       .catch(err => alert(err.message || 'Conversion failed'));
   };
-
-  if (isManagement) {
-    return <TeleSalesAnalyticsDashboard />;
-  }
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 pb-20">

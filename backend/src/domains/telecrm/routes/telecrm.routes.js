@@ -6,7 +6,6 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 
 const ctrl = require('../controllers/lead.controller');
 const telephonyEnterpriseCtrl = require('../controllers/telephonyEnterprise.controller');
 const companionCtrl = require('../controllers/companion.controller');
-const dashboardCtrl = require('../controllers/telecrmDashboard.controller');
 const { protect, authorize } = require('../../../guards/auth.guard');
 
 // Public Idempotent Webhook Intake for Cloud Telephony Providers (Exotel, Knowlarity, Airtel IQ, etc.)
@@ -65,13 +64,6 @@ router.get('/ceo-funnel', ctrl.getCeoFunnel);
 router.get('/scorecard', ctrl.getExecutiveScorecard);
 router.get('/my-reports', ctrl.getMyReports);
 router.post('/bulk-actions', ctrl.runBulkActions);
-
-// Enterprise Dashboard Routes
-router.get('/dashboard-enterprise/kpis', dashboardCtrl.getKpis);
-router.get('/dashboard-enterprise/executives', dashboardCtrl.getExecutives);
-router.get('/dashboard-enterprise/charts', dashboardCtrl.getCharts);
-router.get('/dashboard-enterprise/sources', dashboardCtrl.getSources);
-router.get('/dashboard-enterprise/timeline', dashboardCtrl.getTimeline);
 
 // Additive Enterprise Telephony Calling & Recording Endpoints
 router.get('/calls/:id/stream', telephonyEnterpriseCtrl.streamRecording);
