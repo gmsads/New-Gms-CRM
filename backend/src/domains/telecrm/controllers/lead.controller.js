@@ -660,8 +660,8 @@ class LeadController {
   // GET /api/telecrm/my-reports
   async getMyReports(req, res, next) {
     try {
-      const isExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(req.user.role);
-      const isMgmt = ['ADMIN', 'CEO', 'MD_CEO', 'COO', 'BRANCH_HEAD', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(req.user.role);
+      const isExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'AGENT'].includes(req.user.role);
+      const isMgmt = !isExec;
       if (!isExec && !isMgmt) {
         return res.status(403).json({ success: false, message: 'Access denied: Insufficient permissions for reports.' });
       }
