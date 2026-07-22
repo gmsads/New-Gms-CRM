@@ -661,11 +661,16 @@ class LeadController {
   async getMyReports(req, res, next) {
     try {
       const isExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(req.user.role);
-      if (!isExec && req.user.role !== 'ADMIN' && req.user.role !== 'MD_CEO' && req.user.role !== 'SALES_MANAGER') {
+      const isMgmt = ['ADMIN', 'CEO', 'MD_CEO', 'COO', 'BRANCH_HEAD', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(req.user.role);
+      if (!isExec && !isMgmt) {
         return res.status(403).json({ success: false, message: 'Access denied: Insufficient permissions for reports.' });
       }
-      const data = await analyticsService.getExecutiveMyReports(req.user._id, req.query);
-      res.json({ success: true, data });
+      const data = await analyticsService.getSimplifiedExecutiveReport({
+        ...req.query,
+        requestorRole: req.user.role,
+        requestorId: req.user._id
+      });
+      res.json(data);
     } catch (err) {
       next(err);
     }

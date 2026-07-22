@@ -3,6 +3,8 @@ const LeadCall = require('../models/leadCall.model');
 const WorkingSession = require('../models/workingSession.model');
 const LeadFollowup = require('../models/leadFollowup.model');
 const LeadActivity = require('../models/leadActivity.model');
+const Order = require('../../orders/order.model');
+const mongoose = require('mongoose');
 
 class AnalyticsService {
   async getExecutiveMetrics(userId) {
@@ -322,6 +324,177 @@ class AnalyticsService {
         totalCalls,
         connectionRate: totalCalls > 0 ? Math.round((connectedCalls / totalCalls) * 100) : 0,
         conversionRate: totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0
+      }
+    };
+  }
+
+  async getSimplifiedExecutiveReport(params) {
+    const { filter = 'today', startDate, endDate, executiveId, requestorRole, requestorId, page = 1, limit = 50 } = params;
+
+    let start = new Date();
+    let end = new Date();
+
+    if (filter === 'yesterday') {
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+    } else if (filter === 'this_week') {
+      const day = start.getDay() || 7;
+      start.setDate(start.getDate() - day + 1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else if (filter === 'this_month') {
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    } else if (filter === 'custom' && startDate && endDate) {
+      start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+    } else { // today
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+    }
+
+    const isManagement = ['ADMIN', 'CEO', 'MD_CEO', 'COO', 'BRANCH_HEAD', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(requestorRole);
+    
+    // Determine target users
+    let targetUserIds = [];
+    if (isManagement) {
+      if (executiveId && executiveId !== 'all') {
+        targetUserIds = [mongoose.Types.ObjectId(executiveId)];
+      } else {
+        // null targetUserIds means 'all'
+        targetUserIds = null;
+      }
+    } else {
+      targetUserIds = [mongoose.Types.ObjectId(requestorId)];
+    }
+
+    const matchUser = targetUserIds ? { $in: targetUserIds } : { $exists: true };
+
+    // 1. KPI Calculations
+    const assignedLeadsPromise = Lead.countDocuments({ assignedEmployee: matchUser, isDeleted: { $ne: true }, createdAt: { $gte: start, $lte: end } });
+    const createdLeadsPromise = Lead.countDocuments({ createdBy: matchUser, isDeleted: { $ne: true }, createdAt: { $gte: start, $lte: end } });
+    
+    // For calls, we look at LeadCall model
+    const callsPromise = LeadCall.find({ callerId: matchUser, createdAt: { $gte: start, $lte: end } }).lean();
+    
+    const followupsPromise = LeadFollowup.countDocuments({ userId: matchUser, createdAt: { $gte: start, $lte: end } });
+    
+    // For status-based metrics in this period, we could either track timeline changes or just current status of leads worked in this period.
+    // To keep it simple and accurate to operational reporting, we count leads assigned to them that currently hold these statuses.
+    const prospectsPromise = Lead.countDocuments({ assignedEmployee: matchUser, currentStatus: 'Converted', isDeleted: { $ne: true } });
+    // Let's adjust 'Sales', 'Lost', 'Pending' based on exact lead statuses
+    const lostPromise = Lead.countDocuments({ assignedEmployee: matchUser, currentStatus: { $in: ['Lost', 'Not Interested'] }, isDeleted: { $ne: true } });
+    const pendingPromise = Lead.countDocuments({ assignedEmployee: matchUser, currentStatus: { $nin: ['Converted', 'Lost', 'Not Interested'] }, isDeleted: { $ne: true } });
+
+    const [assignedLeads, createdLeads, calls, followups, prospects, lost, pending] = await Promise.all([
+      assignedLeadsPromise, createdLeadsPromise, callsPromise, followupsPromise, prospectsPromise, lostPromise, pendingPromise
+    ]);
+
+    let callsMade = calls.length;
+    let connected = 0;
+    let totalCallingTime = 0;
+
+    calls.forEach(c => {
+      const dur = c.talkDuration || c.durationSeconds || 0;
+      if (c.callStatus === 'Connected') {
+        connected++;
+        totalCallingTime += dur;
+      }
+    });
+
+    const averageCallDuration = connected > 0 ? Math.round(totalCallingTime / connected) : 0;
+    
+    // Productivity Formula: min(100, (Calls * 0.5) + (Followups * 2) + (Prospects * 10))
+    // A balanced combination based on activity.
+    let productivity = Math.min(100, Math.round((callsMade * 0.5) + (followups * 2) + (prospects * 10)));
+    // If no assigned leads and no calls, productivity is 0
+    if (assignedLeads === 0 && callsMade === 0) productivity = 0;
+
+    const kpis = {
+      assignedLeads,
+      createdLeads,
+      totalLeads: assignedLeads + createdLeads,
+      callsMade,
+      connected,
+      followups,
+      prospects,
+      sales: prospects, // In this CRM, Prospect often converts to Sale order later. We report prospects here.
+      lost,
+      pending,
+      totalCallingTime,
+      averageCallDuration,
+      productivity
+    };
+
+    if (isManagement) {
+      const orders = await Order.find({
+        salesExec: matchUser,
+        verificationStatus: 'Verified',
+        createdAt: { $gte: start, $lte: end },
+        isDeleted: { $ne: true }
+      }).lean();
+      
+      const revenueGenerated = orders.reduce((sum, order) => sum + (order.grandTotal || 0), 0);
+      kpis.revenueGenerated = revenueGenerated;
+      // Use verified orders for 'sales' KPI if appropriate, or keep prospects as sales
+      kpis.sales = orders.length; 
+    }
+
+    // 2. Call Activity Report Data (Paginated)
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 50;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Use aggregation to paginate Call Activities efficiently
+    const callActivitiesAggregation = [
+      { $match: { callerId: matchUser, createdAt: { $gte: start, $lte: end } } },
+      { $sort: { callStartTime: -1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limitNum },
+      {
+        $lookup: {
+          from: 'leads',
+          localField: 'leadId',
+          foreignField: '_id',
+          as: 'leadInfo'
+        }
+      },
+      { $unwind: { path: '$leadInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          executiveName: { $ifNull: ['$callerName', 'Unknown'] },
+          businessName: { $ifNull: ['$companyName', { $ifNull: ['$leadInfo.companyName', 'N/A'] }] },
+          clientName: { $ifNull: ['$leadInfo.contactPerson', 'N/A'] },
+          mobileNumber: { $ifNull: ['$calleePhone', { $ifNull: ['$leadInfo.phone', 'N/A'] }] },
+          callStartTime: { $ifNull: ['$callStartTime', '$createdAt'] },
+          callEndTime: { $ifNull: ['$endTime', '$createdAt'] },
+          duration: { $ifNull: ['$durationSeconds', { $ifNull: ['$talkDuration', 0] }] },
+          disposition: { $ifNull: ['$businessDisposition', { $ifNull: ['$callStatus', 'Unknown'] }] },
+          remarks: { $ifNull: ['$remarks', ''] }
+        }
+      }
+    ];
+
+    const callActivities = await LeadCall.aggregate(callActivitiesAggregation);
+    const totalActivities = callsMade; // We already have the total count
+
+    return {
+      success: true,
+      data: {
+        kpis,
+        callActivities,
+        pagination: {
+          total: totalActivities,
+          page: pageNum,
+          limit: limitNum,
+          pages: Math.ceil(totalActivities / limitNum)
+        }
       }
     };
   }
