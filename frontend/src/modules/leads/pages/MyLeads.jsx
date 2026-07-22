@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import leadApi from '../../../services/lead.api';
 import LeadCard from '../components/LeadCard';
@@ -15,6 +16,11 @@ import { PhoneCall, Flame, Clock, CheckCircle2, Search, Filter, RefreshCw, Zap, 
 export default function MyLeads() {
   const { user } = useAuth();
   
+  const isMgmt = ['ADMIN', 'CEO', 'MD_CEO', 'COO', 'BRANCH_HEAD', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ASSIGNED PERSON'].includes(user?.role);
+  if (isMgmt) {
+    return <Navigate to="/telecrm/my-reports" replace />;
+  }
+
   // Ownership Top Toggles: 'assigned' vs 'created'
   const [ownerTab, setOwnerTab] = useState('assigned');
   
@@ -340,24 +346,7 @@ export default function MyLeads() {
           </button>
         </div>
 
-        {/* Start Calling Dispenser Button */}
-        <button
-          onClick={() => {
-            leadApi.assignOnDemand(10, null, user.token)
-              .then(res => {
-                if (res.success && res.data?.assignedCount > 0) {
-                  alert(`🎉 Dispensed ${res.data.assignedCount} fresh leads into your queue!`);
-                  fetchMyLeads();
-                } else {
-                  alert('No unassigned pool leads currently available.');
-                }
-              })
-              .catch(err => alert(err.message));
-          }}
-          className="hidden sm:flex px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold rounded-xl shadow hover:opacity-90 transition-all text-xs items-center gap-1.5"
-        >
-          <PhoneCall className="h-3.5 w-3.5 animate-bounce" /> Get 10 Fresh Leads
-        </button>
+
       </div>
 
       {/* Sticky Search & Filter Toolbar */}
@@ -431,7 +420,7 @@ export default function MyLeads() {
             <p className="font-extrabold text-sm text-foreground">No leads found in My Leads Desk.</p>
             <p className="text-xs max-w-md mx-auto">
               {ownerTab === 'assigned' 
-                ? "You don't have any leads assigned under this filter criteria. Click 'Get 10 Fresh Leads' above or use 'Create Lead (+)'."
+                ? "You don't have any leads assigned under this filter criteria. Use 'Create Lead (+)'."
                 : "You haven't created any manual leads matching this query."}
             </p>
           </div>

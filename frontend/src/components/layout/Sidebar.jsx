@@ -44,10 +44,10 @@ const menuConfig = [
   { 
     title: 'Tele Sales & Leads', 
     icon: PhoneCall, 
-    path: '/telecrm/my-leads', 
+    path: '/telecrm/my-reports', 
     roles: ['ADMIN','MD_CEO','COO','BRANCH_HEAD','BRANCH_MANAGER','SALES_MANAGER','SR_SALES_MANAGER','SALES_EXEC','SR_SALES_EXEC','AGENT'],
     subItems: [
-      { title: 'My Leads Desk', path: '/telecrm/my-leads', icon: Zap },
+      { title: 'Reports', path: '/telecrm/my-reports', icon: BarChart2 },
       { title: 'Lead Pool Master', path: '/telecrm/pool', icon: Users },
       { title: 'Campaign Engine', path: '/telecrm/campaigns', icon: Megaphone },
       { title: 'Bulk Import', path: '/telecrm/import', icon: FileText },
@@ -133,9 +133,9 @@ const adminMenuConfig = [
   { 
     title: 'Tele Sales & Leads', 
     icon: PhoneCall, 
-    path: '/telecrm/my-leads', 
+    path: '/telecrm/my-reports', 
     subItems: [
-      { title: 'My Leads Desk', path: '/telecrm/my-leads', icon: Zap },
+      { title: 'Reports', path: '/telecrm/my-reports', icon: BarChart2 },
       { title: 'Lead Pool Master', path: '/telecrm/pool', icon: Users },
       { title: 'Campaign Engine', path: '/telecrm/campaigns', icon: Megaphone },
       { title: 'Bulk Import', path: '/telecrm/import', icon: FileText },
@@ -385,7 +385,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
 
   
 
-  const isSalesOrFieldExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(user.role);
+  const isSalesOrFieldExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'AGENT'].includes(user.role);
   const isAccountant = user.role === 'ACCOUNTS';
 
   const dynamicExecMenu = [
