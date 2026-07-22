@@ -714,7 +714,6 @@ const Sidebar = ({ isOpen, setOpen }) => {
     'Workflow Reports': 'REPORTS_ACCESS',
     'Conversion Analytics': 'REPORTS_ACCESS',
     'My Leads Desk': 'TELESALES_LEADS',
-    'Reports': 'TELESALES_LEADS',
     'Lead Pool Master': 'TELESALES_LEADS',
     'Campaign Engine': 'TELESALES_LEADS',
     'Bulk Import': 'TELESALES_LEADS',
@@ -730,7 +729,10 @@ const Sidebar = ({ isOpen, setOpen }) => {
     adminMenuConfig.forEach(adminModule => {
       if (adminModule.subItems) {
         const permittedSubItems = adminModule.subItems.filter(sub => {
-           const requiredPerm = permissionMapping[sub.title];
+           let requiredPerm = permissionMapping[sub.title];
+           if (sub.title === 'Reports' && adminModule.title === 'Tele Sales & Leads') {
+             requiredPerm = 'TELESALES_LEADS';
+           }
            return requiredPerm && userPermKeys.includes(requiredPerm);
         });
         
