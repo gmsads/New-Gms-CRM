@@ -379,7 +379,8 @@ class AnalyticsService {
     // 1. KPI Calculations
     // Exclude leads created by the executive from the 'Assigned' count to avoid double-counting
     const assignedLeadsPromise = Lead.countDocuments({ assignedEmployee: matchUser, $expr: { $ne: ['$assignedEmployee', '$createdBy'] }, isDeleted: { $ne: true }, createdAt: { $gte: start, $lte: end } });
-    const createdLeadsPromise = Lead.countDocuments({ createdBy: matchUser, isDeleted: { $ne: true }, createdAt: { $gte: start, $lte: end } });
+    // Created leads are those they generated AND kept (assignedEmployee == createdBy)
+    const createdLeadsPromise = Lead.countDocuments({ assignedEmployee: matchUser, $expr: { $eq: ['$assignedEmployee', '$createdBy'] }, isDeleted: { $ne: true }, createdAt: { $gte: start, $lte: end } });
     
     // For calls, we look at LeadCall model
     const callsPromise = LeadCall.find({ callerId: matchUser, createdAt: { $gte: start, $lte: end } }).lean();
