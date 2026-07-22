@@ -714,6 +714,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
     'Workflow Reports': 'REPORTS_ACCESS',
     'Conversion Analytics': 'REPORTS_ACCESS',
     'My Leads Desk': 'TELESALES_LEADS',
+    'Reports': 'TELESALES_LEADS',
     'Lead Pool Master': 'TELESALES_LEADS',
     'Campaign Engine': 'TELESALES_LEADS',
     'Bulk Import': 'TELESALES_LEADS',
