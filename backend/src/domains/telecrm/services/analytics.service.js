@@ -378,17 +378,35 @@ class AnalyticsService {
 
     // 1. KPI Calculations
     // Exclude leads created by the executive from the 'Assigned' count to avoid double-counting
-    const assignedLeadsPromise = Lead.countDocuments({ assignedEmployee: matchUser, $expr: { $ne: ['$assignedEmployee', '$createdBy'] }, isDeleted: { $ne: true }, assignedDate: { $gte: start, $lte: end } });
+    const assignedLeadsPromise = Lead.countDocuments({ 
+      assignedEmployee: matchUser, 
+      $expr: { $ne: ['$assignedEmployee', '$createdBy'] }, 
+      isDeleted: { $ne: true }, 
+      $or: [
+        { assignedDate: { $gte: start, $lte: end } },
+        { assignedDate: null, createdAt: { $gte: start, $lte: end } },
+        { assignedDate: { $exists: false }, createdAt: { $gte: start, $lte: end } }
+      ] 
+    });
+    
     // Created leads are those they generated AND kept (assignedEmployee == createdBy)
     const createdLeadsPromise = Lead.countDocuments({ assignedEmployee: matchUser, $expr: { $eq: ['$assignedEmployee', '$createdBy'] }, isDeleted: { $ne: true }, createdAt: { $gte: start, $lte: end } });
     
     // Previous Pending Leads: Leads assigned to them before the selected period that are still active or were worked on during this period
     const previousPendingPromise = Lead.countDocuments({
       assignedEmployee: matchUser,
-      assignedDate: { $lt: start },
       $or: [
-        { currentStatus: { $nin: ['Converted', 'Lost', 'Not Interested'] } },
-        { updatedAt: { $gte: start, $lte: end } }
+        { assignedDate: { $lt: start } },
+        { assignedDate: null, createdAt: { $lt: start } },
+        { assignedDate: { $exists: false }, createdAt: { $lt: start } }
+      ],
+      $and: [
+        {
+          $or: [
+            { currentStatus: { $nin: ['Converted', 'Lost', 'Not Interested'] } },
+            { updatedAt: { $gte: start, $lte: end } }
+          ]
+        }
       ],
       isDeleted: { $ne: true }
     });
