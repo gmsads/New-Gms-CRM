@@ -8,63 +8,61 @@ import PerformanceDashboard from './modules/performance/pages/PerformanceDashboa
 // Direct imports to bypass index cycle issues
 import UnifiedDashboard from './pages/UnifiedDashboard';
 import Login from './pages/Login';
-import HR from './pages/HR';
-import EmployeeLeaves from './pages/EmployeeLeaves';
+const HR = React.lazy(() => import('./pages/HR'));
+const EmployeeLeaves = React.lazy(() => import('./pages/EmployeeLeaves'));
 
 // Modular Page Direct Imports
-import Clients from './modules/sales/pages/ClientPortfolio';
-import Campaigns from './modules/operations/pages/CampaignManager';
-import Tasks from './modules/operations/pages/TaskTerminal';
-import DailyReports from './pages/DailyReports';
-import Field from './modules/operations/pages/OperationsDashboard';
-import DesignRoutes from './modules/design/DesignRoutes';
-import ProductionManagerDashboard from './modules/production/manager/ProductionManagerDashboard';
-import ProductionExecutiveDashboard from './modules/production/executive/ProductionExecutiveDashboard';
-import ServiceManagerRoutes from './modules/service/manager/ServiceManagerRoutes';
-import ServiceExecutiveDashboard from './modules/service/executive/ServiceExecutiveDashboard';
-import Analytics from './modules/admin/pages/BusinessIntelligence';
-import VendorLayout from './modules/operations/vendors/layouts/VendorLayout';
-import IT from './modules/it/pages/ITDashboard';
-import AdminHR from './modules/admin/pages/AdminHRControl';
-import ProductManagement from './modules/admin/pages/ProductManagement';
-import CostManagement from './modules/admin/pages/CostManagement';
-import AdvancePaymentApprovals from './modules/admin/pages/AdvancePaymentApprovals';
-import OrderVerification from './modules/admin/pages/OrderVerification';
-import TeamAssignment from './modules/admin/pages/TeamAssignment';
-import PaymentVerification from './modules/admin/pages/PaymentVerification';
-import SalesApprovals from './modules/sales/pages/ApprovalsTerminal';
-import QuotationManagementList from './modules/admin/pages/QuotationManagementList';
-import QuotationBrandingChanges from './modules/admin/pages/QuotationBrandingChanges';
-import InvoiceManagementList from './modules/admin/pages/InvoiceManagementList';
-import SalesManagerWorkspace from './modules/sales/pages/SalesManagerWorkspace';
-import AuthorityAccess from './modules/admin/pages/AuthorityAccess';
-import TargetAssignment from './modules/admin/pages/TargetAssignment';
-import WorkforceTimelineDashboard from './modules/admin/pages/WorkforceTimelineDashboard';
+const Clients = React.lazy(() => import('./modules/sales/pages/ClientPortfolio'));
+const Campaigns = React.lazy(() => import('./modules/operations/pages/CampaignManager'));
+const Tasks = React.lazy(() => import('./modules/operations/pages/TaskTerminal'));
+const DailyReports = React.lazy(() => import('./pages/DailyReports'));
+const Field = React.lazy(() => import('./modules/operations/pages/OperationsDashboard'));
+const DesignRoutes = React.lazy(() => import('./modules/design/DesignRoutes'));
+const ProductionManagerDashboard = React.lazy(() => import('./modules/production/manager/ProductionManagerDashboard'));
+const ProductionExecutiveDashboard = React.lazy(() => import('./modules/production/executive/ProductionExecutiveDashboard'));
+const ServiceManagerRoutes = React.lazy(() => import('./modules/service/manager/ServiceManagerRoutes'));
+const ServiceExecutiveDashboard = React.lazy(() => import('./modules/service/executive/ServiceExecutiveDashboard'));
+const Analytics = React.lazy(() => import('./modules/admin/pages/BusinessIntelligence'));
+const VendorLayout = React.lazy(() => import('./modules/operations/vendors/layouts/VendorLayout'));
+const IT = React.lazy(() => import('./modules/it/pages/ITDashboard'));
+const AdminHR = React.lazy(() => import('./modules/admin/pages/AdminHRControl'));
+const ProductManagement = React.lazy(() => import('./modules/admin/pages/ProductManagement'));
+const CostManagement = React.lazy(() => import('./modules/admin/pages/CostManagement'));
+const AdvancePaymentApprovals = React.lazy(() => import('./modules/admin/pages/AdvancePaymentApprovals'));
+const OrderVerification = React.lazy(() => import('./modules/admin/pages/OrderVerification'));
+const TeamAssignment = React.lazy(() => import('./modules/admin/pages/TeamAssignment'));
+const PaymentVerification = React.lazy(() => import('./modules/admin/pages/PaymentVerification'));
+const SalesApprovals = React.lazy(() => import('./modules/sales/pages/ApprovalsTerminal'));
+const QuotationManagementList = React.lazy(() => import('./modules/admin/pages/QuotationManagementList'));
+const QuotationBrandingChanges = React.lazy(() => import('./modules/admin/pages/QuotationBrandingChanges'));
+const InvoiceManagementList = React.lazy(() => import('./modules/admin/pages/InvoiceManagementList'));
+const SalesManagerWorkspace = React.lazy(() => import('./modules/sales/pages/SalesManagerWorkspace'));
+const AuthorityAccess = React.lazy(() => import('./modules/admin/pages/AuthorityAccess'));
+const TargetAssignment = React.lazy(() => import('./modules/admin/pages/TargetAssignment'));
+const WorkforceTimelineDashboard = React.lazy(() => import('./modules/admin/pages/WorkforceTimelineDashboard'));
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { TeamDataView } from './modules/sales/pages/TeamDataView';
+const TeamDataView = React.lazy(() => import('./modules/sales/pages/TeamDataView').then(m => ({ default: m.TeamDataView })));
 import ComingSoon from './components/ui/ComingSoon';
 
 // Tele CRM Pages
-import LeadDashboard from './modules/leads/pages/LeadDashboard';
-import LeadPool from './modules/leads/pages/LeadPool';
-import LeadImport from './modules/leads/pages/LeadImport';
-import CampaignManagement from './modules/leads/pages/CampaignManagement';
-import MyLeads from './modules/leads/pages/MyLeads';
-import CallHistory from './modules/leads/pages/CallHistory';
-import LeadReports from './modules/leads/pages/LeadReports';
-import MyReports from './modules/leads/pages/MyReports';
+const LeadDashboard = React.lazy(() => import('./modules/leads/pages/LeadDashboard'));
+const LeadPool = React.lazy(() => import('./modules/leads/pages/LeadPool'));
+const LeadImport = React.lazy(() => import('./modules/leads/pages/LeadImport'));
+const CampaignManagement = React.lazy(() => import('./modules/leads/pages/CampaignManagement'));
+const MyLeads = React.lazy(() => import('./modules/leads/pages/MyLeads'));
+const CallHistory = React.lazy(() => import('./modules/leads/pages/CallHistory'));
+const LeadReports = React.lazy(() => import('./modules/leads/pages/LeadReports'));
+const MyReports = React.lazy(() => import('./modules/leads/pages/MyReports'));
 
 // Sales Exec Sub-pages (imported from ExecDashboard)
-
-import ExecDashboard, { 
-  SalesProspects, 
-  SalesOrders, 
-  SalesPayments, 
-  SalesFollowups, 
-  SalesAppointments,
-  SalesBrochures,
-  SalesQuotations
-} from './modules/sales/pages/ExecDashboard';
+const ExecDashboard = React.lazy(() => import('./modules/sales/pages/ExecDashboard'));
+const SalesProspects = React.lazy(() => import('./modules/sales/pages/ExecDashboard').then(module => ({ default: module.SalesProspects })));
+const SalesOrders = React.lazy(() => import('./modules/sales/pages/ExecDashboard').then(module => ({ default: module.SalesOrders })));
+const SalesPayments = React.lazy(() => import('./modules/sales/pages/ExecDashboard').then(module => ({ default: module.SalesPayments })));
+const SalesFollowups = React.lazy(() => import('./modules/sales/pages/ExecDashboard').then(module => ({ default: module.SalesFollowups })));
+const SalesAppointments = React.lazy(() => import('./modules/sales/pages/ExecDashboard').then(module => ({ default: module.SalesAppointments })));
+const SalesBrochures = React.lazy(() => import('./modules/sales/pages/ExecDashboard').then(module => ({ default: module.SalesBrochures })));
+const SalesQuotations = React.lazy(() => import('./modules/sales/pages/ExecDashboard').then(module => ({ default: module.SalesQuotations })));
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();

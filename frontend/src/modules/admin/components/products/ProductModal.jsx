@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, LazyMotion, domAnimation, AnimatePresence } from 'framer-motion';
 import { 
   X, ChevronRight, ChevronLeft, Package, DollarSign, Activity, 
   UploadCloud, Plus, Trash2, AlertCircle, CheckCircle2, Layers 
@@ -156,13 +156,14 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-      >
+    <LazyMotion features={domAnimation}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <m.div 
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        >
         {/* Header */}
         <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
           <div>
@@ -209,7 +210,7 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
         <div className="p-8 overflow-y-auto flex-1 bg-slate-50/30">
           <AnimatePresence mode="wait">
             {step === 1 && (
-              <motion.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+              <m.div key="step1" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-2">Product Name</label>
@@ -256,11 +257,11 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
                     />
                   </div>
                 </div>
-              </motion.div>
+              </m.div>
             )}
 
             {step === 3 && (
-              <motion.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
+              <m.div key="step3" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-3">Select Pricing Architecture</label>
                   <div className="grid grid-cols-3 gap-4">
@@ -442,11 +443,11 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </m.div>
             )}
 
             {step === 2 && (
-              <motion.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
+              <m.div key="step2" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-8">
                 <div className="grid grid-cols-2 gap-8">
                   {/* Cost Breakdown Inputs */}
                   <div className="space-y-4">
@@ -510,11 +511,11 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </m.div>
             )}
 
             {step === 4 && (
-              <motion.div key="step4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+              <m.div key="step4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
                 <div>
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                     <div>
@@ -641,7 +642,7 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
                     </div>
                   )}
                 </div>
-              </motion.div>
+              </m.div>
             )}
           </AnimatePresence>
         </div>
@@ -664,7 +665,8 @@ export default function ProductModal({ isOpen, onClose, product = null, categori
             </button>
           )}
         </div>
-      </motion.div>
-    </div>
+        </m.div>
+      </div>
+    </LazyMotion>
   );
 }

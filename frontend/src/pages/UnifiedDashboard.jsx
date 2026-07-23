@@ -11,6 +11,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   PieChart, Pie, Cell
 } from 'recharts';
+import { ResponsivePage, PageHeader, FilterToolbar, EmptyState, KPIGrid, ResponsiveCard } from '../components/ui/ResponsiveComponents';
 
 const glassmorphismTooltipStyle = {
   backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -353,34 +354,33 @@ const UnifiedDashboard = () => {
   const hasAnyData = summaryStats.totalOrdersCount > 0 || summaryStats.totalProspectsCount > 0 || summaryStats.totalAppointmentsCount > 0;
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-700 pb-16 min-h-screen bg-slate-50/50 px-2 sm:px-4 lg:px-8 max-w-[1600px] mx-auto min-w-0">
-      {/* Executive Welcome & Pulse Header (Mobile-First Layout) */}
-      <div className="py-4 border-b border-slate-200/80 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-6 min-w-0">
-        <div className="min-w-0 w-full">
-          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-600 mb-1">
-            <Sparkles className="h-4 w-4 animate-pulse shrink-0" />
-            <span className="truncate">Executive Command Suite</span>
+    <ResponsivePage className="space-y-6 sm:space-y-8 animate-in fade-in duration-700">
+      <PageHeader 
+        title={
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-600">
+              <Sparkles className="h-4 w-4 animate-pulse shrink-0" />
+              <span className="truncate">Executive Command Suite</span>
+            </div>
+            <span className="truncate text-2xl sm:text-3xl lg:text-4xl">
+              Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">{user.name}!</span>
+            </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-slate-900 truncate">
-            Welcome, <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600">{user.name}!</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-semibold mt-1 italic break-words">
-            "{getRoleBasedQuote(user.role)}"
-          </p>
-        </div>
-        
-        {/* Executive Quick Highlights Strip */}
-        <div className="flex items-center justify-between sm:justify-start w-full lg:w-auto gap-4 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-sm shrink-0">
-          <div className="px-3 border-r border-slate-100 text-center flex-1 sm:flex-initial">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Collection Rate</span>
-            <span className="text-sm sm:text-base font-black text-emerald-600">{summaryStats.collectionRate}%</span>
+        }
+        description={`"${getRoleBasedQuote(user.role)}"`}
+        actions={
+          <div className="flex items-center justify-between sm:justify-start w-full lg:w-auto gap-4 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200/80 shadow-sm shrink-0">
+            <div className="px-3 border-r border-slate-100 text-center flex-1 sm:flex-initial">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Collection Rate</span>
+              <span className="text-sm sm:text-base font-black text-emerald-600">{summaryStats.collectionRate}%</span>
+            </div>
+            <div className="px-3 text-center flex-1 sm:flex-initial">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Avg Order Value</span>
+              <span className="text-sm sm:text-base font-black text-slate-800">{formatINRConcise(summaryStats.avgOrderValue)}</span>
+            </div>
           </div>
-          <div className="px-3 text-center flex-1 sm:flex-initial">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Avg Order Value</span>
-            <span className="text-sm sm:text-base font-black text-slate-800">{formatINRConcise(summaryStats.avgOrderValue)}</span>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Target Progress Banner */}
       {userTarget && (
@@ -416,7 +416,7 @@ const UnifiedDashboard = () => {
       )}
 
       {/* Date & Period Command Bar (Mobile-First Responsive Container) */}
-      <div className="bg-white p-5 sm:p-6 rounded-[2rem] sm:rounded-[2.2rem] border border-slate-200/80 shadow-xl shadow-slate-200/40 space-y-4 min-w-0">
+      <FilterToolbar className="flex-col !items-stretch">
         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 border-b border-slate-100 pb-4 min-w-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-200 shrink-0">
@@ -519,23 +519,20 @@ const UnifiedDashboard = () => {
             </>
           )}
         </div>
-      </div>
+      </FilterToolbar>
 
       {!hasAnyData ? (
-        <div className="bg-white border border-slate-200/80 shadow-xl rounded-[2rem] sm:rounded-[2.5rem] p-8 sm:p-16 text-center max-w-3xl mx-auto my-8 sm:my-12 space-y-4">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto text-slate-400">
-            <Inbox className="h-8 w-8 sm:h-10 sm:w-10" />
-          </div>
-          <h3 className="text-xl sm:text-2xl font-black text-slate-800">No Records Found for {periodLabel}</h3>
-          <p className="text-xs sm:text-sm font-semibold text-slate-500 max-w-md mx-auto leading-relaxed">
-            There are no live orders, prospects, or appointments recorded during this selected date range. Please select another month (e.g., May 2026) or select All Year 2026 to view active records.
-          </p>
-        </div>
+        <EmptyState 
+          title={`No Records Found for ${periodLabel}`}
+          description="There are no live orders, prospects, or appointments recorded during this selected date range. Please select another month (e.g., May 2026) or select All Year 2026 to view active records."
+          icon={Inbox}
+          className="my-8 sm:my-12"
+        />
       ) : (
         <>
           {/* World-Class Executive KPI Cards (Mobile-First Stacking & Zero Overflow) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 min-w-0">
-            <div className="bg-white border border-slate-200/80 shadow-lg shadow-slate-200/30 rounded-[1.8rem] sm:rounded-[2rem] p-5 sm:p-6 hover:-translate-y-1 hover:shadow-xl transition-all relative overflow-hidden group min-w-0">
+          <KPIGrid className="min-w-0">
+            <ResponsiveCard className="hover:-translate-y-1 hover:shadow-xl transition-all relative group h-full flex flex-col justify-between">
               <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full -mr-6 -mt-6 group-hover:scale-125 transition-transform pointer-events-none" />
               <div className="flex items-center justify-between mb-3 sm:mb-4 relative z-10 min-w-0">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
@@ -543,11 +540,13 @@ const UnifiedDashboard = () => {
                 </div>
                 <span className="text-[9px] sm:text-[10px] font-black uppercase bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-100 truncate max-w-[120px]">{periodLabel}</span>
               </div>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter relative z-10 truncate">{formatINRConcise(summaryStats.totalRevenue)}</h3>
-              <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 relative z-10 truncate">Total Revenue Generated</p>
-            </div>
+              <div className="relative z-10 flex flex-col min-w-0">
+                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter truncate" title={formatINRConcise(summaryStats.totalRevenue)}>{formatINRConcise(summaryStats.totalRevenue)}</h3>
+                <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 truncate" title="Total Revenue Generated">Total Revenue Generated</p>
+              </div>
+            </ResponsiveCard>
 
-            <div className="bg-white border border-slate-200/80 shadow-lg shadow-slate-200/30 rounded-[1.8rem] sm:rounded-[2rem] p-5 sm:p-6 hover:-translate-y-1 hover:shadow-xl transition-all relative overflow-hidden group min-w-0">
+            <ResponsiveCard className="hover:-translate-y-1 hover:shadow-xl transition-all relative group h-full flex flex-col justify-between">
               <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full -mr-6 -mt-6 group-hover:scale-125 transition-transform pointer-events-none" />
               <div className="flex items-center justify-between mb-3 sm:mb-4 relative z-10 min-w-0">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 shrink-0">
@@ -555,11 +554,13 @@ const UnifiedDashboard = () => {
                 </div>
                 <span className="text-[9px] sm:text-[10px] font-black uppercase bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-100 truncate max-w-[120px]">{periodLabel}</span>
               </div>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter relative z-10 truncate">{formatINRConcise(summaryStats.paidCollection)}</h3>
-              <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 relative z-10 truncate">Verified Collection (Paid)</p>
-            </div>
+              <div className="relative z-10 flex flex-col min-w-0">
+                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter truncate" title={formatINRConcise(summaryStats.paidCollection)}>{formatINRConcise(summaryStats.paidCollection)}</h3>
+                <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 truncate" title="Verified Collection (Paid)">Verified Collection (Paid)</p>
+              </div>
+            </ResponsiveCard>
 
-            <div className="bg-white border border-slate-200/80 shadow-lg shadow-slate-200/30 rounded-[1.8rem] sm:rounded-[2rem] p-5 sm:p-6 hover:-translate-y-1 hover:shadow-xl transition-all relative overflow-hidden group min-w-0">
+            <ResponsiveCard className="hover:-translate-y-1 hover:shadow-xl transition-all relative group h-full flex flex-col justify-between">
               <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full -mr-6 -mt-6 group-hover:scale-125 transition-transform pointer-events-none" />
               <div className="flex items-center justify-between mb-3 sm:mb-4 relative z-10 min-w-0">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 shrink-0">
@@ -567,11 +568,13 @@ const UnifiedDashboard = () => {
                 </div>
                 <span className="text-[9px] sm:text-[10px] font-black uppercase bg-rose-50 text-rose-700 px-2.5 py-1 rounded-full border border-rose-100 truncate max-w-[120px]">{periodLabel}</span>
               </div>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter relative z-10 truncate">{formatINRConcise(summaryStats.pendingBalance)}</h3>
-              <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 relative z-10 truncate">Outstanding Receivables</p>
-            </div>
+              <div className="relative z-10 flex flex-col min-w-0">
+                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter truncate" title={formatINRConcise(summaryStats.pendingBalance)}>{formatINRConcise(summaryStats.pendingBalance)}</h3>
+                <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 truncate" title="Outstanding Receivables">Outstanding Receivables</p>
+              </div>
+            </ResponsiveCard>
 
-            <div className="bg-white border border-slate-200/80 shadow-lg shadow-slate-200/30 rounded-[1.8rem] sm:rounded-[2rem] p-5 sm:p-6 hover:-translate-y-1 hover:shadow-xl transition-all relative overflow-hidden group min-w-0">
+            <ResponsiveCard className="hover:-translate-y-1 hover:shadow-xl transition-all relative group h-full flex flex-col justify-between">
               <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full -mr-6 -mt-6 group-hover:scale-125 transition-transform pointer-events-none" />
               <div className="flex items-center justify-between mb-3 sm:mb-4 relative z-10 min-w-0">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100 shrink-0">
@@ -579,10 +582,12 @@ const UnifiedDashboard = () => {
                 </div>
                 <span className="text-[9px] sm:text-[10px] font-black uppercase bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full border border-purple-100 truncate max-w-[120px]">{periodLabel}</span>
               </div>
-              <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter relative z-10 truncate">{summaryStats.totalOrdersCount}</h3>
-              <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 relative z-10 truncate">Total Orders Processed</p>
-            </div>
-          </div>
+              <div className="relative z-10 flex flex-col min-w-0">
+                <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tighter truncate" title={summaryStats.totalOrdersCount}>{summaryStats.totalOrdersCount}</h3>
+                <p className="text-[10px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-widest mt-1 truncate" title="Total Orders Processed">Total Orders Processed</p>
+              </div>
+            </ResponsiveCard>
+          </KPIGrid>
 
           {/* The Requested Enterprise Charts Section (Zero Fluctuations & Mobile First Grid) */}
           <div className="space-y-6 pt-4 min-w-0">
@@ -599,7 +604,7 @@ const UnifiedDashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 min-w-0">
               
               {/* 1. Payment Status */}
-              <div className="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/40 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-300 min-w-0">
+              <ResponsiveCard className="flex flex-col justify-between hover:shadow-2xl transition-all duration-300 min-w-0 h-full">
                 <div>
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-1 truncate">Payment Status - {periodLabel}</h3>
                   <p className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Paid vs Pending Revenue</p>
@@ -661,10 +666,10 @@ const UnifiedDashboard = () => {
                     </span>
                   </div>
                 </div>
-              </div>
+              </ResponsiveCard>
 
               {/* 2. Order Fulfillment (REMOVED CANCELED) */}
-              <div className="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/40 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-300 min-w-0">
+              <ResponsiveCard className="flex flex-col justify-between hover:shadow-2xl transition-all duration-300 min-w-0 h-full">
                 <div>
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-1 truncate">Order Fulfillment - {periodLabel}</h3>
                   <p className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Active Execution Stages</p>
@@ -703,10 +708,10 @@ const UnifiedDashboard = () => {
                     </div>
                   ))}
                 </div>
-              </div>
+              </ResponsiveCard>
 
               {/* 3. Prospective Clients (REFERENCE IMAGE 3) */}
-              <div className="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/40 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-300 min-w-0">
+              <ResponsiveCard className="flex flex-col justify-between hover:shadow-2xl transition-all duration-300 min-w-0 h-full">
                 <div>
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-1 truncate">Prospective Clients - {periodLabel}</h3>
                   <p className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Pipeline Priority Breakdown</p>
@@ -753,10 +758,10 @@ const UnifiedDashboard = () => {
                     ))
                   )}
                 </div>
-              </div>
+              </ResponsiveCard>
 
               {/* 4. Client Overview (MATCHING EXACT REFERENCE IMAGE - FULL WIDTH 3-COL SPAN) */}
-              <div className="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/40 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-300 xl:col-span-3 min-w-0">
+              <ResponsiveCard className="flex flex-col justify-between hover:shadow-2xl transition-all duration-300 xl:col-span-3 min-w-0 h-full">
                 {/* Header matching screenshot */}
                 <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
                   <BarChart2 className="h-5 w-5 text-emerald-500 shrink-0" />
@@ -804,10 +809,10 @@ const UnifiedDashboard = () => {
                     </div>
                   ))}
                 </div>
-              </div>
+              </ResponsiveCard>
 
               {/* 5. Service Status */}
-              <div className="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/40 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-300 min-w-0">
+              <ResponsiveCard className="flex flex-col justify-between hover:shadow-2xl transition-all duration-300 min-w-0 h-full">
                 <div>
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-1 truncate">Service Status - {periodLabel}</h3>
                   <p className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Pending Bottleneck Analysis</p>
@@ -845,10 +850,10 @@ const UnifiedDashboard = () => {
                     ))
                   )}
                 </div>
-              </div>
+              </ResponsiveCard>
 
               {/* 6. Most Ordered Products (REFERENCE IMAGE 1) */}
-              <div className="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/40 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-300 lg:col-span-2 min-w-0">
+              <ResponsiveCard className="flex flex-col justify-between hover:shadow-2xl transition-all duration-300 lg:col-span-2 min-w-0 h-full">
                 <div>
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-1 truncate">Most Ordered Products - {periodLabel}</h3>
                   <p className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-6">Top Product Lines by Quantity Sold</p>
@@ -913,10 +918,10 @@ const UnifiedDashboard = () => {
                     </div>
                   </div>
                 )}
-              </div>
+              </ResponsiveCard>
 
               {/* 7. Appointments Status */}
-              <div className="bg-white border border-slate-200/80 shadow-xl shadow-slate-200/40 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 flex flex-col justify-between hover:shadow-2xl transition-all duration-300 min-w-0">
+              <ResponsiveCard className="flex flex-col justify-between hover:shadow-2xl transition-all duration-300 min-w-0 h-full">
                 <div>
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-1 truncate">Appointments Status - {periodLabel}</h3>
                   <p className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Meetings & Schedule Overview</p>
@@ -950,13 +955,13 @@ const UnifiedDashboard = () => {
                     </div>
                   ))}
                 </div>
-              </div>
+              </ResponsiveCard>
 
             </div>
           </div>
         </>
       )}
-    </div>
+    </ResponsivePage>
   );
 };
 

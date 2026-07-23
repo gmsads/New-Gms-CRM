@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileSpreadsheet, AlertCircle, X, Check, Download } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 export default function ImportExcelModal({ isOpen, onClose, onImport, title = 'Import from Excel', onDownloadTemplate }) {
   const [file, setFile] = useState(null);
@@ -28,8 +27,9 @@ export default function ImportExcelModal({ isOpen, onClose, onImport, title = 'I
   const parseFile = (fileToParse) => {
     setLoading(true);
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        const XLSX = await import('xlsx');
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];

@@ -3,8 +3,16 @@ import {
   FileText, FileBadge, Receipt, RefreshCw, Send, Download, Eye, Save, AlertCircle, 
   History, Mail, ChevronRight, Calculator, User, Calendar, Briefcase, ChevronLeft, FileCheck
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+
+let JSPDF_CACHE = null;
+const getJSPDF = async () => {
+  if (!JSPDF_CACHE) {
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
+    JSPDF_CACHE = jsPDF;
+  }
+  return JSPDF_CACHE;
+};
 
 const DOCUMENT_TYPES = [
   { id: 'payslip', title: 'Payslip Generator', icon: Receipt, desc: 'Generate monthly salary slips with calculations', color: 'bg-blue-50 text-blue-600' },
@@ -70,7 +78,8 @@ const HRDocuments = () => {
     setGenericDocData(prev => ({ ...prev, [name]: value }));
   };
 
-  const generatePayslipPDF = () => {
+  const generatePayslipPDF = async () => {
+    const jsPDF = await getJSPDF();
     const doc = new jsPDF();
     const data = payslipData;
     const totals = payslipTotals;
@@ -137,7 +146,8 @@ const HRDocuments = () => {
     doc.save(`${data.employeeName || 'Employee'}_Payslip_${data.month}_${data.year}.pdf`);
   };
 
-  const generateGenericPDF = (typeTitle) => {
+  const generateGenericPDF = async (typeTitle) => {
+    const jsPDF = await getJSPDF();
     const doc = new jsPDF();
     const data = genericDocData;
     

@@ -5,7 +5,6 @@ import { employeeApi } from '../../../services/api';
 import { 
   BarChart3, RefreshCw, ChevronLeft, ChevronRight, Download
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 export default function MyReports() {
   const { user } = useAuth();
@@ -83,8 +82,9 @@ export default function MyReports() {
   };
 
   // Export handling
-  const handleExport = () => {
+  const handleExport = async () => {
     if (!data?.callActivities || data.callActivities.length === 0) return;
+    const XLSX = await import('xlsx');
     const exportData = data.callActivities.map(c => {
        const row = {};
        if (isMgmt) row['Executive Name'] = c.executiveName;

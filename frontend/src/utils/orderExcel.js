@@ -1,4 +1,10 @@
-import * as XLSX from 'xlsx';
+let XLSX_CACHE = null;
+const getXLSX = async () => {
+  if (!XLSX_CACHE) {
+    XLSX_CACHE = await import('xlsx');
+  }
+  return XLSX_CACHE;
+};
 
 export const ORDER_EXCEL_HEADERS = [
   'Serial Number',
@@ -29,7 +35,7 @@ export const ORDER_EXCEL_HEADERS = [
   'Closed By'
 ];
 
-export const exportOrdersToExcel = (orders = [], filename = 'GMS_Orders_Export.xlsx') => {
+export const exportOrdersToExcel = async (orders = [], filename = 'GMS_Orders_Export.xlsx') => {
   if (!orders || orders.length === 0) {
     alert('No orders to export.');
     return;
@@ -123,6 +129,7 @@ export const exportOrdersToExcel = (orders = [], filename = 'GMS_Orders_Export.x
     }
   });
 
+  const XLSX = await getXLSX();
   const worksheet = XLSX.utils.aoa_to_sheet([ORDER_EXCEL_HEADERS, ...rows]);
   if (merges.length > 0) {
     worksheet['!merges'] = merges;
@@ -136,7 +143,7 @@ export const exportOrdersToExcel = (orders = [], filename = 'GMS_Orders_Export.x
   XLSX.writeFile(workbook, filename);
 };
 
-export const downloadOrderTemplate = (filename = 'GMS_Orders_Template.xlsx') => {
+export const downloadOrderTemplate = async (filename = 'GMS_Orders_Template.xlsx') => {
   const sampleOrders = [
     {
       orderNumber: 'ORD-2026-0001',
@@ -187,5 +194,5 @@ export const downloadOrderTemplate = (filename = 'GMS_Orders_Template.xlsx') => 
     }
   ];
 
-  exportOrdersToExcel(sampleOrders, filename);
+  await exportOrdersToExcel(sampleOrders, filename);
 };

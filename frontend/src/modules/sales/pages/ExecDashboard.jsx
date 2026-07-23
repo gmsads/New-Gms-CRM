@@ -9,7 +9,6 @@ import {
   BarChart2 as BarChartIcon, MapPin, Phone, AlertCircle, MessageCircle, Users, FileSpreadsheet
 } from 'lucide-react';
 import ImportExcelModal from '../../../components/ui/ImportExcelModal';
-import * as XLSX from 'xlsx';
 import { downloadOrderTemplate as downloadTemplateHelper } from '../../../utils/orderExcel';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,

@@ -3,7 +3,6 @@ import { useAuth } from '../../../context/AuthContext';
 import leadApi from '../../../services/lead.api';
 import ImportPreviewModal from '../components/ImportPreviewModal';
 import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertTriangle, ArrowRight, Download, Info, Table } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 /**
  * LeadImport.jsx
@@ -31,7 +30,8 @@ export default function LeadImport() {
       .catch(console.error);
   }, [user]);
 
-  const downloadSampleTemplate = () => {
+  const downloadSampleTemplate = async () => {
+    const XLSX = await import('xlsx');
     const headers = ['Contact Person', 'Phone', 'Company Name', 'Email', 'City', 'State', 'Business Category', 'Alternate Phone', 'Source', 'Assigned To'];
     const sampleRows = [
       ['Rajesh Sharma', '9876543210', 'TechSolutions Ltd', 'rajesh@techsolutions.com', 'Hyderabad', 'Telangana', 'IT Services', '0401234567', 'Trade Show', 'Rahul Sales'],
@@ -53,8 +53,9 @@ export default function LeadImport() {
     setImportSummary(null);
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
+        const XLSX = await import('xlsx');
         const data = new Uint8Array(event.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];

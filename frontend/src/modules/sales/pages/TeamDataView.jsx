@@ -5,7 +5,6 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { orderApi } from '../../../services/api';
 import ImportExcelModal from '../../../components/ui/ImportExcelModal';
-import * as XLSX from 'xlsx';
 import { downloadOrderTemplate as downloadTemplateHelper } from '../../../utils/orderExcel';
 import { SalesProspects, SalesOrders, SalesFollowups, SalesAppointments, SalesQuotations } from './ExecDashboard';
 

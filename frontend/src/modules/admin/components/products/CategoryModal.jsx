@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, LazyMotion, domAnimation, AnimatePresence } from 'framer-motion';
 import { X, CheckCircle2, Layers, Tag, Trash2, Power } from 'lucide-react';
 import useApi from '../../../../hooks/useApi';
 
@@ -77,13 +77,14 @@ export default function CategoryModal({ isOpen, onClose, onSuccess, categories =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[600px]"
-      >
+    <LazyMotion features={domAnimation}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <m.div 
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[600px]"
+        >
         {/* Left Column: List Categories */}
         <div className="w-full md:w-1/2 bg-slate-50 border-r border-slate-100 flex flex-col">
           <div className="px-6 py-5 border-b border-slate-200 flex justify-between items-center bg-white">
@@ -205,7 +206,8 @@ export default function CategoryModal({ isOpen, onClose, onSuccess, categories =
             </div>
           </form>
         </div>
-      </motion.div>
+        </m.div>
+      </div>
 
       {categoryToDelete && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
@@ -239,6 +241,6 @@ export default function CategoryModal({ isOpen, onClose, onSuccess, categories =
           </div>
         </div>
       )}
-    </div>
+    </LazyMotion>
   );
 }
