@@ -73,10 +73,14 @@ class LeadService {
   /**
    * listLeads (Supports Lead Pool & My Leads tabs)
    */
-  async listLeads({ filter = {}, page = 1, limit = 20, sort = { createdAt: -1 }, search = '' }) {
+  async listLeads({ filter = {}, page = 1, limit = 20, sort = { assignedEmployee: 1, createdAt: -1 }, search = '' }) {
     const query = { ...filter, isDeleted: { $ne: true } };
 
     if (search) {
+      const User = require('../../users/user.model');
+      const matchedEmployees = await User.find({ name: { $regex: search, $options: 'i' } }).select('_id').lean();
+      const employeeIds = matchedEmployees.map(e => e._id);
+      
       query.$or = [
         { contactPerson: { $regex: search, $options: 'i' } },
         { companyName: { $regex: search, $options: 'i' } },
@@ -84,6 +88,10 @@ class LeadService {
         { email: { $regex: search, $options: 'i' } },
         { city: { $regex: search, $options: 'i' } }
       ];
+
+      if (employeeIds.length > 0) {
+        query.$or.push({ assignedEmployee: { $in: employeeIds } });
+      }
     }
 
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);

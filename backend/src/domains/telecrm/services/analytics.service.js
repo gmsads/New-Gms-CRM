@@ -382,6 +382,17 @@ class AnalyticsService {
     // Created leads are those they generated AND kept (assignedEmployee == createdBy)
     const createdLeadsPromise = Lead.countDocuments({ assignedEmployee: matchUser, $expr: { $eq: ['$assignedEmployee', '$createdBy'] }, isDeleted: { $ne: true }, createdAt: { $gte: start, $lte: end } });
     
+    // Previous Pending Leads: Leads created before the selected period that are still active or were worked on during this period
+    const previousPendingPromise = Lead.countDocuments({
+      assignedEmployee: matchUser,
+      createdAt: { $lt: start },
+      $or: [
+        { currentStatus: { $nin: ['Converted', 'Lost', 'Not Interested'] } },
+        { updatedAt: { $gte: start, $lte: end } }
+      ],
+      isDeleted: { $ne: true }
+    });
+    
     // For calls, we look at LeadCall model
     const callsPromise = LeadCall.find({ callerId: matchUser, createdAt: { $gte: start, $lte: end } }).lean();
     
@@ -394,8 +405,8 @@ class AnalyticsService {
     const lostPromise = Lead.countDocuments({ assignedEmployee: matchUser, currentStatus: { $in: ['Lost', 'Not Interested'] }, isDeleted: { $ne: true } });
     const pendingPromise = Lead.countDocuments({ assignedEmployee: matchUser, currentStatus: { $nin: ['Converted', 'Lost', 'Not Interested'] }, isDeleted: { $ne: true } });
 
-    const [assignedLeads, createdLeads, calls, followups, prospects, lost, pending] = await Promise.all([
-      assignedLeadsPromise, createdLeadsPromise, callsPromise, followupsPromise, prospectsPromise, lostPromise, pendingPromise
+    const [assignedLeads, createdLeads, previousPendingLeads, calls, followups, prospects, lost, pending] = await Promise.all([
+      assignedLeadsPromise, createdLeadsPromise, previousPendingPromise, callsPromise, followupsPromise, prospectsPromise, lostPromise, pendingPromise
     ]);
 
     let callsMade = calls.length;
@@ -421,7 +432,8 @@ class AnalyticsService {
     const kpis = {
       assignedLeads,
       createdLeads,
-      totalLeads: assignedLeads + createdLeads,
+      previousPendingLeads,
+      totalLeads: assignedLeads + createdLeads + previousPendingLeads,
       callsMade,
       connected,
       followups,

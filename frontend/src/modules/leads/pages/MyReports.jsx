@@ -31,7 +31,7 @@ export default function MyReports() {
       employeeApi.list({ limit: 1000 }, user.token)
         .then(res => {
           if (res.success && res.data) {
-             const execs = res.data.filter(e => ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(e.role));
+             const execs = res.data.filter(e => ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'AGENT'].includes(e.role));
              setEmployees(execs);
           }
         }).catch(err => console.error("Error fetching employees", err));
@@ -129,10 +129,10 @@ export default function MyReports() {
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight text-foreground">
-                My Reports
+                {isMgmt ? 'Tele Sales Analytics' : 'My Reports'}
               </h1>
               <p className="text-xs text-muted-foreground font-medium">
-                Daily operational reporting
+                {isMgmt ? 'Command Center Overview' : 'Daily operational reporting'}
               </p>
             </div>
           </div>
@@ -235,6 +235,7 @@ export default function MyReports() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <KpiCard label="Assigned Leads" value={data.kpis?.assignedLeads || 0} />
             <KpiCard label="Created Leads" value={data.kpis?.createdLeads || 0} />
+            <KpiCard label="Previous Pending" value={data.kpis?.previousPendingLeads || 0} />
             <KpiCard label="Total Leads" value={data.kpis?.totalLeads || 0} />
             <KpiCard label="Calls Made" value={data.kpis?.callsMade || 0} />
             <KpiCard label="Connected" value={data.kpis?.connected || 0} />
