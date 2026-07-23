@@ -365,16 +365,16 @@ class AnalyticsService {
     let targetUserIds = [];
     if (isManagement) {
       if (executiveId && executiveId !== 'all') {
-        targetUserIds = [mongoose.Types.ObjectId(executiveId)];
+        targetUserIds = [new mongoose.Types.ObjectId(executiveId)];
       } else {
         // null targetUserIds means 'all'
         targetUserIds = null;
       }
     } else {
-      targetUserIds = [mongoose.Types.ObjectId(requestorId)];
+      targetUserIds = [new mongoose.Types.ObjectId(requestorId)];
     }
 
-    const matchUser = targetUserIds ? { $in: targetUserIds } : { $exists: true };
+    const matchUser = targetUserIds ? { $in: targetUserIds } : { $ne: null };
 
     // 1. KPI Calculations
     // Exclude leads created by the executive from the 'Assigned' count to avoid double-counting
