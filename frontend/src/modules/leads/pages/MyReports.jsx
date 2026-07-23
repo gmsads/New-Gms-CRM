@@ -30,8 +30,9 @@ export default function MyReports() {
     if (isMgmt) {
       employeeApi.list({ limit: 1000 }, user.token)
         .then(res => {
-          if (res.success && res.data) {
-             const execs = res.data.filter(e => ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'AGENT'].includes(e.role));
+          const empList = res.data || res.employees || [];
+          if (Array.isArray(empList)) {
+             const execs = empList.filter(e => ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC', 'AGENT'].includes(e.role));
              setEmployees(execs);
           }
         }).catch(err => console.error("Error fetching employees", err));
@@ -104,11 +105,7 @@ export default function MyReports() {
     XLSX.writeFile(wb, `Call_Activity_Report_${dateFilter}.xlsx`);
   };
 
-  const hasData = data && (
-    (data.kpis?.totalLeads > 0) || 
-    (data.kpis?.callsMade > 0) || 
-    (data.callActivities?.length > 0)
-  );
+  const hasData = !!data;
 
   const formatDuration = (seconds) => {
     if (!seconds) return '0s';
