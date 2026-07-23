@@ -656,7 +656,6 @@ const UnifiedDashboard = () => {
                       <span className="w-3.5 h-3.5 rounded-full bg-rose-500 shrink-0 shadow-sm shadow-rose-300 ring-2 ring-white" />
                       <span className="text-rose-950 font-extrabold uppercase tracking-wide text-[11px]">Pending Revenue</span>
                     </div>
-                    <span className="text-rose-700 font-black whitespace-nowrap text-right">
                     <span className="text-rose-700 font-black whitespace-nowrap text-right text-sm sm:text-base tracking-tight">
                       ₹{paymentData[0].isEmpty ? 0 : paymentData[1].value.toLocaleString('en-IN')}
                     </span>
