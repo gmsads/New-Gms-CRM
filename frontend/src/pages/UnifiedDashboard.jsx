@@ -604,40 +604,60 @@ const UnifiedDashboard = () => {
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-1 truncate">Payment Status - {periodLabel}</h3>
                   <p className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Paid vs Pending Revenue</p>
                 </div>
-                <div className="h-56 sm:h-60 w-full relative flex items-center justify-center min-w-0">
+                <div className="h-56 sm:h-64 w-full relative flex items-center justify-center min-w-0 mt-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={paymentData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                      <defs>
+                        <linearGradient id="colorPaid" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.9}/>
+                          <stop offset="95%" stopColor="#059669" stopOpacity={1}/>
+                        </linearGradient>
+                        <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.9}/>
+                          <stop offset="95%" stopColor="#e11d48" stopOpacity={1}/>
+                        </linearGradient>
+                      </defs>
+                      <Pie 
+                        data={paymentData} 
+                        cx="50%" 
+                        cy="50%" 
+                        innerRadius={65} 
+                        outerRadius={85} 
+                        paddingAngle={6} 
+                        dataKey="value"
+                        stroke="none"
+                      >
                         {paymentData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                          <Cell key={`cell-${index}`} fill={entry.name === 'Paid' ? 'url(#colorPaid)' : 'url(#colorPending)'} />
                         ))}
                       </Pie>
-                      {!paymentData[0].isEmpty && <Tooltip formatter={(value) => `₹${value.toLocaleString('en-IN')}`} contentStyle={glassmorphismTooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />}
+                      {!paymentData[0].isEmpty && <Tooltip formatter={(value) => `₹${value.toLocaleString('en-IN')}`} contentStyle={glassmorphismTooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} cursor={{fill: 'transparent'}} />}
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="absolute text-center pointer-events-none">
-                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Collection</span>
-                    <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  <div className="absolute flex flex-col items-center justify-center pointer-events-none drop-shadow-md">
+                    <span className="text-[10px] sm:text-[11px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-0.5">Collection</span>
+                    <span className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tighter">
                       {summaryStats.totalRevenue > 0 ? Math.round((paymentData[0].value / summaryStats.totalRevenue) * 100) : 0}%
                     </span>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-4 text-xs font-black text-slate-700 min-w-0">
-                  <div className="flex items-center justify-between gap-2 bg-emerald-50/80 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl border border-emerald-100">
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0 shadow-sm shadow-emerald-300" />
-                      <span className="text-emerald-950 font-extrabold">Paid:</span>
+                <div className="flex flex-col gap-2.5 mt-6 text-xs font-black text-slate-700 min-w-0">
+                  <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-emerald-50/80 to-emerald-100/40 px-4 py-3 rounded-2xl border border-emerald-100/60 shadow-sm transition-transform hover:scale-[1.02]">
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 shrink-0 shadow-sm shadow-emerald-300 ring-2 ring-white" />
+                      <span className="text-emerald-950 font-extrabold uppercase tracking-wide text-[11px]">Paid Revenue</span>
                     </div>
-                    <span className="text-emerald-700 font-black whitespace-nowrap text-right">
+                    <span className="text-emerald-700 font-black whitespace-nowrap text-right text-sm sm:text-base tracking-tight">
                       ₹{paymentData[0].isEmpty ? 0 : paymentData[0].value.toLocaleString('en-IN')}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-2 bg-rose-50/80 px-3 py-2.5 sm:px-3.5 sm:py-3 rounded-2xl border border-rose-100">
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="w-3 h-3 rounded-full bg-rose-500 shrink-0 shadow-sm shadow-rose-300" />
-                      <span className="text-rose-950 font-extrabold">Pending:</span>
+                  <div className="flex items-center justify-between gap-3 bg-gradient-to-r from-rose-50/80 to-rose-100/40 px-4 py-3 rounded-2xl border border-rose-100/60 shadow-sm transition-transform hover:scale-[1.02]">
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <span className="w-3.5 h-3.5 rounded-full bg-rose-500 shrink-0 shadow-sm shadow-rose-300 ring-2 ring-white" />
+                      <span className="text-rose-950 font-extrabold uppercase tracking-wide text-[11px]">Pending Revenue</span>
                     </div>
                     <span className="text-rose-700 font-black whitespace-nowrap text-right">
+                    <span className="text-rose-700 font-black whitespace-nowrap text-right text-sm sm:text-base tracking-tight">
                       ₹{paymentData[0].isEmpty ? 0 : paymentData[1].value.toLocaleString('en-IN')}
                     </span>
                   </div>
@@ -650,27 +670,35 @@ const UnifiedDashboard = () => {
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-1 truncate">Order Fulfillment - {periodLabel}</h3>
                   <p className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Active Execution Stages</p>
                 </div>
-                <div className="h-56 sm:h-60 w-full min-w-0">
+                <div className="h-56 sm:h-64 w-full min-w-0 mt-2">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={orderFulfillmentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <BarChart data={orderFulfillmentData} margin={{ top: 20, right: 10, left: -25, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={1}/>
+                          <stop offset="100%" stopColor="#2563eb" stopOpacity={0.8}/>
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                      <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#475569', fontSize: 11, fontWeight: 800 }} />
-                      <YAxis tickLine={false} axisLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600 }} />
-                      <Tooltip contentStyle={glassmorphismTooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
-                      <Bar dataKey="value" radius={[8, 8, 0, 0]} barSize={36} name="Orders">
+                      <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#475569', fontSize: 11, fontWeight: 800 }} dy={10} />
+                      <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} />
+                      <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={glassmorphismTooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
+                      <Bar dataKey="value" radius={[6, 6, 6, 6]} barSize={32} name="Orders">
                         {orderFulfillmentData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                          <Cell key={`cell-${index}`} fill={entry.color} style={{ filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.05))' }} />
                         ))}
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="flex flex-wrap items-center justify-center gap-2 mt-4 text-[11px] sm:text-xs font-black text-slate-700">
+                <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-3 mt-6 text-[11px] sm:text-xs font-black text-slate-700 w-full">
                   {orderFulfillmentData.map(item => (
-                    <div key={item.name} className="flex items-center gap-1.5 bg-slate-50 px-3 py-2 sm:py-2.5 rounded-xl border border-slate-200/80 shadow-2xs">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                      <span className="whitespace-nowrap">{item.name}:</span>
-                      <span className="px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-900 font-extrabold">
+                    <div key={item.name} className="flex flex-1 min-w-[110px] items-center justify-between gap-2 bg-slate-50/80 px-3 py-2.5 rounded-2xl border border-slate-200/60 shadow-sm transition-transform hover:scale-[1.02]">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full shrink-0 shadow-sm ring-2 ring-white" style={{ backgroundColor: item.color }} />
+                        <span className="uppercase tracking-wider text-slate-600 text-[10px] sm:text-[11px]">{item.name}</span>
+                      </div>
+                      <span className="text-slate-800 font-black text-sm">
                         {item.value}
                       </span>
                     </div>
@@ -684,32 +712,44 @@ const UnifiedDashboard = () => {
                   <h3 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight mb-1 truncate">Prospective Clients - {periodLabel}</h3>
                   <p className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Pipeline Priority Breakdown</p>
                 </div>
-                <div className="h-56 sm:h-60 w-full relative flex items-center justify-center min-w-0">
+                <div className="h-56 sm:h-64 w-full relative flex items-center justify-center min-w-0 mt-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={prospectiveClientsData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={4} dataKey="value">
+                      <Pie 
+                        data={prospectiveClientsData} 
+                        cx="50%" 
+                        cy="50%" 
+                        innerRadius={65} 
+                        outerRadius={85} 
+                        paddingAngle={6} 
+                        dataKey="value"
+                        stroke="none"
+                      >
                         {prospectiveClientsData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                          <Cell key={`cell-${index}`} fill={entry.color} style={{ filter: 'drop-shadow(0 4px 4px rgba(0,0,0,0.08))' }} />
                         ))}
                       </Pie>
                       {!prospectiveClientsData[0].isEmpty && <Tooltip contentStyle={glassmorphismTooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />}
                     </PieChart>
                   </ResponsiveContainer>
-                  <div className="absolute text-center pointer-events-none">
-                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">TOTAL</span>
-                    <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                  <div className="absolute flex flex-col items-center justify-center pointer-events-none drop-shadow-md">
+                    <span className="text-[10px] sm:text-[11px] font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-0.5">TOTAL</span>
+                    <span className="text-3xl sm:text-4xl font-black text-slate-800 tracking-tighter">
                       {prospectiveClientsData[0].isEmpty ? 0 : prospectiveClientsData.reduce((sum, item) => sum + item.value, 0)}
                     </span>
                   </div>
                 </div>
-                <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4 mt-4 text-xs font-black text-slate-700 uppercase tracking-wider">
+                <div className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-3 mt-6 text-xs font-black text-slate-700 uppercase tracking-wider w-full">
                   {prospectiveClientsData[0].isEmpty ? (
-                    <span className="text-slate-400 font-bold">No Active Prospects</span>
+                    <span className="text-slate-400 font-bold bg-slate-50 px-4 py-2 rounded-xl">No Active Prospects</span>
                   ) : (
                     prospectiveClientsData.map(item => (
-                      <div key={item.name} className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: item.color }} />
-                        <span>{item.name} ({item.value})</span>
+                      <div key={item.name} className="flex flex-1 min-w-[100px] items-center justify-between gap-2 bg-slate-50/80 px-3 py-2.5 rounded-2xl border border-slate-200/60 shadow-sm transition-transform hover:scale-[1.02]">
+                        <div className="flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full shrink-0 shadow-sm ring-2 ring-white" style={{ backgroundColor: item.color }} />
+                          <span className="text-[10px] sm:text-[11px] text-slate-600">{item.name}</span>
+                        </div>
+                        <span className="text-slate-800 text-sm font-black">{item.value}</span>
                       </div>
                     ))
                   )}
