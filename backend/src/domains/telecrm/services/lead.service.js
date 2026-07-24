@@ -3,6 +3,7 @@ const LeadActivity = require('../models/leadActivity.model');
 const LeadCall = require('../models/leadCall.model');
 const LeadFollowup = require('../models/leadFollowup.model');
 const Prospect = require('../../sales/prospects/prospect.model');
+const customerMatchingService = require('../../../services/customerMatching.service');
 
 /**
  * LeadService
@@ -280,13 +281,29 @@ class LeadService {
     if (lead.currentStatus === 'Converted') throw new Error('Lead is already converted to a Prospect.');
 
     // Check if Prospect with same phone already exists
-    let prospect = await Prospect.findOne({ phone: lead.phone });
-    if (!prospect) {
+    const customerData = {
+      name: lead.contactPerson,
+      phone: lead.phone,
+      alternateMobile: lead.alternatePhone,
+      email: lead.email,
+      company: lead.companyName,
+      location: lead.city ? `${lead.city}, ${lead.state || ''}`.trim() : undefined,
+    };
+    
+    let prospect;
+    const matchResult = await customerMatchingService.ensureUniqueCustomer(customerData, actor._id);
+    
+    if (matchResult.prospect) {
+      prospect = matchResult.prospect;
+    } else if (matchResult.client) {
+      // If a client matched, we still need a prospect record or we just link it.
+      // Since it's convertToProspect, if it returned a client, let's create a prospect linked to that client
       prospect = await Prospect.create({
         name: lead.contactPerson,
         phone: lead.phone,
         email: lead.email || undefined,
         company: lead.companyName || undefined,
+        relatedClient: matchResult.client._id,
         source: 'Other',
         stage: 'Prospect',
         priority: lead.priority === 'Urgent' ? 'Hot' : (lead.priority === 'High' ? 'Warm' : 'Cold'),
@@ -297,16 +314,28 @@ class LeadService {
       });
     }
 
+    if (matchResult.isNew && prospect) {
+       // It's already created by ensureUniqueCustomer, but let's update some fields
+       prospect.source = 'Other';
+       prospect.stage = 'Prospect';
+       prospect.priority = lead.priority === 'Urgent' ? 'Hot' : (lead.priority === 'High' ? 'Warm' : 'Cold');
+       prospect.status = 'In-progress';
+       prospect.assignedTo = lead.assignedEmployee || actor._id;
+       prospect.remarks = lead.lastRemark || `Converted from Lead ${lead.leadNumber}`;
+       await prospect.save();
+    }
+
     lead.currentStatus = 'Converted';
     lead.convertedToProspectId = prospect._id;
-    lead.convertedAt = new Date();
+    lead.convertedDate = new Date();
     lead.timeline.push({
       type: 'CONVERTED',
       title: 'Converted to Prospect',
-      description: `Bridge to Prospect CRM flow initiated by ${actor.name}`,
+      description: `Converted by ${actor.name}. Matched: ${matchResult.reason}`,
       performedBy: actor._id,
       performedByName: actor.name
     });
+
     await lead.save();
 
     await LeadActivity.create({
@@ -314,7 +343,7 @@ class LeadService {
       performedBy: actor._id,
       performedByName: actor.name,
       activityType: 'CONVERTED',
-      description: `Converted lead ${lead.leadNumber} to Prospect ${prospect._id}`
+      description: `Lead converted to Prospect. Matched: ${matchResult.reason}`
     });
 
     return { success: true, lead, prospect };

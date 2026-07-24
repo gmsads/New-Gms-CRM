@@ -84,6 +84,27 @@ const prospectSchema = new mongoose.Schema(
     // Enterprise Workflow Additions
     alternateMobile: { type: String, trim: true },
     address: { type: String },
+    billingAddress: {
+      line1: String,
+      line2: String,
+      landmark: String,
+      city: String,
+      state: String,
+      pincode: String,
+      country: { type: String, default: 'India' }
+    },
+    shippingAddress: {
+      line1: String,
+      line2: String,
+      landmark: String,
+      city: String,
+      state: String,
+      pincode: String,
+      country: { type: String, default: 'India' }
+    },
+    shippingSameAsBilling: { type: Boolean, default: true },
+    panNumber: { type: String, trim: true },
+    
     geoLocation: {
       lat: { type: Number },
       lng: { type: Number }

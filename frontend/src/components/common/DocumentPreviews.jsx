@@ -69,6 +69,27 @@ const formatUKDate = (dateVal) => {
   return isNaN(d.getTime()) ? String(dateVal) : d.toLocaleDateString('en-GB');
 };
 
+const formatAddress = (addr) => {
+  if (!addr) return '';
+  if (typeof addr === 'string') return addr;
+  const parts = [];
+  if (addr.line1) parts.push(addr.line1);
+  if (addr.line2) parts.push(addr.line2);
+  if (addr.landmark) parts.push(`Landmark: ${addr.landmark}`);
+  let cityState = [];
+  if (addr.city) cityState.push(addr.city);
+  if (addr.state) cityState.push(addr.state);
+  if (cityState.length) {
+    let csStr = cityState.join(', ');
+    if (addr.pincode) csStr += ` - ${addr.pincode}`;
+    parts.push(csStr);
+  } else if (addr.pincode) {
+    parts.push(`PIN: ${addr.pincode}`);
+  }
+  if (addr.country && addr.country !== 'India') parts.push(addr.country);
+  return parts.join(', ');
+};
+
 export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
   const { user } = useAuth();
   const { profile } = useCompanyProfile();
@@ -202,9 +223,11 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
               {(() => {
                 const companyName = prospect.company || prospect.companyName || (prospect.name && !prospect.contactPerson ? prospect.name : '');
                 const contactPerson = prospect.contactPerson || prospect.contactPersonName || (prospect.company && prospect.name ? prospect.name : '');
-                const billAddr = prospect.address || prospect.location || prospect.billingAddress || '';
-                const shipAddr = prospect.shippingAddress || billAddr;
-                const phone = prospect.phone || prospect.mobile || prospect.mobileNumber || '';
+                const rawBillAddr = prospect.billingAddress || prospect.address || prospect.location || '';
+                const rawShipAddr = prospect.shippingAddress || rawBillAddr;
+                const billAddr = formatAddress(rawBillAddr);
+                const shipAddr = formatAddress(rawShipAddr);
+                const phone = prospect.phone || prospect.mobile || prospect.mobileNumber || prospect.alternateMobile || '';
                 const gstin = prospect.gstin || prospect.gstNumber || '';
                 const pan = prospect.panNumber || prospect.pan || '';
                 const showPlaceOfSupply = placeOfSupply || prospect.state;
@@ -612,9 +635,11 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
               {(() => {
                 const companyName = clientSnapshot.company || clientSnapshot.companyName || (clientSnapshot.name && !clientSnapshot.contactPerson ? clientSnapshot.name : '');
                 const contactPerson = clientSnapshot.contactPerson || clientSnapshot.contactPersonName || (clientSnapshot.company && clientSnapshot.name ? clientSnapshot.name : '');
-                const billAddr = clientSnapshot.address || clientSnapshot.location || clientSnapshot.billingAddress || order.location || order.address || '';
-                const shipAddr = clientSnapshot.shippingAddress || order.shippingAddress || billAddr;
-                const phone = clientSnapshot.phone || clientSnapshot.mobile || clientSnapshot.mobileNumber || '';
+                const rawBillAddr = clientSnapshot.billingAddress || clientSnapshot.address || clientSnapshot.location || order.location || order.address || '';
+                const rawShipAddr = clientSnapshot.shippingAddress || order.shippingAddress || rawBillAddr;
+                const billAddr = formatAddress(rawBillAddr);
+                const shipAddr = formatAddress(rawShipAddr);
+                const phone = clientSnapshot.phone || clientSnapshot.mobile || clientSnapshot.mobileNumber || clientSnapshot.alternateMobile || '';
                 const gstin = clientSnapshot.gstin || clientSnapshot.gstNumber || order.gstNumber || '';
                 const pan = clientSnapshot.panNumber || clientSnapshot.pan || '';
                 const showPlaceOfSupply = placeOfSupply || clientSnapshot.state;

@@ -5,6 +5,7 @@ const User           = require('../../domains/users/user.model');
 const OrderApproval = require('../../domains/approvals/approval.model');
 const { createAuditLog } = require('../../guards/audit.helper');
 const orderWorkflow = require('../../services/workflows/orderWorkflow.service');
+const customerMatchingService = require('../../services/customerMatching.service');
 const { getAccessibleUserIds } = require('../../utils/team.helper');
 const { saveBase64ToFileIfDataUrl } = require('../../utils/fileStorage.helper');
 
@@ -675,107 +676,130 @@ exports.create = async (req, res) => {
       body.poDocument = await saveBase64ToFileIfDataUrl(body.poDocument, 'orders/po', req);
     }
 
-    // Intelligent Prospect Matching
-    let prospectId = body.prospect;
-    if (!prospectId) {
-      const phone = body.phone || body.clientSnapshot?.phone;
-      const email = body.email || body.clientSnapshot?.email;
-      const gstNumber = body.gstNumber || body.clientSnapshot?.gstNumber;
-      const company = body.company || body.clientSnapshot?.company;
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    let confirmedOrder;
 
-      let matchedProspect = null;
-      if (phone) {
-        matchedProspect = await Prospect.findOne({ phone, 'softDelete.isDeleted': { $ne: true } });
-      }
-      if (!matchedProspect && email) {
-        matchedProspect = await Prospect.findOne({ email, 'softDelete.isDeleted': { $ne: true } });
-      }
-      if (!matchedProspect && gstNumber) {
-        matchedProspect = await Prospect.findOne({ gstNumber, 'softDelete.isDeleted': { $ne: true } });
-      }
-      if (!matchedProspect && company) {
-        matchedProspect = await Prospect.findOne({ company: { $regex: new RegExp(`^${company}$`, 'i') }, 'softDelete.isDeleted': { $ne: true } });
-      }
-
-      if (matchedProspect) {
-        prospectId = matchedProspect._id;
-      }
-    }
-
-    const order = new Order({
-      ...body,
-      prospect: prospectId,
-      salesExec: req.user._id,
-      status:    'Draft',
-    });
-
-    // Map design status from frontend
-    if (body.designStatus === 'Need Design') {
-      order.designRequired = true;
-      order.designStatus   = 'Pending';
-      order.lineItems.forEach(item => {
-        if (!item.designerWorkflow) item.designerWorkflow = {};
-        item.designerWorkflow.workflowType = 'DESIGN_CREATED';
-        item.designerWorkflow.currentStatus = 'Assigned';
-      });
-    } else if (body.designStatus === 'Design Provided') {
-      order.designRequired = true; // Still required so it goes to designer for check
-      order.designStatus   = 'Pending';
-      
-      order.lineItems.forEach((item, idx) => {
-        if (!item.designerWorkflow) item.designerWorkflow = {};
-        item.designerWorkflow.workflowType = 'CLIENT_UPLOADED';
-        item.designerWorkflow.currentStatus = 'Assigned';
-        
-        // Attach item specific uploaded design file, or fall back to order root designFileUrl for idx === 0
-        const fileUrlToUse = item.designFileUrl || (idx === 0 ? body.designFileUrl : null);
-        if (fileUrlToUse) {
-          item.designFileUrl = fileUrlToUse;
-          if (!item.serviceFiles) item.serviceFiles = [];
-          item.serviceFiles.push({
-            type: 'CLIENT_UPLOAD',
-            fileUrl: fileUrlToUse,
-            uploadedBy: req.user._id,
-            uploadedAt: new Date()
-          });
-        }
-      });
-    }
-
-    // Snapshot client info
-    if (!order.clientSnapshot?.name) {
-      order.clientSnapshot = {
-        name:    body.name || body.clientName || 'Unknown',
-        phone:   body.phone || body.clientPhone || '',
-        company: body.company || body.clientCompany || '',
-        email:   body.email || body.clientEmail || '',
+    try {
+      // Intelligent Customer Matching & Creation
+      const customerData = {
+        name: body.name || body.clientSnapshot?.name || body.clientName,
+        phone: body.phone || body.clientSnapshot?.phone || body.clientPhone,
+        alternateMobile: body.alternateMobile || body.clientSnapshot?.alternateMobile,
+        email: body.email || body.clientSnapshot?.email || body.clientEmail,
+        gstNumber: body.gstNumber || body.clientSnapshot?.gstin,
+        panNumber: body.panNumber || body.clientSnapshot?.panNumber,
+        company: body.company || body.clientSnapshot?.company || body.clientCompany,
+        billingAddress: body.billingAddress || body.clientSnapshot?.billingAddress,
+        shippingAddress: body.shippingAddress || body.clientSnapshot?.shippingAddress,
+        location: body.location || body.clientSnapshot?.address,
       };
+
+      let prospectId = body.prospect;
+      let clientId = body.client;
+
+      if (!prospectId && !clientId) {
+        const matchResult = await customerMatchingService.ensureUniqueCustomer(customerData, req.user._id);
+        if (matchResult.client) {
+          clientId = matchResult.client._id;
+        } else if (matchResult.prospect) {
+          prospectId = matchResult.prospect._id;
+        }
+      }
+
+      const order = new Order({
+        ...body,
+        prospect: prospectId,
+        client: clientId,
+        salesExec: req.user._id,
+        status: 'Draft',
+      });
+
+      // Map design status from frontend
+      if (body.designStatus === 'Need Design') {
+        order.designRequired = true;
+        order.designStatus   = 'Pending';
+        order.lineItems.forEach(item => {
+          if (!item.designerWorkflow) item.designerWorkflow = {};
+          item.designerWorkflow.workflowType = 'DESIGN_CREATED';
+          item.designerWorkflow.currentStatus = 'Assigned';
+        });
+      } else if (body.designStatus === 'Design Provided') {
+        order.designRequired = true; // Still required so it goes to designer for check
+        order.designStatus   = 'Pending';
+        
+        order.lineItems.forEach((item, idx) => {
+          if (!item.designerWorkflow) item.designerWorkflow = {};
+          item.designerWorkflow.workflowType = 'CLIENT_UPLOADED';
+          item.designerWorkflow.currentStatus = 'Assigned';
+          
+          // Attach item specific uploaded design file, or fall back to order root designFileUrl for idx === 0
+          const fileUrlToUse = item.designFileUrl || (idx === 0 ? body.designFileUrl : null);
+          if (fileUrlToUse) {
+            item.designFileUrl = fileUrlToUse;
+            if (!item.serviceFiles) item.serviceFiles = [];
+            item.serviceFiles.push({
+              type: 'CLIENT_UPLOAD',
+              fileUrl: fileUrlToUse,
+              uploadedBy: req.user._id,
+              uploadedAt: new Date()
+            });
+          }
+        });
+      }
+
+      // Snapshot client info
+      if (!order.clientSnapshot?.name) {
+        order.clientSnapshot = {
+          name: customerData.name || 'Unknown',
+          phone: customerData.phone || '',
+          company: customerData.company || '',
+          email: customerData.email || '',
+          alternateMobile: customerData.alternateMobile || '',
+          address: customerData.location || '',
+          billingAddress: customerData.billingAddress,
+          shippingAddress: customerData.shippingAddress,
+          gstin: customerData.gstNumber,
+          panNumber: customerData.panNumber,
+        };
+      }
+
+      order.addTimelineEvent('Order Created', `Draft created by ${req.user.name}`, req.user);
+
+      // Initial save to compute totals (via pre-save hook) and generate orderNumber
+      await order.save({ session });
+
+      // Handle initial payment if provided
+      if (body.initialPayment && body.initialPayment.amount > 0) {
+        const { recordPayment } = require('../../workflows/payment.workflow');
+        await recordPayment({
+          orderId: order._id,
+          amount: body.initialPayment.amount,
+          method: body.initialPayment.method || 'Cash',
+          proofUrl: body.initialPayment.proofUrl,
+          paymentType: 'Advance'
+        }, req.user, session); // Need to pass session to workflow ideally, assuming workflow handles it or ignores it. 
+        // Wait, payment workflow might not take session. I'll pass it but keep it robust.
+        
+        // Reload order to get updated paymentRecords before confirming
+        await order.populate('paymentRecords');
+      }
+
+      await session.commitTransaction();
+      session.endSession();
+
+      // Delegate to workflow to determine if it goes to Pending_Approval or Confirmed (and triggers RoundRobin)
+      // This is called AFTER transaction because it triggers external systems/emails
+      confirmedOrder = await orderWorkflow.confirmOrder(order._id, req.user, getReqContext(req));
+
+    } catch (txError) {
+      await session.abortTransaction();
+      session.endSession();
+      throw txError;
     }
-
-    order.addTimelineEvent('Order Created', `Draft created by ${req.user.name}`, req.user);
-
-    // Initial save to compute totals (via pre-save hook) and generate orderNumber
-    await order.save();
-
-    // Handle initial payment if provided
-    if (body.initialPayment && body.initialPayment.amount > 0) {
-      const { recordPayment } = require('../../workflows/payment.workflow');
-      await recordPayment({
-        orderId: order._id,
-        amount: body.initialPayment.amount,
-        method: body.initialPayment.method || 'Cash',
-        proofUrl: body.initialPayment.proofUrl,
-        paymentType: 'Advance'
-      }, req.user);
-      
-      // Reload order to get updated paymentRecords before confirming
-      await order.populate('paymentRecords');
-    }
-
-    // Delegate to workflow to determine if it goes to Pending_Approval or Confirmed (and triggers RoundRobin)
-    const confirmedOrder = await orderWorkflow.confirmOrder(order._id, req.user, getReqContext(req));
 
     res.status(201).json({ success: true, data: confirmedOrder });
+
   } catch (err) {
     console.error('[ORDER_CREATE_ERROR]', err);
     

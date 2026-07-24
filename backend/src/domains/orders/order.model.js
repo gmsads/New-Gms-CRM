@@ -233,6 +233,31 @@ const orderSchema = new mongoose.Schema({
     phone:   String,
     company: String,
     email:   String,
+    alternateMobile: String,
+    address: String,
+    billingAddress: {
+      line1: String,
+      line2: String,
+      landmark: String,
+      city: String,
+      state: String,
+      pincode: String,
+      country: { type: String, default: 'India' }
+    },
+    shippingAddress: {
+      line1: String,
+      line2: String,
+      landmark: String,
+      city: String,
+      state: String,
+      pincode: String,
+      country: { type: String, default: 'India' }
+    },
+    gstin: String,
+    panNumber: String,
+    state: String,
+    placeOfSupply: String,
+    pincode: String
   },
 
   orderType: { type: String }, // retail, renewal, agent, etc.
