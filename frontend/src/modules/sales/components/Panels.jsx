@@ -15,6 +15,7 @@ import {
 import { ProductCatalogueModal } from '../../../pages/SalesExec/components/ProductCatalogueModal';
 import { exportOrdersToExcel } from '../../../utils/orderExcel';
 import { ViewQuotationModal, ViewInvoiceModal } from '../../../components/common/DocumentPreviews';
+import CustomerInformationForm from '../../../components/common/CustomerInformationForm';
 
 const getAbsoluteUrl = (path) => {
   if (!path) return path;
@@ -1390,76 +1391,20 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 
           <div className="bg-white p-5 rounded-xl border shadow-sm">
             <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">2. Client Details</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Business Name *</label>
-                <input name="company" value={formData.company} onChange={handleChange} className={`h-9 w-full rounded border ${errors.company ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} />
-                {errors.company && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.company}</p>}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Contact Person *</label>
-                <input name="name" value={formData.name} onChange={handleChange} className={`h-9 w-full rounded border ${errors.name ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} />
-                {errors.name && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.name}</p>}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Contact Number *</label>
-                <input name="phone" value={formData.phone} onChange={handleChange} className={`h-9 w-full rounded border ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} />
-                {errors.phone && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.phone}</p>}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Location *</label>
-                <input name="location" value={formData.location} onChange={handleChange} className={`h-9 w-full rounded border ${errors.location ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} />
-                {errors.location && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.location}</p>}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">State *</label>
-                <select name="state" value={formData.state} onChange={handleChange} className={`h-9 w-full rounded border ${errors.state ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`}>
-                  {states.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-                {errors.state && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.state}</p>}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">Pincode (Optional)</label>
-                <input name="pincode" value={formData.pincode} onChange={handleChange} placeholder="e.g. 500001" className={`h-9 w-full rounded border ${errors.pincode ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`} maxLength={6} />
-                {errors.pincode && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.pincode}</p>}
-              </div>
-              <div className="col-span-1 sm:col-span-2 md:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 my-1">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800 text-xs select-none">
-                  <input 
-                    type="checkbox" 
-                    checked={formData.hasGst} 
-                    onChange={(e) => setFormData(prev => ({ ...prev, hasGst: e.target.checked }))} 
-                    className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500 cursor-pointer"
-                  />
-                  <span>Client has GST / Register under GST (Click to open GST & PAN inputs)</span>
-                </label>
-                {formData.hasGst && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-200 animate-in fade-in duration-200">
-                    <div>
-                      <label className="text-xs font-bold text-slate-800 mb-1 block">GST Number (Optional)</label>
-                      <input 
-                        name="gstNumber" 
-                        value={formData.gstNumber} 
-                        onChange={handleChange} 
-                        placeholder="e.g. 36AAQFG7654Q1Z1"
-                        className={`h-9 w-full rounded border ${errors.gstNumber ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500 font-mono uppercase`} 
-                      />
-                      {errors.gstNumber && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.gstNumber}</p>}
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-800 mb-1 block">PAN Number (Optional)</label>
-                      <input 
-                        name="panNumber" 
-                        value={formData.panNumber} 
-                        onChange={handleChange} 
-                        placeholder="e.g. AAQFG7654Q"
-                        className={`h-9 w-full rounded border ${errors.panNumber ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500 font-mono uppercase`} 
-                      />
-                      {errors.panNumber && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.panNumber}</p>}
-                    </div>
-                  </div>
-                )}
-              </div>
+            <CustomerInformationForm 
+              data={formData} 
+              errors={errors}
+              onChange={(field, value) => {
+                if (typeof field === 'object') {
+                  setFormData(prev => ({ ...prev, ...field }));
+                } else {
+                  setFormData(prev => ({ ...prev, [field]: value }));
+                }
+                if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
+              }} 
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-100">
               <div>
                 <label className="text-xs font-bold text-slate-800 mb-1 block">Birth Date (Optional)</label>
                 <input type="date" name="birthDate" value={formData.birthDate} onChange={handleChange} className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none focus:border-green-500" />
@@ -2013,26 +1958,18 @@ export const CreateProspectModal = ({ phone, company, executiveName, onBack, onS
         <h2 className="text-2xl font-bold text-center mb-6 text-slate-900">{initialData ? 'Edit Prospect' : 'Create New Prospect'}</h2>
         <div className="overflow-y-auto flex-1 space-y-4 pr-2">
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Executive Name</label><input name="executiveName" value={formData.executiveName} readOnly className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none bg-slate-50" /></div>
-          <div>
-            <label className="text-xs font-bold text-slate-800 mb-1 block">Business Name *</label>
-            <input name="company" value={formData.company} onChange={handleChange} className={`h-9 w-full rounded border ${errors.company ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} />
-            {errors.company && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.company}</p>}
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-800 mb-1 block">Contact Person *</label>
-            <input name="name" value={formData.name} onChange={handleChange} className={`h-9 w-full rounded border ${errors.name ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} />
-            {errors.name && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.name}</p>}
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-800 mb-1 block">Phone Number *</label>
-            <input name="phone" value={formData.phone} onChange={handleChange} className={`h-9 w-full rounded border ${errors.phone ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} />
-            {errors.phone && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.phone}</p>}
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-800 mb-1 block">Location *</label>
-            <input name="location" value={formData.location} onChange={handleChange} className={`h-9 w-full rounded border ${errors.location ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} />
-            {errors.location && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.location}</p>}
-          </div>
+          <CustomerInformationForm 
+            data={formData} 
+            errors={errors}
+            onChange={(field, value) => {
+              if (typeof field === 'object') {
+                setFormData(prev => ({ ...prev, ...field }));
+              } else {
+                setFormData(prev => ({ ...prev, [field]: value }));
+              }
+              if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
+            }} 
+          />
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Lead From *</label>
             <select name="source" value={formData.source} onChange={handleChange} className={`h-9 w-full rounded border ${errors.source ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`}>
               <option value="">Select Lead Source</option>
