@@ -33,6 +33,7 @@ import { appointmentApi, orderApi, productApi } from "../../../services/api";
 import { ProductCatalogueModal } from "./ProductCatalogueModal";
 import { exportOrdersToExcel } from "../../../utils/orderExcel";
 import { ViewQuotationModal, ViewInvoiceModal } from "../../../components/common/DocumentPreviews";
+import CustomerInformationForm from "../../../components/common/CustomerInformationForm";
 
 const getAbsoluteUrl = (path) => {
   if (!path) return path;
@@ -852,15 +853,17 @@ export const CreateOrderModal = ({
     orderDate: new Date().toISOString().split("T")[0],
     deliveryDate: getDefaultDeliveryDate(),
     orderType: getInitialOrderType(client?.clientType),
-    hasGst: false,
-    gstNumber: "",
-    panNumber: "",
+    gstNumber: client?.gstin || client?.gstNumber || "",
+    panNumber: client?.panNumber || "",
     company: client?.company || client?.businessName || "",
     name: client?.name || client?.contactPerson || "",
     phone: client?.phone || "",
     location: client?.location || client?.requirement?.location || "",
-    state: "Telangana",
-    pincode: "",
+    email: client?.email || "",
+    alternateMobile: client?.alternateMobile || "",
+    billingAddress: client?.billingAddress || { city: client?.location || client?.requirement?.location || "", state: "Telangana" },
+    shippingAddress: client?.shippingAddress || { city: client?.location || client?.requirement?.location || "", state: "Telangana" },
+    shippingSameAsBilling: client?.shippingSameAsBilling !== false,
     birthDate: "",
     anniversaryDate: "",
     designStatus: "Design Provided",
@@ -1002,12 +1005,9 @@ export const CreateOrderModal = ({
     if (!formData.phone) newErrors.phone = "Required";
     else if (formData.phone.length !== 10) newErrors.phone = "Enter 10 digits";
 
-    if (!formData.location) newErrors.location = "Required";
-    if (!formData.state) newErrors.state = "Required";
-    if (formData.pincode && formData.pincode.length !== 6)
-      newErrors.pincode = "Enter 6 digits";
-    if (formData.hasGst) {
-      // Optional fields
+    if (!formData.billingAddress?.city && !formData.location) newErrors.billingCity = "City is required";
+    if (formData.billingAddress?.pincode && formData.billingAddress.pincode.length !== 6) {
+      newErrors.billingPincode = "Enter 6 digits";
     }
 
     if (!advance || Number(advance) <= 0) {
@@ -1248,13 +1248,16 @@ export const CreateOrderModal = ({
         phone: formData.phone,
         company: formData.company,
         contactPerson: formData.name,
-        address: formData.location || client?.address || client?.billingAddress || `${formData.state || "Telangana"}, India`,
-        shippingAddress: client?.shippingAddress || formData.location || client?.address || `${formData.state || "Telangana"}, India`,
-        gstin: formData.hasGst ? (formData.gstNumber || client?.gstin || client?.gstNumber || "") : "Unregistered",
-        panNumber: formData.hasGst ? (formData.panNumber || client?.panNumber || "") : "",
-        state: formData.state || client?.state || "Telangana",
-        placeOfSupply: formData.state || client?.state || "Telangana",
-        pincode: formData.pincode || ""
+        address: formData.billingAddress?.line1 ? `${formData.billingAddress.line1}, ${formData.billingAddress.city}` : (formData.location || client?.address || ""),
+        shippingAddress: formData.shippingAddress || client?.shippingAddress || formData.location || client?.address || "",
+        billingAddress: formData.billingAddress,
+        email: formData.email,
+        alternateMobile: formData.alternateMobile,
+        gstin: formData.gstNumber || "Unregistered",
+        panNumber: formData.panNumber || "",
+        state: formData.billingAddress?.state || formData.state || client?.state || "Telangana",
+        placeOfSupply: formData.billingAddress?.state || formData.state || client?.state || "Telangana",
+        pincode: formData.billingAddress?.pincode || formData.pincode || ""
       },
       payment: {
         rawSubtotal,
@@ -1390,148 +1393,21 @@ export const CreateOrderModal = ({
             <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">
               2. Client Details
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">
-                  Business Name *
-                </label>
-                <input
-                  name="company"
-                  value={formData.company}
-                  onChange={handleChange}
-                  className={`h-9 w-full rounded border ${errors.company ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-green-500`}
-                />
-                {errors.company && (
-                  <p className="text-[10px] text-red-500 mt-0.5 font-bold">
-                    {errors.company}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">
-                  Contact Person *
-                </label>
-                <input
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className={`h-9 w-full rounded border ${errors.name ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-green-500`}
-                />
-                {errors.name && (
-                  <p className="text-[10px] text-red-500 mt-0.5 font-bold">
-                    {errors.name}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">
-                  Contact Number *
-                </label>
-                <input
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className={`h-9 w-full rounded border ${errors.phone ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-green-500`}
-                />
-                {errors.phone && (
-                  <p className="text-[10px] text-red-500 mt-0.5 font-bold">
-                    {errors.phone}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">
-                  Location *
-                </label>
-                <input
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  className={`h-9 w-full rounded border ${errors.location ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-green-500`}
-                />
-                {errors.location && (
-                  <p className="text-[10px] text-red-500 mt-0.5 font-bold">
-                    {errors.location}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">
-                  State *
-                </label>
-                <select
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  className={`h-9 w-full rounded border ${errors.state ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-green-500`}
-                >
-                  {states.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                {errors.state && (
-                  <p className="text-[10px] text-red-500 mt-0.5 font-bold">
-                    {errors.state}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-800 mb-1 block">
-                  Pincode (Optional)
-                </label>
-                <input
-                  name="pincode"
-                  value={formData.pincode}
-                  onChange={handleChange}
-                  placeholder="e.g. 500001"
-                  className={`h-9 w-full rounded border ${errors.pincode ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-green-500`}
-                  maxLength={6}
-                />
-                {errors.pincode && (
-                  <p className="text-[10px] text-red-500 mt-0.5 font-bold">
-                    {errors.pincode}
-                  </p>
-                )}
-              </div>
-              <div className="col-span-1 sm:col-span-2 md:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 my-1">
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800 text-xs select-none">
-                  <input 
-                    type="checkbox" 
-                    checked={formData.hasGst} 
-                    onChange={(e) => setFormData(prev => ({ ...prev, hasGst: e.target.checked }))} 
-                    className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500 cursor-pointer"
-                  />
-                  <span>Client has GST / Register under GST (Click to open GST & PAN inputs)</span>
-                </label>
-                {formData.hasGst && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3 pt-3 border-t border-slate-200 animate-in fade-in duration-200">
-                    <div>
-                      <label className="text-xs font-bold text-slate-800 mb-1 block">GST Number (Optional)</label>
-                      <input 
-                        name="gstNumber" 
-                        value={formData.gstNumber} 
-                        onChange={handleChange} 
-                        placeholder="e.g. 36AAQFG7654Q1Z1"
-                        className={`h-9 w-full rounded border ${errors.gstNumber ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-green-500 font-mono uppercase`} 
-                      />
-                      {errors.gstNumber && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.gstNumber}</p>}
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-800 mb-1 block">PAN Number (Optional)</label>
-                      <input 
-                        name="panNumber" 
-                        value={formData.panNumber} 
-                        onChange={handleChange} 
-                        placeholder="e.g. AAQFG7654Q"
-                        className={`h-9 w-full rounded border ${errors.panNumber ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-green-500 font-mono uppercase`} 
-                      />
-                      {errors.panNumber && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.panNumber}</p>}
-                    </div>
-                  </div>
-                )}
-              </div>
+            
+            <CustomerInformationForm 
+              data={formData} 
+              errors={errors}
+              onChange={(field, value) => {
+                if (typeof field === 'object') {
+                  setFormData(prev => ({ ...prev, ...field }));
+                } else {
+                  setFormData(prev => ({ ...prev, [field]: value }));
+                }
+                if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
+              }} 
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-100">
               <div>
                 <label className="text-xs font-bold text-slate-800 mb-1 block">
                   Birth Date (Optional)
@@ -2134,6 +2010,13 @@ export const CreateProspectModal = ({
     company: initialData?.company || "",
     phone: initialData?.phone || phone || "",
     location: initialData?.requirement?.location || "",
+    email: initialData?.email || "",
+    alternateMobile: initialData?.alternateMobile || "",
+    gstNumber: initialData?.gstNumber || "",
+    panNumber: initialData?.panNumber || "",
+    billingAddress: initialData?.billingAddress || { city: initialData?.requirement?.location || "" },
+    shippingAddress: initialData?.shippingAddress || {},
+    shippingSameAsBilling: initialData?.shippingSameAsBilling !== false,
     source: initialData?.source || "",
     priority: initialData?.priority || "",
     nextFollowUpDate: initialData?.nextFollowUpDate
@@ -2207,7 +2090,7 @@ export const CreateProspectModal = ({
     if (!formData.phone) newErrors.phone = "Required";
     else if (formData.phone.length !== 10) newErrors.phone = "Enter 10 digits";
 
-    if (!formData.location) newErrors.location = "Required";
+    if (!formData.billingAddress?.city && !formData.location) newErrors.billingCity = "Required";
     if (!formData.source) newErrors.source = "Required";
     if (!formData.priority) newErrors.priority = "Required";
     if (!formData.nextFollowUpDate) newErrors.nextFollowUpDate = "Required";
@@ -2235,7 +2118,11 @@ export const CreateProspectModal = ({
 
   const handleFormSubmit = () => {
     if (!validate()) return;
-    onSubmit({ ...formData, products });
+    const finalData = { ...formData, products };
+    if (!finalData.location && finalData.billingAddress?.city) {
+      finalData.location = finalData.billingAddress.city;
+    }
+    onSubmit(finalData);
   };
 
   return (
@@ -2265,69 +2152,19 @@ export const CreateProspectModal = ({
               className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none bg-slate-50"
             />
           </div>
-          <div>
-            <label className="text-xs font-bold text-slate-800 mb-1 block">
-              Business Name *
-            </label>
-            <input
-              name="company"
-              value={formData.company}
-              onChange={handleChange}
-              className={`h-9 w-full rounded border ${errors.company ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-[#003366]`}
+          <div className="pt-2">
+            <CustomerInformationForm 
+              data={formData} 
+              errors={errors}
+              onChange={(field, value) => {
+                if (typeof field === 'object') {
+                  setFormData(prev => ({ ...prev, ...field }));
+                } else {
+                  setFormData(prev => ({ ...prev, [field]: value }));
+                }
+                if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
+              }} 
             />
-            {errors.company && (
-              <p className="text-[10px] text-red-500 mt-0.5 font-bold">
-                {errors.company}
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-800 mb-1 block">
-              Contact Person *
-            </label>
-            <input
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className={`h-9 w-full rounded border ${errors.name ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-[#003366]`}
-            />
-            {errors.name && (
-              <p className="text-[10px] text-red-500 mt-0.5 font-bold">
-                {errors.name}
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-800 mb-1 block">
-              Phone Number *
-            </label>
-            <input
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              className={`h-9 w-full rounded border ${errors.phone ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-[#003366]`}
-            />
-            {errors.phone && (
-              <p className="text-[10px] text-red-500 mt-0.5 font-bold">
-                {errors.phone}
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="text-xs font-bold text-slate-800 mb-1 block">
-              Location *
-            </label>
-            <input
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              className={`h-9 w-full rounded border ${errors.location ? "border-red-500 bg-red-50" : "border-slate-300"} px-3 text-sm outline-none focus:border-[#003366]`}
-            />
-            {errors.location && (
-              <p className="text-[10px] text-red-500 mt-0.5 font-bold">
-                {errors.location}
-              </p>
-            )}
           </div>
           <div>
             <label className="text-xs font-bold text-slate-800 mb-1 block">

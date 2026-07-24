@@ -15,7 +15,20 @@ const quotationTemplateSchema = new mongoose.Schema({
   contactPhone: { type: String },
   email: { type: String },
   mobile: { type: String },
+  alternateMobile: { type: String },
   website: { type: String },
+  tagline: { type: String },
+  city: { type: String },
+  state: { type: String },
+  country: { type: String, default: 'India' },
+  pincode: { type: String },
+  cin: { type: String },
+  msme: { type: String },
+  
+  // Branding Extras
+  sealUrl: { type: String },
+  watermarkUrl: { type: String },
+  footerLogoUrl: { type: String },
   
   bankDetails: {
     accountName: { type: String },
@@ -24,6 +37,19 @@ const quotationTemplateSchema = new mongoose.Schema({
     ifscCode: { type: String },
     branch: { type: String },
   },
+  
+  // Phase 1: Multiple Bank Accounts Master
+  bankAccounts: [{
+    accountName: { type: String },
+    bankName: { type: String },
+    branch: { type: String },
+    accountNumber: { type: String },
+    ifsc: { type: String },
+    upiId: { type: String },
+    qrCodeUrl: { type: String },
+    active: { type: Boolean, default: true },
+    isDefault: { type: Boolean, default: false }
+  }],
   
   qrCode: {
     enabled: { type: Boolean, default: false },
@@ -35,6 +61,41 @@ const quotationTemplateSchema = new mongoose.Schema({
   footerText: { type: String },
   footerNotes: { type: String },
   authorizedSignatureUrl: { type: String },
+
+  // Phase 1: Quotation Settings
+  quotationSettings: {
+    prefix: { type: String, default: 'QT-' },
+    startNumber: { type: Number, default: 1000 },
+    validityDays: { type: Number, default: 15 },
+    termsAndConditions: { type: String },
+    footerText: { type: String },
+    defaultNotes: { type: String }
+  },
+
+  // Phase 1: Invoice Settings
+  invoiceSettings: {
+    prefix: { type: String, default: 'INV-' },
+    startNumber: { type: Number, default: 1000 },
+    termsAndConditions: { type: String },
+    footerText: { type: String },
+    defaultBankAccountId: { type: mongoose.Schema.Types.ObjectId }
+  },
+
+  // Phase 1: Generic Document Numbering
+  documentNumbering: {
+    receipt: {
+      prefix: { type: String, default: 'REC-' },
+      startNumber: { type: Number, default: 1000 }
+    },
+    purchaseOrder: {
+      prefix: { type: String, default: 'PO-' },
+      startNumber: { type: Number, default: 1000 }
+    },
+    deliveryChallan: {
+      prefix: { type: String, default: 'DC-' },
+      startNumber: { type: Number, default: 1000 }
+    }
+  },
   
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });

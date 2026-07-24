@@ -3,6 +3,8 @@ import {
   Phone, MessageCircle, Plus, Search, Filter,
   MoreVertical, ChevronUp, ChevronDown, Calendar, FileText, Trash2, Printer, Edit, IndianRupee
 } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
+import { prospectApi } from '../../../services/api';
 // No mock data — real data comes via props from API
 
 
@@ -36,6 +38,64 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
   const [sortKey, setSortKey] = useState('lastInteraction');
   const [openMenu, setOpenMenu] = useState(null);
   const [openStatusMenu, setOpenStatusMenu] = useState(null);
+  const fileInputRef = React.useRef(null);
+  const { user } = useAuth();
+
+  const handleExportToExcel = async () => {
+    try {
+      const XLSX = await import('xlsx');
+      const exportData = filteredAndSorted.map(p => ({
+        'Client Name': p.name || '',
+        'Company': p.company || '',
+        'Phone': p.phone || '',
+        'Created Date': p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '',
+        'Requirement': p.requirement?.service || p.requirement?.notes || (typeof p.requirement === 'string' ? p.requirement : ''),
+        'Source': p.source || '',
+        'Budget': p.requirement?.budget || p.budget || '',
+        'Last Contact': p.lastInteractionNote || '',
+        'Next Follow-up': p.nextFollowUpDate ? new Date(p.nextFollowUpDate).toLocaleDateString() : '',
+        'Status': p.status || 'In-progress',
+        'Employee': (typeof p.assignedTo === 'object' ? p.assignedTo?.name : p.assignedTo) || p.executiveName || 'Not Assigned',
+        'Cancel Reason': p.cancelReason || ''
+      }));
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Prospects");
+      XLSX.writeFile(wb, `Prospects_Export_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (error) {
+      console.error("Export failed", error);
+      alert("Failed to export to Excel");
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleImportExcel = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const XLSX = await import('xlsx');
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      
+      const res = await prospectApi.bulkImport(json, user.token);
+      if (res.success) {
+        alert('Prospects imported successfully!');
+        if (onBulkImport) onBulkImport(); // Using this as a generic refresh callback if provided
+        else window.location.reload();
+      } else {
+        alert('Import failed: ' + (res.message || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('Import error', err);
+      alert('Error parsing or importing file: ' + err.message);
+    }
+    e.target.value = null; // reset input
+  };
 
   const months = ['All Months', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -118,13 +178,20 @@ export const ProspectTable = ({ prospects = [], sortByFollowUp = false, onWhatsA
 
         {/* Buttons */}
         <div className="flex gap-3">
-          <button className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm" style={{ background: '#4caf50' }}>
+          <button onClick={handleExportToExcel} className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm" style={{ background: '#4caf50' }}>
             <FileText className="h-4 w-4" /> Export to Excel
           </button>
-          <button onClick={() => onBulkImport && onBulkImport()} className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm" style={{ background: '#1976d2' }}>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImportExcel} 
+            accept=".xlsx, .xls, .csv" 
+            className="hidden" 
+          />
+          <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm" style={{ background: '#1976d2' }}>
             <FileText className="h-4 w-4" /> Import from Excel
           </button>
-          <button className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm" style={{ background: '#00acc1' }}>
+          <button onClick={handlePrint} className="flex items-center gap-2 h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90 shadow-sm" style={{ background: '#00acc1' }}>
             <Printer className="h-4 w-4" /> Print Report
           </button>
         </div>

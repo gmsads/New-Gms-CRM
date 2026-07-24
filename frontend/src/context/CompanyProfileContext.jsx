@@ -16,6 +16,17 @@ const defaultCompanyProfile = {
   regNumber: 'REG-2024-GMS-881',
   logoUrl: '/logo.png',
   authorizedSignatureUrl: '',
+  tagline: '',
+  city: 'Hyderabad',
+  state: 'Telangana',
+  country: 'India',
+  pincode: '500036',
+  alternateMobile: '',
+  cin: '',
+  msme: '',
+  sealUrl: '',
+  watermarkUrl: '',
+  footerLogoUrl: '',
   bankDetails: {
     accountName: 'GLOBAL MARKETING SOLUTIONS',
     accountNumber: '917020030786090',
@@ -23,6 +34,7 @@ const defaultCompanyProfile = {
     ifscCode: 'UTIB0001305',
     branch: 'Champapet'
   },
+  bankAccounts: [],
   qrCode: {
     enabled: true,
     upiId: 'gms@axisbank'
@@ -31,7 +43,27 @@ const defaultCompanyProfile = {
     '1) Payment should be Crossed and Made to "GLOBAL MARKETING SOLUTIONS", AXIS BANK, BRANCH: Champapet, A/C: 917020030786090, IFSCcode:UTIB0001305'
   ],
   footerNotes: 'Thank you for your business!',
-  defaultValidityDays: 15
+  defaultValidityDays: 15,
+  quotationSettings: {
+    prefix: 'QT-',
+    startNumber: 1000,
+    validityDays: 15,
+    termsAndConditions: '',
+    footerText: '',
+    defaultNotes: '70% ADVANCE PAYMENT NEED TO START WORK'
+  },
+  invoiceSettings: {
+    prefix: 'INV-',
+    startNumber: 1000,
+    termsAndConditions: '1) Payment should be Crossed and Made to "GLOBAL MARKETING SOLUTIONS", AXIS BANK, BRANCH: Champapet, A/C: 917020030786090, IFSCcode:UTIB0001305',
+    footerText: 'Thank you for your business!',
+    defaultBankAccountId: null
+  },
+  documentNumbering: {
+    receipt: { prefix: 'REC-', startNumber: 1000 },
+    purchaseOrder: { prefix: 'PO-', startNumber: 1000 },
+    deliveryChallan: { prefix: 'DC-', startNumber: 1000 }
+  }
 };
 
 export const CompanyProfileProvider = ({ children }) => {
