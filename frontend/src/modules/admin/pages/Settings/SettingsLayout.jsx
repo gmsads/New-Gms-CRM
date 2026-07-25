@@ -3,9 +3,9 @@ import {
   Building2, Landmark, FileText, CheckCircle, Save, 
   RefreshCw, Settings as SettingsIcon, Calculator, Hash
 } from 'lucide-react';
-import { quotationApi } from '../../../../../services/api';
-import { useAuth } from '../../../../../context/AuthContext';
-import { useCompanyProfile } from '../../../../../context/CompanyProfileContext';
+import { quotationApi } from '../../../../services/api';
+import { useAuth } from '../../../../context/AuthContext';
+import { useCompanyProfile } from '../../../../context/CompanyProfileContext';
 
 // Tabs
 import CompanyProfileTab from './tabs/CompanyProfileTab';
