@@ -83,6 +83,18 @@ const quotationTemplateSchema = new mongoose.Schema({
 
   // Phase 1: Generic Document Numbering
   documentNumbering: {
+    quotation: {
+      prefix: { type: String, default: 'QT-' },
+      startNumber: { type: Number, default: 1000 }
+    },
+    invoice: {
+      prefix: { type: String, default: 'INV-' },
+      startNumber: { type: Number, default: 1000 }
+    },
+    order: {
+      prefix: { type: String, default: 'ORD-' },
+      startNumber: { type: Number, default: 1000 }
+    },
     receipt: {
       prefix: { type: String, default: 'REC-' },
       startNumber: { type: Number, default: 1000 }
@@ -95,6 +107,20 @@ const quotationTemplateSchema = new mongoose.Schema({
       prefix: { type: String, default: 'DC-' },
       startNumber: { type: Number, default: 1000 }
     }
+  },
+
+  // Phase 7: Tax & GST Settings
+  taxSettings: {
+    enableGst: { type: Boolean, default: true },
+    defaultGstRate: { type: Number, default: 18 },
+    hsnCode: { type: String },
+    sacCode: { type: String },
+    stateCode: { type: String },
+    gstSlabs: [{
+      rate: { type: Number },
+      active: { type: Boolean, default: true },
+      description: { type: String }
+    }]
   },
   
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }

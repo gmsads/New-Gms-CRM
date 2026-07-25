@@ -96,7 +96,18 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
   if (!quotation) return null;
 
   const rawTemplate = quotation.templateSnapshot || quotation.template || {};
-  const template = { ...profile, ...rawTemplate, bankDetails: { ...profile?.bankDetails, ...(rawTemplate.bankDetails || {}) } };
+  const template = { ...profile, ...rawTemplate };
+  
+  const activeBank = (template.bankAccounts?.find(b => b.active && b.isDefault) || 
+                      template.bankAccounts?.find(b => b.active) || 
+                      template.bankAccounts?.[0]) || 
+                      {
+                        bankName: template.bankDetails?.bankName,
+                        accountName: template.bankDetails?.accountName,
+                        accountNumber: template.bankDetails?.accountNumber,
+                        ifscCode: template.bankDetails?.ifscCode || template.bankDetails?.ifsc,
+                        branch: template.bankDetails?.branch
+                      };
   const prospect = quotation.prospect || quotation.clientSnapshot || {};
   const items = quotation.items || [];
   
@@ -323,14 +334,16 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                   <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-1">NOTES</h4>
                   <p className="text-slate-800 font-normal leading-relaxed">{notesText}</p>
                   
-                  {template.bankDetails && (
+                  {activeBank && (
                     <div className="mt-4 pt-3 border-t border-slate-200 text-slate-800">
                       <p className="font-bold text-slate-900 mb-0.5">Bank Details:</p>
-                      <p><span className="font-semibold">Bank:</span> {template.bankDetails.bankName}</p>
-                      <p><span className="font-semibold">Account Name:</span> {template.bankDetails.accountName}</p>
-                      <p><span className="font-semibold">A/C No:</span> {template.bankDetails.accountNumber}</p>
-                      <p><span className="font-semibold">IFSC:</span> {template.bankDetails.ifscCode}</p>
-                      {template.bankDetails.branch && <p><span className="font-semibold">Branch:</span> {template.bankDetails.branch}</p>}
+                      <div className="text-sm space-y-0.5 mt-2">
+                        <p><span className="font-semibold">Bank:</span> {activeBank.bankName}</p>
+                        <p><span className="font-semibold">Account Name:</span> {activeBank.accountName}</p>
+                        <p><span className="font-semibold">A/C No:</span> {activeBank.accountNumber}</p>
+                        <p><span className="font-semibold">IFSC:</span> {activeBank.ifscCode || activeBank.ifsc}</p>
+                        {activeBank.branch && <p><span className="font-semibold">Branch:</span> {activeBank.branch}</p>}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -381,7 +394,6 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                 <img src={template.signatureUrl} alt="Signature" className="h-12 object-contain mb-1" />
               ) : (
                 <div className="h-12 w-32 border-b border-slate-300 flex items-center justify-end font-serif italic text-slate-400 text-sm">
-                  Gary
                 </div>
               )}
               <p className="text-xs sm:text-[12.5px] font-bold text-slate-900 tracking-wider uppercase mt-1">
@@ -475,7 +487,19 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
   if (!order) return null;
 
   const rawCompany = order.companySnapshot || order.companyDetails || {};
-  const companySnapshot = { ...profile, ...rawCompany, bankDetails: { ...profile?.bankDetails, ...(rawCompany.bankDetails || {}) } };
+  const companySnapshot = { ...profile, ...rawCompany };
+  
+  const activeBank = (companySnapshot.bankAccounts?.find(b => b.active && b.isDefault) || 
+                      companySnapshot.bankAccounts?.find(b => b.active) || 
+                      companySnapshot.bankAccounts?.[0]) || 
+                      {
+                        bankName: companySnapshot.bankDetails?.bankName,
+                        accountName: companySnapshot.bankDetails?.accountName,
+                        accountNumber: companySnapshot.bankDetails?.accountNumber,
+                        ifscCode: companySnapshot.bankDetails?.ifscCode || companySnapshot.bankDetails?.ifsc,
+                        branch: companySnapshot.bankDetails?.branch
+                      };
+
   const clientSnapshot = order.clientSnapshot || order.prospect || {};
   const lineItems = order.lineItems || [];
   
@@ -742,14 +766,16 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                       <p>{termsText}</p>
                     )}
                   </div>
-                  {companySnapshot.bankDetails && (
+                  {activeBank && (
                     <div className="mt-4 pt-3 border-t border-slate-200 text-slate-800">
                       <p className="font-bold text-slate-900 mb-0.5">Bank Account Details:</p>
-                      <p><span className="font-semibold">Bank:</span> {companySnapshot.bankDetails.bankName}</p>
-                      <p><span className="font-semibold">Account Name:</span> {companySnapshot.bankDetails.accountName}</p>
-                      <p><span className="font-semibold">A/C No:</span> {companySnapshot.bankDetails.accountNumber}</p>
-                      <p><span className="font-semibold">IFSC:</span> {companySnapshot.bankDetails.ifscCode}</p>
-                      {companySnapshot.bankDetails.branch && <p><span className="font-semibold">Branch:</span> {companySnapshot.bankDetails.branch}</p>}
+                      <div className="text-sm space-y-0.5 mt-2">
+                        <p><span className="font-semibold">Bank:</span> {activeBank.bankName}</p>
+                        <p><span className="font-semibold">Account Name:</span> {activeBank.accountName}</p>
+                        <p><span className="font-semibold">A/C No:</span> {activeBank.accountNumber}</p>
+                        <p><span className="font-semibold">IFSC:</span> {activeBank.ifscCode || activeBank.ifsc}</p>
+                        {activeBank.branch && <p><span className="font-semibold">Branch:</span> {activeBank.branch}</p>}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -804,7 +830,6 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                 <img src={companySnapshot.signatureUrl} alt="Signature" className="h-12 object-contain mb-1" />
               ) : (
                 <div className="h-12 w-32 border-b border-slate-300 flex items-center justify-end font-serif italic text-slate-400 text-sm">
-                  Gary
                 </div>
               )}
               <p className="text-xs sm:text-[12.5px] font-bold text-slate-900 tracking-wider uppercase mt-1">

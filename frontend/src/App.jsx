@@ -34,7 +34,7 @@ const TeamAssignment = React.lazy(() => import('./modules/admin/pages/TeamAssign
 const PaymentVerification = React.lazy(() => import('./modules/admin/pages/PaymentVerification'));
 const SalesApprovals = React.lazy(() => import('./modules/sales/pages/ApprovalsTerminal'));
 const QuotationManagementList = React.lazy(() => import('./modules/admin/pages/QuotationManagementList'));
-const QuotationBrandingChanges = React.lazy(() => import('./modules/admin/pages/QuotationBrandingChanges'));
+const SettingsLayout = React.lazy(() => import('./modules/admin/pages/Settings/SettingsLayout'));
 const InvoiceManagementList = React.lazy(() => import('./modules/admin/pages/InvoiceManagementList'));
 const SalesManagerWorkspace = React.lazy(() => import('./modules/sales/pages/SalesManagerWorkspace'));
 const AuthorityAccess = React.lazy(() => import('./modules/admin/pages/AuthorityAccess'));
@@ -162,9 +162,9 @@ const AppRoutes = () => {
           <Route path="product-management" element={<ProductManagement />} />
           <Route path="cost-management"    element={<CostManagement />} />
           <Route path="quotation-management/list" element={<QuotationManagementList />} />
-          <Route path="quotation-management/changes" element={<QuotationBrandingChanges />} />
+          <Route path="quotation-management/changes" element={<SettingsLayout />} />
           <Route path="invoice-management/list" element={<InvoiceManagementList />} />
-          <Route path="invoice-management/changes" element={<QuotationBrandingChanges />} />
+          <Route path="invoice-management/changes" element={<SettingsLayout />} />
           <Route path="invoice-management" element={<InvoiceManagementList />} />
           
           <Route path="prospects"   element={<AdminTeamViewSwitch viewType="prospects" salesElement={<SalesProspects />} />} />
@@ -232,7 +232,7 @@ const AppRoutes = () => {
           <Route path="communications/sms" element={<ComingSoon title="SMS Integration" />} />
           <Route path="communications/notifications" element={<ComingSoon title="Notifications Center" />} />
 
-          <Route path="settings"    element={<QuotationBrandingChanges />} />
+          <Route path="settings"    element={<SettingsLayout />} />
           <Route path="*"           element={<div className="p-6 text-muted-foreground">Page not found.</div>} />
         </Route>
 

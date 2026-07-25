@@ -5,6 +5,7 @@ const User           = require('../../domains/users/user.model');
 const OrderApproval = require('../../domains/approvals/approval.model');
 const { createAuditLog } = require('../../guards/audit.helper');
 const orderWorkflow = require('../../services/workflows/orderWorkflow.service');
+const documentNumberingService = require('../../services/documentNumbering.service');
 const customerMatchingService = require('../../services/customerMatching.service');
 const { getAccessibleUserIds } = require('../../utils/team.helper');
 const { saveBase64ToFileIfDataUrl } = require('../../utils/fileStorage.helper');
@@ -559,9 +560,7 @@ exports.bulkImport = async (req, res) => {
       if (body['Order ID'] || body['Order Number'] || body.orderNumber) {
         body.orderNumber = String(body['Order ID'] || body['Order Number'] || body.orderNumber).trim();
       } else {
-        currentOrderCount++;
-        const orderYear = parsedDate ? parsedDate.getFullYear() : currentYear;
-        body.orderNumber = `ORD-${orderYear}-${String(currentOrderCount).padStart(4, '0')}`;
+        body.orderNumber = await documentNumberingService.generateNextNumber('order');
       }
 
       const isCompleted = normalizedStatus === 'Completed' || body.orderType === 'Historical';
@@ -767,6 +766,9 @@ exports.create = async (req, res) => {
       order.addTimelineEvent('Order Created', `Draft created by ${req.user.name}`, req.user);
 
       // Initial save to compute totals (via pre-save hook) and generate orderNumber
+      if (!order.orderNumber) {
+        order.orderNumber = await documentNumberingService.generateNextNumber('order');
+      }
       await order.save({ session });
 
       // Handle initial payment if provided

@@ -2,14 +2,14 @@ const Quotation = require('../../domains/sales/quotations/quotation.model');
 const Template = require('../../domains/sales/quotations/template.model');
 const Prospect = require('../../domains/sales/prospects/prospect.model');
 const auditWorkflow = require('./auditWorkflow.service');
+const documentNumberingService = require('../documentNumbering.service');
 
 class QuotationWorkflowService {
   async createQuotation(data, creatorId, reqContext = {}) {
     const quoteData = { ...data, executive: creatorId };
     
-    // Auto-generate ID: GMS-QT-YYYY-0001
-    const count = await Quotation.countDocuments();
-    quoteData.quotationId = `GMS-QT-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+    // Auto-generate ID using central document numbering engine
+    quoteData.quotationId = await documentNumberingService.generateNextNumber('quotation');
     
     // Recompute values for security
     let computedSubtotal = 0;

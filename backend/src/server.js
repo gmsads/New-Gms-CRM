@@ -24,6 +24,10 @@ const startServer = async () => {
   // 1. Connect to MongoDB first
   await connectDB();
 
+  // 1b. Run Enterprise Migrations
+  const migrationService = require('./services/migration.service');
+  await migrationService.runMigrations();
+
   // 2. Then start HTTP server
   const server = app.listen(PORT, () => {
     console.log(`✅ Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);

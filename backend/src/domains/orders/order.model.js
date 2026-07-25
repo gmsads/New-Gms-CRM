@@ -385,13 +385,8 @@ orderSchema.index({ salesExec: 1, status: 1 });
 orderSchema.index({ 'clientSnapshot.phone': 1 });
 orderSchema.index({ createdAt: -1 });
 
-// ─── Auto-generate order number ───────────────────────────────────────────────
+// ─── Pre-save logic ────────────────────────────────────────────────────────────
 orderSchema.pre('save', async function () {
-  if (this.isNew && !this.orderNumber) {
-    const count = await this.constructor.countDocuments();
-    const year  = new Date().getFullYear();
-    this.orderNumber = `ORD-${year}-${String(count + 1).padStart(4, '0')}`;
-  }
 
   // Compute line item amounts
   let subtotal = 0, totalDiscount = 0, totalGST = 0;

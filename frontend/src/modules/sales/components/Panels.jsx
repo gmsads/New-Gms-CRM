@@ -1083,9 +1083,11 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     if (!formData.phone) newErrors.phone = 'Required';
     else if (formData.phone.length !== 10) newErrors.phone = 'Enter 10 digits';
     
-    if (!formData.location) newErrors.location = 'Required';
-    if (!formData.state) newErrors.state = 'Required';
-    if (formData.pincode && formData.pincode.length !== 6) newErrors.pincode = 'Enter 6 digits';
+    if (!formData.billingAddress?.line1 && !formData.location) newErrors.billingLine1 = 'Required';
+    if (!formData.billingAddress?.city && !formData.location) newErrors.billingCity = 'Required';
+    if (!formData.billingAddress?.state && !formData.state) newErrors.billingState = 'Required';
+    if (formData.billingAddress?.pincode && formData.billingAddress.pincode.length !== 6) newErrors.billingPincode = 'Enter 6 digits';
+    else if (formData.pincode && formData.pincode.length !== 6) newErrors.pincode = 'Enter 6 digits';
     if (formData.hasGst) {
       // Optional fields
     }
@@ -1300,13 +1302,13 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
         phone: formData.phone,
         company: formData.company,
         contactPerson: formData.name,
-        address: formData.location || client?.address || client?.billingAddress || `${formData.state || 'Telangana'}, India`,
-        shippingAddress: client?.shippingAddress || formData.location || client?.address || `${formData.state || 'Telangana'}, India`,
+        address: formData.location || client?.address || client?.billingAddress || `${formData.billingAddress?.state || formData.state || 'Telangana'}, India`,
+        shippingAddress: client?.shippingAddress || formData.location || client?.address || `${formData.billingAddress?.state || formData.state || 'Telangana'}, India`,
         gstin: formData.hasGst ? (formData.gstNumber || client?.gstin || client?.gstNumber || '') : 'Unregistered',
         panNumber: formData.hasGst ? (formData.panNumber || client?.panNumber || '') : '',
-        state: formData.state || client?.state || 'Telangana',
-        placeOfSupply: formData.state || client?.state || 'Telangana',
-        pincode: formData.pincode || ''
+        state: formData.billingAddress?.state || formData.state || client?.state || 'Telangana',
+        placeOfSupply: formData.billingAddress?.state || formData.state || client?.state || 'Telangana',
+        pincode: formData.billingAddress?.pincode || formData.pincode || ''
       },
       payment: {
         rawSubtotal,
@@ -1918,7 +1920,7 @@ export const CreateProspectModal = ({ phone, company, executiveName, onBack, onS
     if (!formData.phone) newErrors.phone = 'Required';
     else if (formData.phone.length !== 10) newErrors.phone = 'Enter 10 digits';
     
-    if (!formData.location) newErrors.location = 'Required';
+    if (!formData.billingAddress?.city && !formData.location) newErrors.billingCity = 'Required';
     if (!formData.source) newErrors.source = 'Required';
     if (!formData.priority) newErrors.priority = 'Required';
     if (!formData.nextFollowUpDate) newErrors.nextFollowUpDate = 'Required';

@@ -38,7 +38,7 @@ export const useProspectFlow = (user, onSaved) => {
         requirement: { 
           service: formData.products ? formData.products.join(', ') : '', 
           notes: formData.notes, 
-          location: formData.location, 
+          location: formData.location || (formData.billingAddress ? `${formData.billingAddress.city || ''}, ${formData.billingAddress.state || ''}`.replace(/^, | , $/g, '') : ''), 
           budget: formData.budget 
         },
         nextFollowUpDate: formData.nextFollowUpDate || undefined,

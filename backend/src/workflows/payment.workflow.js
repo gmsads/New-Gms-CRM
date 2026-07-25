@@ -26,12 +26,12 @@ const { saveBase64ToFileIfDataUrl } = require('../utils/fileStorage.helper');
  * @param {Object} data - { orderId, amount, method, proofUrl, proofType, reference, paymentType, notes }
  * @param {Object} user - req.user
  */
-const recordPayment = async (data, user) => {
+const recordPayment = async (data, user, session = null) => {
   const { orderId, amount, method, proofUrl, proofType, reference, paymentType, notes } = data;
   const cleanProofUrl = await saveBase64ToFileIfDataUrl(proofUrl, 'payments/proofs');
 
   // Load order
-  const order = await Order.findById(orderId);
+  const order = await Order.findById(orderId).session(session);
   if (!order) throw Object.assign(new Error('Order not found.'), { statusCode: 404 });
 
   // Business rule: cannot record on cancelled/completed
@@ -44,7 +44,7 @@ const recordPayment = async (data, user) => {
   }
 
   // Create Payment document
-  const payment = await Payment.create({
+  const paymentDocs = await Payment.create([{
     order:       orderId,
     prospect:    order.prospect,
     client:      order.client,
@@ -58,7 +58,9 @@ const recordPayment = async (data, user) => {
     collectedAt: new Date(),
     notes,
     status: 'Pending',
-  });
+  }], { session });
+  
+  const payment = paymentDocs[0];
 
   // Add pending record to order (status = Pending, not counted yet)
   order.paymentRecords.push({
@@ -77,7 +79,7 @@ const recordPayment = async (data, user) => {
     user
   );
 
-  await order.save();
+  await order.save({ session });
 
   return { payment, order };
 };
