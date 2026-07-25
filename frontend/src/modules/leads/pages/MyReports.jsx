@@ -130,7 +130,7 @@ export default function MyReports() {
               </h1>
               <p className="text-xs text-muted-foreground font-medium">
                 {isMgmt ? 'Command Center Overview' : 'Daily operational reporting'}
-              </p>
+git              </p>
             </div>
           </div>
         </div>
