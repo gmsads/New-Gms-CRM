@@ -71,11 +71,15 @@
 @layer base {
   * {
     @apply border-border;
+    min-width: 0; /* Prevents flexbox blowout natively for all elements */
   }
   body {
     @apply bg-background text-foreground overflow-x-hidden antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
     -webkit-tap-highlight-color: transparent;
+  }
+  table {
+    max-width: 100%;
   }
 }
 

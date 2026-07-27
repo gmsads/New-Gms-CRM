@@ -29,7 +29,7 @@ export default function LeadDetailsDrawer({ isOpen, lead, onClose, onCall, onWha
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-2xl bg-card border-l border-border shadow-2xl flex flex-col text-xs animate-in slide-in-from-right duration-300">
+        <div className="w-full max-w-2xl bg-card border-l border-border shadow-2xl flex flex-col text-xs animate-in slide-in-from-right duration-300">
           
           {/* Drawer Header */}
           <div className="p-5 border-b bg-muted/20 flex items-center justify-between">

@@ -112,7 +112,7 @@ const Navbar = ({ onMenuClick }) => {
             {/* Invisible backdrop to close the menu when clicking outside */}
             <div className="fixed inset-0 z-[45] xl:hidden" onClick={() => setShowProfileMenu(false)} />
             
-            <div className="absolute top-full right-0 mt-2 w-[calc(100vw-1rem)] max-w-xs sm:w-56 bg-white rounded-xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] border border-slate-100 p-4 xl:hidden flex flex-col gap-3 z-[50] animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="absolute top-full right-0 mt-2 w-64 max-w-[90vw] sm:w-56 bg-white rounded-xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_8px_10px_-6px_rgba(0,0,0,0.1)] border border-slate-100 p-4 xl:hidden flex flex-col gap-3 z-[50] animate-in fade-in slide-in-from-top-2 duration-200">
               <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base shrink-0 shadow-sm" style={{ background: roleColor }}>
                   {initials}

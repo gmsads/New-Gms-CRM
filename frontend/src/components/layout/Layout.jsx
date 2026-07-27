@@ -30,9 +30,11 @@ const Layout = () => {
         {/* Global Content Scrollable Area */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth overscroll-y-none">
           {/* Universal Page Container */}
-          <main className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 min-h-full flex flex-col">
+          <main className="w-full max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 min-h-full block min-w-0">
             <Suspense fallback={<PageLoader />}>
-              <Outlet />
+              <div className="w-full min-w-0 block">
+                <Outlet />
+              </div>
             </Suspense>
           </main>
         </div>
