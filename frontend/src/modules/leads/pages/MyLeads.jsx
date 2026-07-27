@@ -140,7 +140,7 @@ export default function MyLeads() {
         const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:5000';
         socket = window.io(socketUrl, {
           auth: { token: user.token },
-          transports: ['websocket', 'polling']
+          transports: ['polling', 'websocket']
         });
 
         socket.on('connect', () => {
@@ -352,7 +352,7 @@ export default function MyLeads() {
       {/* Sticky Search & Filter Toolbar */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur py-2 space-y-3">
         <div className="flex items-center gap-2.5">
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
@@ -360,7 +360,7 @@ export default function MyLeads() {
               onChange={e => setSearch(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && fetchMyLeads()}
               placeholder="Search My Leads by company, contact person, phone..."
-              className="w-full pl-10 pr-4 py-2.5 bg-card border rounded-xl text-xs text-foreground shadow-sm outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full pl-10 pr-4 py-2.5 bg-card border rounded-xl text-xs text-foreground shadow-sm outline-none focus:ring-2 focus:ring-primary/40 truncate"
             />
           </div>
 

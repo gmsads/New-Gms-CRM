@@ -27,14 +27,14 @@ export const LeadCard = ({ lead, onCall, onWhatsApp, onDetails, onRemark, onFoll
   return (
     <div className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between gap-3 relative overflow-hidden group">
       {/* Top Row: Company & Priority Badge */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-col">
-          <span className="text-xs font-mono text-muted-foreground">{lead.leadNumber}</span>
-          <h3 className="font-bold text-base text-foreground leading-tight mt-0.5">
+      <div className="flex items-start justify-between gap-2 min-w-0">
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="text-xs font-mono text-muted-foreground truncate">{lead.leadNumber}</span>
+          <h3 className="font-bold text-base text-foreground leading-tight mt-0.5 truncate">
             {lead.companyName || lead.contactPerson}
           </h3>
           {lead.companyName && (
-            <p className="text-xs text-muted-foreground font-medium">{lead.contactPerson}</p>
+            <p className="text-xs text-muted-foreground font-medium truncate">{lead.contactPerson}</p>
           )}
         </div>
         <span className={`text-[11px] px-2.5 py-0.5 rounded-full border font-bold shrink-0 ${priorityColors[lead.priority] || priorityColors.Medium}`}>
@@ -44,19 +44,19 @@ export const LeadCard = ({ lead, onCall, onWhatsApp, onDetails, onRemark, onFoll
 
       {/* Middle Row: Attributes */}
       <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground my-1 py-2 border-y border-border/60">
-        <div className="flex items-center gap-1.5 truncate">
+        <div className="flex items-center gap-1.5 min-w-0">
           <Phone className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="font-mono text-foreground font-medium truncate">{lead.phone}</span>
         </div>
-        <div className="flex items-center gap-1.5 truncate">
+        <div className="flex items-center gap-1.5 min-w-0">
           <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="truncate">{lead.city || lead.state || 'N/A'}</span>
         </div>
-        <div className="flex items-center gap-1.5 truncate">
+        <div className="flex items-center gap-1.5 min-w-0">
           <Tag className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="truncate">{lead.source || 'Excel'}</span>
         </div>
-        <div className="flex items-center gap-1.5 truncate">
+        <div className="flex items-center gap-1.5 min-w-0">
           <Clock className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="truncate">
             {lead.lastFollowUpDate ? new Date(lead.lastFollowUpDate).toLocaleDateString() : 'No Followup'}

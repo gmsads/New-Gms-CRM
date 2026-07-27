@@ -1759,8 +1759,9 @@ export const SalesQuotations = ({ isTeamMode = false, globalFilters = {} }) => {
       {loading ? (
         <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>
       ) : activeTab === 'history' ? (
-        <div className="bg-white rounded-[3rem] border border-slate-100 shadow-xl overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="bg-white md:rounded-[3rem] rounded-2xl md:border border-slate-100 md:shadow-xl shadow-sm overflow-hidden">
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-slate-50/50 text-slate-400 font-black uppercase text-[10px] tracking-[0.2em] border-b border-slate-100">
@@ -1819,6 +1820,93 @@ export const SalesQuotations = ({ isTeamMode = false, globalFilters = {} }) => {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden flex flex-col gap-4 p-4 bg-slate-50/50">
+            {filteredQuotations.length === 0 ? (
+              <div className="p-10 text-center text-slate-400 italic font-medium bg-white rounded-2xl border border-border shadow-sm">
+                No quotations found in the registry.
+              </div>
+            ) : (
+              filteredQuotations.map((q) => (
+                <div
+                  key={q._id}
+                  className="bg-card border border-border rounded-xl p-4 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col gap-3 relative overflow-hidden group"
+                >
+                  <div className="flex items-start justify-between gap-2 min-w-0">
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-xs font-mono text-muted-foreground truncate">
+                        #{q.quotationId || q._id.slice(-6).toUpperCase()}
+                      </span>
+                      <h3 className="font-bold text-base text-foreground leading-tight mt-0.5 truncate">
+                        {q.prospect?.company || q.prospect?.name}
+                      </h3>
+                      {q.prospect?.phone && (
+                        <p className="text-xs text-muted-foreground font-medium truncate mt-0.5">
+                          {q.prospect?.phone}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest shrink-0 border ${
+                        q.status === 'Sent'
+                          ? 'bg-blue-50 text-blue-600 border-blue-200'
+                          : q.status === 'Viewed'
+                          ? 'bg-purple-50 text-purple-600 border-purple-200'
+                          : q.status === 'Order-Created'
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                          : q.status === 'Approved'
+                          ? 'bg-green-100 text-green-700 border-green-200'
+                          : q.status === 'Rejected'
+                          ? 'bg-rose-100 text-rose-700 border-rose-200'
+                          : q.requiresApproval && q.status === 'Draft'
+                          ? 'bg-amber-100 text-amber-700 border-amber-200'
+                          : 'bg-slate-100 text-slate-700 border-slate-200'
+                      }`}
+                    >
+                      {q.requiresApproval && q.status === 'Draft' ? 'Pending Approval' : q.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs my-1 py-3 border-y border-border/60">
+                    <div className="flex flex-col truncate">
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-1">Financials</span>
+                      <span className="font-bold text-primary truncate">₹{(q.totalAmount || 0).toLocaleString()}</span>
+                      <span className="text-[10px] font-medium text-muted-foreground truncate">{q.items?.length || 0} items</span>
+                    </div>
+                    <div className="flex flex-col truncate">
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-wider mb-1">Date Sent</span>
+                      <span className="font-semibold text-foreground truncate">
+                        {new Date(q.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-1">
+                    {isAdmin ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-black text-muted-foreground uppercase shrink-0">
+                          {q.executive?.name?.charAt(0)}
+                        </div>
+                        <span className="font-bold text-foreground text-xs truncate">
+                          {q.executive?.name || 'System'}
+                        </span>
+                      </div>
+                    ) : (
+                      <div />
+                    )}
+
+                    <button
+                      onClick={() => setPreviewQuote(q)}
+                      className="flex items-center gap-1.5 h-8 px-4 rounded-lg bg-secondary text-secondary-foreground text-xs font-bold hover:bg-slate-900 hover:text-white transition-all shadow-sm shrink-0"
+                    >
+                      <Eye className="h-3.5 w-3.5" /> View Quote
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       ) : activeTab === 'analysis' ? (

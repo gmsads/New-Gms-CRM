@@ -118,24 +118,24 @@ export default function MyReports() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 pb-24 animate-in fade-in duration-300">
       {/* Page Header & Date Filter Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
-        <div>
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-border pb-5">
+        <div className="min-w-0 shrink-0">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-primary/10 text-primary rounded-xl">
               <BarChart3 className="h-6 w-6" />
             </div>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-foreground">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-black tracking-tight text-foreground truncate">
                 {isMgmt ? 'Tele Sales Analytics' : 'My Reports'}
               </h1>
-              <p className="text-xs text-muted-foreground font-medium">
+              <p className="text-xs text-muted-foreground font-medium truncate">
                 {isMgmt ? 'Command Center Overview' : 'Daily operational reporting'}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3 max-w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center gap-3 min-w-0 w-full xl:w-auto xl:justify-end">
           {/* Executive Filter for Management */}
           {isMgmt && (
             <select
@@ -154,7 +154,7 @@ export default function MyReports() {
           )}
 
           {/* Date Filter Pills */}
-          <div className="flex overflow-x-auto items-center gap-2 bg-card p-1.5 rounded-2xl border border-border shadow-sm max-w-full custom-scrollbar">
+          <div className="flex flex-wrap items-center gap-2 bg-card p-1.5 rounded-2xl border border-border shadow-sm w-full sm:w-auto justify-center sm:justify-start">
             {[
               { id: 'today', label: 'Today' },
               { id: 'yesterday', label: 'Yesterday' },
@@ -168,7 +168,7 @@ export default function MyReports() {
                   setDateFilter(f.id);
                   setPage(1);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   dateFilter === f.id
                     ? 'bg-primary text-primary-foreground shadow-md'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'

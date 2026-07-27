@@ -417,7 +417,7 @@ export const OrderList = ({
                             key={idx} 
                             className="flex flex-wrap md:flex-nowrap items-center gap-3 group p-1.5 -ml-1.5 rounded-lg transition-colors"
                           >
-                            <span className="border border-[#d1e3ff] text-[#2563eb] bg-[#f8fbff] rounded px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap shadow-sm">
+                            <span className="border border-[#d1e3ff] text-[#2563eb] bg-[#f8fbff] rounded px-2.5 py-1 text-[11px] font-semibold whitespace-normal break-words">
                                 {item.description} {item.quantity > 1 && `(x${item.quantity})`}
                             </span>
                             
