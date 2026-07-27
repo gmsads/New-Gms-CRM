@@ -130,12 +130,12 @@ export default function MyReports() {
               </h1>
               <p className="text-xs text-muted-foreground font-medium">
                 {isMgmt ? 'Command Center Overview' : 'Daily operational reporting'}
-git              </p>
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 max-w-full overflow-hidden">
           {/* Executive Filter for Management */}
           {isMgmt && (
             <select
@@ -154,7 +154,7 @@ git              </p>
           )}
 
           {/* Date Filter Pills */}
-          <div className="flex flex-wrap items-center gap-2 bg-card p-1.5 rounded-2xl border border-border shadow-sm">
+          <div className="flex overflow-x-auto items-center gap-2 bg-card p-1.5 rounded-2xl border border-border shadow-sm max-w-full custom-scrollbar">
             {[
               { id: 'today', label: 'Today' },
               { id: 'yesterday', label: 'Yesterday' },
@@ -168,7 +168,7 @@ git              </p>
                   setDateFilter(f.id);
                   setPage(1);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
                   dateFilter === f.id
                     ? 'bg-primary text-primary-foreground shadow-md'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -180,7 +180,7 @@ git              </p>
             <button
               onClick={fetchReports}
               title="Refresh Data"
-              className="p-1.5 text-muted-foreground hover:text-primary rounded-xl hover:bg-muted/50 transition-all ml-1"
+              className="p-1.5 text-muted-foreground hover:text-primary rounded-xl hover:bg-muted/50 transition-all ml-1 shrink-0"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-primary' : ''}`} />
             </button>
