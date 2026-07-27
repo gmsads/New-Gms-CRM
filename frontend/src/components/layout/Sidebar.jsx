@@ -820,17 +820,17 @@ const Sidebar = ({ isOpen, setOpen }) => {
   return (
     <>
       {isOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm xl:hidden" onClick={() => setOpen(false)} />
       )}
 
       <aside
-        className={`w-64 min-w-[256px] flex flex-col h-full border-r bg-card z-50 transition-transform duration-300 fixed md:relative inset-y-0 left-0 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`w-64 min-w-[256px] flex flex-col h-full border-r bg-card z-50 transition-transform duration-300 fixed xl:relative inset-y-0 left-0 xl:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
         <div className="flex items-center justify-center w-full h-16 border-b shrink-0 relative">
           <Link to={getRoleDashboardPath(user?.role)} onClick={() => setOpen(false)} className="flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity">
             <img src={profile?.logoUrl || '/logo.png'} alt={profile?.companyName || 'CRM Logo'} className="h-18 pt-2.5 w-auto object-contain" />
           </Link>
-          <button onClick={() => setOpen(false)} className="md:hidden absolute right-4 text-muted-foreground hover:text-foreground">
+          <button onClick={() => setOpen(false)} className="xl:hidden absolute right-4 text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
