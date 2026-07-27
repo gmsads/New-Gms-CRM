@@ -3538,8 +3538,8 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 bg-black/60 backdrop-blur-md">
-      <div className="w-full max-w-md rounded-2xl border bg-white shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 duration-300">
-        <div className="p-6 border-b bg-slate-50 flex items-center justify-between">
+      <div className="w-full max-w-md max-h-[90vh] rounded-2xl border bg-white shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 duration-300">
+        <div className="p-6 border-b bg-slate-50 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
               Record Payment
@@ -3556,7 +3556,7 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2">
             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">
               <span>Remaining Balance</span>
