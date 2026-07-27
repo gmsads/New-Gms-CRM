@@ -304,7 +304,7 @@ export default function MyLeads() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6 pb-20">
+    <div className="w-full min-w-0 p-4 md:p-6 max-w-7xl mx-auto space-y-6 pb-20">
       {user?.token && <LiveSessionBar token={user.token} />}
       
       {/* ── PAGE HEADER REQUIRED BY PROMPT ─────────────────────────── */}
@@ -380,7 +380,7 @@ export default function MyLeads() {
         </div>
 
         {/* Workflow Sub-Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs w-full min-w-0">
           {statusTabs.map(st => (
             <button
               key={st.id}

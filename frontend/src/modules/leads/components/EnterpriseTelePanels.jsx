@@ -30,7 +30,7 @@ export const LiveSessionBar = ({ token, onStatusChange }) => {
   };
 
   return (
-    <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-900 border border-slate-800 text-white shadow-sm overflow-x-auto">
+    <div className="flex items-center justify-between gap-2 p-3 rounded-xl bg-slate-900 border border-slate-800 text-white shadow-sm overflow-x-auto w-full min-w-0">
       <div className="flex items-center gap-2 shrink-0">
         <span className="relative flex h-3 w-3">
           <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${status === 'Available' || status === 'Calling' ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
