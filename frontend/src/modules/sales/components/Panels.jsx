@@ -2972,7 +2972,8 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
             <X className="h-5 w-5 text-slate-500" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2">
             <div className="flex justify-between items-center text-[10px] font-black uppercase text-blue-400 mb-1">
               <span>Pending Payment</span>
@@ -3049,8 +3050,9 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
               )}
             </div>
           </div>
-          <div className="pt-4 flex gap-3">
-            <button type="button" onClick={onClose} className="flex-1 h-12 rounded-xl border text-sm font-bold">Cancel</button>
+          </div>
+          <div className="p-6 border-t flex gap-3 shrink-0 bg-slate-50">
+            <button type="button" onClick={onClose} className="flex-1 h-12 rounded-xl border bg-white text-sm font-bold hover:bg-slate-100 transition-colors">Cancel</button>
             <button type="submit" disabled={loading} className="flex-[2] h-12 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors">{loading ? 'Uploading & Submitting...' : 'Submit Collection'}</button>
           </div>
         </form>

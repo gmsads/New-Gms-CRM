@@ -3556,7 +3556,8 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-2">
             <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">
               <span>Remaining Balance</span>
@@ -3701,11 +3702,13 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
             />
           </div>
 
-          <div className="pt-4 flex gap-3">
+          </div>
+
+          <div className="p-6 border-t flex gap-3 shrink-0 bg-slate-50">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-12 rounded-xl border-2 border-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors"
+              className="flex-1 h-12 rounded-xl border-2 border-slate-100 bg-white text-slate-600 font-bold text-sm hover:bg-slate-50 transition-colors"
             >
               Cancel
             </button>
