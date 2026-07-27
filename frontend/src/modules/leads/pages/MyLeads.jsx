@@ -325,24 +325,24 @@ export default function MyLeads() {
       </div>
 
       {/* ── TOP SECTION: ASSIGNED LEADS vs CREATED BY ME ───────────── */}
-      <div className="flex items-center justify-between gap-4 bg-muted/20 p-1.5 rounded-2xl border">
-        <div className="grid grid-cols-2 gap-1.5 w-full sm:w-80">
+      <div className="flex items-center justify-between gap-4 bg-muted/20 p-1.5 rounded-2xl border min-w-0 w-full">
+        <div className="grid grid-cols-2 gap-1.5 w-full sm:w-80 min-w-0">
           <button
             onClick={() => { setOwnerTab('assigned'); setWorkflowTab('all'); }}
-            className={`py-2 px-4 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-2 ${
+            className={`py-2 px-2 sm:px-4 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 sm:gap-2 min-w-0 ${
               ownerTab === 'assigned' ? 'bg-card text-primary shadow border border-primary/20 scale-[1.02]' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <UserCheck className="h-4 w-4" /> Assigned Leads
+            <UserCheck className="h-4 w-4 shrink-0" /> <span className="truncate">Assigned Leads</span>
           </button>
 
           <button
             onClick={() => { setOwnerTab('created'); setWorkflowTab('all'); }}
-            className={`py-2 px-4 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-2 ${
+            className={`py-2 px-2 sm:px-4 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 sm:gap-2 min-w-0 ${
               ownerTab === 'created' ? 'bg-card text-primary shadow border border-primary/20 scale-[1.02]' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <Users className="h-4 w-4" /> Created By Me
+            <Users className="h-4 w-4 shrink-0" /> <span className="truncate">Created By Me</span>
           </button>
         </div>
 

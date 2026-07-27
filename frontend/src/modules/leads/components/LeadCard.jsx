@@ -80,47 +80,47 @@ export const LeadCard = ({ lead, onCall, onWhatsApp, onDetails, onRemark, onFoll
       <div className="grid grid-cols-5 gap-1.5 mt-2 pt-2 border-t border-border">
         <button
           onClick={() => onCall(lead)}
-          className="flex flex-col items-center justify-center gap-1 py-2 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white active:scale-95 transition-all"
+          className="flex flex-col items-center justify-center gap-1 py-2 rounded-lg bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white active:scale-95 transition-all min-w-0"
           title="Call Customer"
         >
-          <Phone className="h-4 w-4" />
-          <span className="text-[10px] font-bold">Call</span>
+          <Phone className="h-4 w-4 shrink-0" />
+          <span className="text-[10px] font-bold truncate w-full text-center px-1">Call</span>
         </button>
 
         <button
           onClick={() => onWhatsApp(lead)}
-          className="flex flex-col items-center justify-center gap-1 py-2 rounded-lg bg-teal-500/10 text-teal-500 hover:bg-teal-500 hover:text-white active:scale-95 transition-all"
+          className="flex flex-col items-center justify-center gap-1 py-2 rounded-lg bg-teal-500/10 text-teal-500 hover:bg-teal-500 hover:text-white active:scale-95 transition-all min-w-0"
           title="WhatsApp"
         >
-          <MessageCircle className="h-4 w-4" />
-          <span className="text-[10px] font-bold">Chat</span>
+          <MessageCircle className="h-4 w-4 shrink-0" />
+          <span className="text-[10px] font-bold truncate w-full text-center px-1">Chat</span>
         </button>
 
         <button
           onClick={() => onRemark(lead)}
-          className="flex flex-col items-center justify-center gap-1 py-2 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white active:scale-95 transition-all"
+          className="flex flex-col items-center justify-center gap-1 py-2 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white active:scale-95 transition-all min-w-0"
           title="Add Remark"
         >
-          <MessageSquare className="h-4 w-4" />
-          <span className="text-[10px] font-bold">Remark</span>
+          <MessageSquare className="h-4 w-4 shrink-0" />
+          <span className="text-[10px] font-bold truncate w-full text-center px-1">Remark</span>
         </button>
 
         <button
           onClick={() => onFollowup(lead)}
-          className="flex flex-col items-center justify-center gap-1 py-2 rounded-lg bg-purple-500/10 text-purple-500 hover:bg-purple-500 hover:text-white active:scale-95 transition-all"
+          className="flex flex-col items-center justify-center gap-1 py-2 rounded-lg bg-purple-500/10 text-purple-500 hover:bg-purple-500 hover:text-white active:scale-95 transition-all min-w-0"
           title="Schedule Followup"
         >
-          <Calendar className="h-4 w-4" />
-          <span className="text-[10px] font-bold">Remind</span>
+          <Calendar className="h-4 w-4 shrink-0" />
+          <span className="text-[10px] font-bold truncate w-full text-center px-1">Remind</span>
         </button>
 
         <button
           onClick={() => onDetails(lead)}
-          className="flex flex-col items-center justify-center gap-1 py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all"
+          className="flex flex-col items-center justify-center gap-1 py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground active:scale-95 transition-all min-w-0"
           title="View Details"
         >
-          <Eye className="h-4 w-4" />
-          <span className="text-[10px] font-bold">Details</span>
+          <Eye className="h-4 w-4 shrink-0" />
+          <span className="text-[10px] font-bold truncate w-full text-center px-1">Details</span>
         </button>
       </div>
     </div>
