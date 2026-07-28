@@ -35,7 +35,7 @@ const AddressFields = ({ prefix, title, address, onAddressChange, disabled, erro
         />
       </div>
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1"><City*/zlabel>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">City*<label>
         <input
           value={address?.city || ''}
           onChange={(e) => onAddressChange('city', e.target.value)}
