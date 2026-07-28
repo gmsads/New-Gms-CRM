@@ -3179,15 +3179,15 @@ export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) 
               onChange={e => setFormData({ ...formData, status: e.target.value })}
               className="w-full h-12 rounded-xl border bg-white px-4 text-sm font-bold shadow-sm outline-none focus:border-emerald-500"
             >
-              <option value="PENDING">Pending</option>
-              <option value="SCHEDULED">Scheduled</option>
-              <option value="RESCHEDULED">Rescheduled</option>
-              <option value="IN_PROGRESS">In Progress</option>
+              {user.role !== 'FIELD_EXEC' && <option value="PENDING">Pending</option>}
+              {user.role !== 'FIELD_EXEC' && <option value="SCHEDULED">Scheduled</option>}
+              {user.role !== 'FIELD_EXEC' && <option value="RESCHEDULED">Rescheduled</option>}
+              {user.role !== 'FIELD_EXEC' && <option value="IN_PROGRESS">In Progress</option>}
               <option value="FOLLOWUP_REQUIRED">Follow-up Required</option>
-              <option value="CLIENT_NOT_AVAILABLE">Client Not Available</option>
+              {user.role !== 'FIELD_EXEC' && <option value="CLIENT_NOT_AVAILABLE">Client Not Available</option>}
               <option value="CANCELLED">Cancelled</option>
               <option value="SALE_CONFIRMED">Sale Confirmed (Won)</option>
-              <option value="LOST">Lost / Rejected</option>
+              {user.role !== 'FIELD_EXEC' && <option value="LOST">Lost / Rejected</option>}
             </select>
           </div>
 

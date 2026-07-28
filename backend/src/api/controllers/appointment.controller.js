@@ -41,6 +41,19 @@ exports.assign = async (req, res) => {
     res.json({ success: true, data: appointment });
   } catch (err) {
     require('fs').appendFileSync('error.log', new Date().toISOString() + ' - ASSIGN - ' + err.stack + '\n');
+    res.status(err.message === 'Appointment not found' ? 404 : (err.message.includes('Access denied') ? 403 : 500)).json({ 
+      success: false, 
+      message: err.message 
+    });
+  }
+};
+
+// ── PATCH /api/appointments/:id/reschedule ────────────────────────────────────
+exports.reschedule = async (req, res) => {
+  try {
+    const appointment = await appointmentWorkflow.rescheduleAppointment(req.params.id, req.body, req.user._id, getReqContext(req));
+    res.json({ success: true, data: appointment });
+  } catch (err) {
     res.status(err.message === 'Appointment not found' ? 404 : 500).json({ 
       success: false, 
       message: err.message 
@@ -52,10 +65,10 @@ exports.assign = async (req, res) => {
 exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const appointment = await appointmentWorkflow.updateStatus(req.params.id, status, req.user._id, getReqContext(req));
+    const appointment = await appointmentWorkflow.updateStatus(req.params.id, status, req.user, getReqContext(req));
     res.json({ success: true, data: appointment });
   } catch (err) {
-    res.status(err.message === 'Appointment not found' ? 404 : 500).json({ 
+    res.status(err.message === 'Appointment not found' ? 404 : (err.message.includes('Access denied') || err.message.includes('Invalid transition') ? 403 : 500)).json({ 
       success: false, 
       message: err.message 
     });
@@ -65,10 +78,10 @@ exports.updateStatus = async (req, res) => {
 // ── POST /api/appointments/:id/remarks ────────────────────────────────────────
 exports.addRemark = async (req, res) => {
   try {
-    const remark = await appointmentWorkflow.addRemark(req.params.id, req.body, req.user._id, getReqContext(req));
+    const remark = await appointmentWorkflow.addRemark(req.params.id, req.body, req.user, getReqContext(req));
     res.json({ success: true, data: remark });
   } catch (err) {
-    res.status(err.message === 'Appointment not found' ? 404 : 500).json({ 
+    res.status(err.message === 'Appointment not found' ? 404 : (err.message.includes('Access denied') || err.message.includes('Invalid transition') ? 403 : 500)).json({ 
       success: false, 
       message: err.message 
     });

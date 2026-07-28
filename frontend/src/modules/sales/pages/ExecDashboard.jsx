@@ -453,20 +453,22 @@ const ExecDashboard = () => {
               <p className="text-base sm:text-lg text-slate-400 font-medium tracking-tight italic break-words">"{getRoleBasedQuote(user?.role)}"</p>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 min-w-0">
-              <button 
-                onClick={() => prospectFlow.setShowPhoneSearch(true)} 
-                className="w-full sm:flex-1 bg-blue-600 px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all hover:bg-blue-700 hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20 text-sm sm:text-base"
-              >
-                <Plus className="h-5 w-5 shrink-0" /> New Prospect
-              </button>
-              <button 
-                onClick={() => orderFlow.setShowOrderSearch(true)} 
-                className="w-full sm:flex-1 bg-white/10 px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-2 backdrop-blur-md hover:bg-white/20 transition-all shadow-xl text-sm sm:text-base"
-              >
-                <Plus className="h-5 w-5 shrink-0" /> New Order
-              </button>
-            </div>
+            {user?.role !== 'FIELD_EXEC' && (
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 min-w-0">
+                <button 
+                  onClick={() => prospectFlow.setShowPhoneSearch(true)} 
+                  className="w-full sm:flex-1 bg-blue-600 px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-2 transition-all hover:bg-blue-700 hover:scale-105 active:scale-95 shadow-xl shadow-blue-900/20 text-sm sm:text-base"
+                >
+                  <Plus className="h-5 w-5 shrink-0" /> New Prospect
+                </button>
+                <button 
+                  onClick={() => orderFlow.setShowOrderSearch(true)} 
+                  className="w-full sm:flex-1 bg-white/10 px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-black flex items-center justify-center gap-2 backdrop-blur-md hover:bg-white/20 transition-all shadow-xl text-sm sm:text-base"
+                >
+                  <Plus className="h-5 w-5 shrink-0" /> New Order
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-5 sm:p-8 rounded-[1.8rem] sm:rounded-[2.5rem] border border-slate-700 shadow-2xl relative overflow-hidden group min-w-0">

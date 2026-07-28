@@ -85,7 +85,7 @@ const menuConfig = [
   },
   { title: 'Orders',           icon: ShoppingCart,    path: '/orders',    roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','ACCOUNTS'] },
   { title: 'Approvals',        icon: ShieldCheck,     path: '/approvals', roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','ACCOUNTS'] },
-  { title: 'Appointments',     icon: Calendar,        path: '/appointments', roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','FIELD_EXEC'] },
+  { title: 'Appointments',     icon: Calendar,        path: '/appointments', roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER'] },
   { title: 'Assigned Appointments', icon: Calendar,   path: '/assigned-appointments', roles: ['ADMIN','MD_CEO','SALES_MANAGER','SR_SALES_MANAGER','FIELD_EXEC'] },
   { 
     title: 'Product Management',   
@@ -414,7 +414,7 @@ const Sidebar = ({ isOpen, setOpen }) => {
         { title: 'Appointment Follow-ups', path: '/followups?tab=appointments', icon: Calendar, badge: appointmentFollowupCount || null }
       ]
     },
-    { title: 'Appointments',  icon: Calendar,        path: '/appointments',badge: appointmentCount > 0 ? appointmentCount.toString() : null },
+    ...(user.role !== 'FIELD_EXEC' ? [{ title: 'Appointments',  icon: Calendar,        path: '/appointments',badge: appointmentCount > 0 ? appointmentCount.toString() : null }] : []),
     ...(user.role === 'FIELD_EXEC' ? [{ title: 'Assigned Appointments', icon: Calendar, path: '/assigned-appointments', badge: null }] : []),
     { title: 'Orders',        icon: ShoppingCart,    path: '/orders',      badge: null },
     { title: 'Approvals',     icon: ShieldCheck,     path: '/approvals',   badge: approvalCount > 0 ? approvalCount.toString() : null },
