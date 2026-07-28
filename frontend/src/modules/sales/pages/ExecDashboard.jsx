@@ -1327,139 +1327,16 @@ export const SalesFollowups = ({ isTeamMode = false, globalFilters = {} }) => {
   );
 };
 
+import { AppointmentsContainer } from '../components/appointments/containers/AppointmentsContainer';
+import { AssignedAppointmentsContainer } from '../components/appointments/containers/AssignedAppointmentsContainer';
+
 export const SalesAppointments = ({ isTeamMode = false, globalFilters = {}, isAssignedView = false }) => {
-  const { user } = useAuth();
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAssign, setShowAssign] = useState(null);
-  const [showRemark, setShowRemark] = useState(null);
-
-  const fetch = async () => { 
-    if (!user?.token) return;
-    setLoading(true);
-    try {
-      let params = {};
-      
-      if (isTeamMode) {
-        if (globalFilters.employee) params.salesExec = globalFilters.employee;
-        if (globalFilters.search) params.search = globalFilters.search;
-      } else {
-        if (isAssignedView) {
-          // Strictly assigned to the logged-in user
-          params.assignedTo = user._id;
-        } else {
-          // Strictly created by the logged-in user
-          params.createdBy = user._id;
-        }
-      }
-
-      const res = await appointmentApi.list(params, user.token);  
-      if (res.success) setAppointments(res.data || []); 
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetch(); }, [JSON.stringify(globalFilters)]);
-
-  
-  if (loading) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
-
-  
-  return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-black text-slate-900">Upcoming Appointments</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {appointments.length === 0 ? (
-          <div className="col-span-full py-20 text-center bg-white rounded-3xl border border-dashed border-slate-300">
-            <CalendarIcon className="h-10 w-10 mx-auto text-slate-300 mb-3" />
-            <p className="text-slate-500 font-bold">No appointments scheduled</p>
-          </div>
-        ) : appointments.map(apt => (
-          <div key={apt._id} className="bg-white border rounded-[2rem] p-6 shadow-sm space-y-4 hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-start">
-              <h3 className="font-bold text-lg text-slate-900">{apt.businessName || apt.prospect?.company || apt.prospect?.name}</h3>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                apt.status === 'SALE_CONFIRMED' ? 'bg-green-100 text-green-700' :
-                apt.status === 'LOST' || apt.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
-                apt.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                apt.status === 'FOLLOWUP_REQUIRED' ? 'bg-amber-100 text-amber-700' :
-                'bg-purple-50 text-purple-600'
-              }`}>{
-                apt.status === 'SALE_CONFIRMED' ? 'Sale Confirmed' :
-                apt.status === 'IN_PROGRESS' ? 'In Progress' :
-                apt.status === 'FOLLOWUP_REQUIRED' ? 'Follow-up Required' :
-                apt.status === 'CLIENT_NOT_AVAILABLE' ? 'Client N/A' :
-                apt.status === 'CANCELLED' ? 'Cancelled' :
-                apt.status.charAt(0) + apt.status.slice(1).toLowerCase()
-              }</span>
-            </div>
-            <div className="text-sm space-y-2">
-              <div className="flex items-center gap-2 text-slate-500"><CalendarIcon className="h-4 w-4 shrink-0" /><span className="font-bold text-slate-700">{new Date(apt.date).toLocaleDateString()}</span> at <span className="font-bold text-slate-700">{apt.time}</span></div>
-              <div className="flex items-center gap-2 text-slate-500"><UserPlus className="h-4 w-4 shrink-0" /><span className="font-bold text-slate-700 truncate">{apt.contactPerson || apt.prospect?.name}</span></div>
-              <div className="flex items-center gap-2 text-slate-500"><Phone className="h-4 w-4 shrink-0" /><span className="font-bold text-slate-700">{apt.phone || apt.prospect?.phone}</span></div>
-              <div className="flex items-start gap-2 text-slate-500"><MapPin className="h-4 w-4 shrink-0 mt-0.5" /><span className="font-bold text-slate-700 line-clamp-2">{apt.venue}</span></div>
-              <div className="flex items-center gap-2 text-slate-500"><Clock className="h-4 w-4 shrink-0" /><span className="font-bold text-slate-700">{apt.meetingType || apt.purpose}</span></div>
-              {apt.nextFollowUpDate && (
-                <div className="flex items-center gap-2 text-red-600 font-bold bg-red-50 p-2 rounded-lg border border-red-100"><CalendarIcon className="h-4 w-4 shrink-0 text-red-500" />Next Follow-up: <span>{new Date(apt.nextFollowUpDate).toLocaleDateString()}</span></div>
-              )}
-            </div>
-            <div className="pt-4 border-t flex flex-col gap-3">
-               {(isAssignedView || isTeamMode) && (
-                 <div className="flex items-center justify-between">
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Created By</span>
-                   <span className="text-xs font-bold text-slate-600">{apt.createdBy?.name || 'Unknown'}</span>
-                 </div>
-               )}
-               <div className="flex items-center justify-between">
-                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assignee</span>
-                 <span className="text-xs font-bold text-blue-600">{apt.assignedTo?.name || 'Pending Allocation'}</span>
-               </div>
-               
-               <div className="space-y-1">
-                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Executive Remark</span>
-                 <div className="bg-slate-50 text-slate-700 text-xs p-2.5 rounded-xl border border-slate-100 italic">
-                   "{apt.executiveRemark || apt.remark || '-'}"
-                 </div>
-               </div>
-
-               {apt.assignedTo && (
-                 <div className="space-y-1">
-                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assignee Remark</span>
-                   {apt.assigneeRemark ? (
-                     <div className="bg-green-50 text-green-800 text-xs p-2.5 rounded-xl border border-green-100 italic">
-                       "{apt.assigneeRemark}"
-                     </div>
-                   ) : (
-                     <p className="text-[11px] text-slate-400 italic">Waiting for assignee updates...</p>
-                   )}
-                 </div>
-               )}
-
-               <div className="flex gap-2">
-                 {['ADMIN', 'SALES_MANAGER', 'MD_CEO'].includes(user.role) && (
-                   <>
-                     {!apt.assignedTo && (
-                       <button onClick={() => setShowAssign(apt)} className="flex-1 bg-slate-900 text-white py-2 rounded-xl text-xs font-bold hover:bg-blue-600 transition-colors">Assign</button>
-                     )}
-                     {apt.assignedTo && apt.status === 'FOLLOWUP_REQUIRED' && (
-                       <button onClick={() => setShowAssign(apt)} className="flex-1 bg-amber-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-700 transition-colors">Reassign</button>
-                     )}
-                   </>
-                 )}
-                 {apt.assignedTo?._id === user._id && (
-                   <button onClick={() => setShowRemark(apt)} className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors">Update Remark</button>
-                 )}
-               </div>
-            </div>
-          </div>
-        ))}
-      </div>
-      {showAssign && <AssignAppointmentModal appointment={showAssign} onClose={() => setShowAssign(null)} onAssigned={fetch} />}
-      {showRemark && <UpdateAppointmentRemarkModal appointment={showRemark} onClose={() => setShowRemark(null)} onSaved={fetch} />}
-    </div>
-  );
+  if (isAssignedView) {
+    return <AssignedAppointmentsContainer globalFilters={globalFilters} isTeamMode={isTeamMode} />;
+  }
+  return <AppointmentsContainer globalFilters={globalFilters} isTeamMode={isTeamMode} />;
 };
+
 
 export const SalesBrochures = () => {
   const { user } = useAuth();
