@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useAppointments } from '../hooks/useAppointments';
+import { useAppointments } from '../../../hooks/useAppointments';
 import { AppointmentsPage } from '../workspaces/AppointmentsPage';
-import { useAuth } from '../../../../context/AuthContext';
-import { AssignAppointmentModal, UpdateAppointmentRemarkModal } from '../../components/Panels';
+import { useAuth } from '../../../../../context/AuthContext';
+import { AssignAppointmentModal, UpdateAppointmentRemarkModal } from '../../Panels';
 
 export const AppointmentsContainer = ({ globalFilters, isTeamMode }) => {
   const { user } = useAuth();
