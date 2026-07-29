@@ -42,6 +42,25 @@ const appointmentSchema = new mongoose.Schema({
 
   assignedAt: { type: Date },
 
+  // Enterprise Workflow Enhancements
+  cancellationRemark: { type: String },
+  closingRemark: { type: String },
+  linkedOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
+  
+  gpsLocation: {
+    latitude: { type: Number },
+    longitude: { type: Number },
+    accuracy: { type: Number },
+    timestamp: { type: Date }
+  },
+  
+  photos: [{
+    fileUrl: { type: String, required: true },
+    fileName: { type: String },
+    uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    uploadTime: { type: Date, default: Date.now }
+  }],
+
   // Escalation System
   isOverdue: { type: Boolean, default: false },
   escalationLevel: { type: Number, default: 0 }, // 0: None, 1: Manager, 2: Admin

@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react';
 import { SharedAppointmentCard } from '../ui/SharedAppointmentCard';
 import { AppointmentEmptyState } from '../ui/AppointmentEmptyState';
 
-export const AppointmentsPage = ({ appointments, loading, onAssign }) => {
+export const AppointmentsPage = ({ appointments, loading, onAssign, onCreateOrder }) => {
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
@@ -28,6 +28,14 @@ export const AppointmentsPage = ({ appointments, loading, onAssign }) => {
           className="flex-1 bg-amber-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-700 transition-colors"
         >
           Reassign
+        </button>
+      )}
+      {apt.status === 'SALE_CONFIRMED' && !apt.linkedOrderId && (
+        <button 
+          onClick={() => onCreateOrder(apt)} 
+          className="flex-1 bg-emerald-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors"
+        >
+          Create Order
         </button>
       )}
     </>

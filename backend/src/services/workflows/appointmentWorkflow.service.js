@@ -10,8 +10,23 @@ const eventBus = require('./eventBus'); // Will create this next
 const { getAccessibleUserIds } = require('../../utils/team.helper');
 
 class AppointmentWorkflowService {
-  async createAppointment(data, creatorId, reqContext = {}) {
-    const { prospectId, date, time, venue, meetingType, priority, managerId, forceCreate, remark, executiveRemark } = data;
+  async createAppointment(data, user, reqContext = {}) {
+    const { prospectId, date, time, venue, meetingType, priority, managerId, forceCreate, remark, executiveRemark, assignedTo } = data;
+    const creatorId = user._id;
+
+    // Feature 1: Date Validation (>= today)
+    const apptDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (apptDate < today) {
+      throw new Error('Appointment date cannot be in the past.');
+    }
+
+    // Feature 2: Sales Executive Assignment Strip
+    let finalAssignedTo = assignedTo;
+    if (user.role === 'SALES_EXEC' || user.role === 'SR_SALES_EXEC') {
+      finalAssignedTo = null; // Always Pending Assignment
+    }
 
     const prospect = await Prospect.findById(prospectId);
     if (!prospect) throw new Error('Prospect not found');
@@ -41,6 +56,7 @@ class AppointmentWorkflowService {
       const appointment = new Appointment({
         prospect: prospect._id,
         createdBy: creatorId,
+        assignedTo: finalAssignedTo,
         managerId,
         businessName: prospect.company,
         contactPerson: prospect.name,
@@ -168,9 +184,18 @@ class AppointmentWorkflowService {
     return oldAppt;
   }
 
-  async updateStatus(id, newStatus, user, reqContext = {}) {
+  async updateStatus(id, newStatus, user, data = {}, reqContext = {}) {
     const oldAppt = await Appointment.findById(id);
     if (!oldAppt) throw new Error('Appointment not found');
+
+    const { closingRemark, cancellationRemark } = data;
+
+    if (newStatus === 'SALE_CONFIRMED' && !closingRemark) {
+      throw new Error('Closing remark is required when marking a sale as closed.');
+    }
+    if (newStatus === 'CANCELLED' && !cancellationRemark) {
+      throw new Error('Cancellation remark is required when cancelling an appointment.');
+    }
 
     if (user.role === 'FIELD_EXEC') {
       if (!oldAppt.assignedTo || oldAppt.assignedTo.toString() !== user._id.toString()) {
@@ -202,6 +227,10 @@ class AppointmentWorkflowService {
 
     const previousState = { status: oldAppt.status };
     oldAppt.status = newStatus;
+    
+    if (newStatus === 'SALE_CONFIRMED') oldAppt.closingRemark = closingRemark;
+    if (newStatus === 'CANCELLED') oldAppt.cancellationRemark = cancellationRemark;
+
     await oldAppt.save();
 
     await AppointmentTimeline.create({
@@ -225,11 +254,18 @@ class AppointmentWorkflowService {
 
     await auditWorkflow.trackUpdate('Appointment', oldAppt._id, user._id, previousState, oldAppt, reqContext);
 
+    if (newStatus === 'SALE_CONFIRMED' && eventBus) {
+      eventBus.emit('SALE_CLOSED_EVENT', { appointment: oldAppt, actorId: user._id, reqContext });
+    }
+    if (newStatus === 'CANCELLED' && eventBus) {
+      eventBus.emit('APPOINTMENT_CANCELLED_EVENT', { appointment: oldAppt, actorId: user._id, reqContext });
+    }
+
     return oldAppt;
   }
 
   async addRemark(id, data, user, reqContext = {}) {
-    const { outcomeType, notes, nextActionDate, remark, assigneeRemark, status, nextFollowUpDate } = data;
+    const { outcomeType, notes, nextActionDate, remark, assigneeRemark, status, nextFollowUpDate, gpsLocation, photos } = data;
     const oldAppt = await Appointment.findById(id);
     if (!oldAppt) throw new Error('Appointment not found');
 
@@ -264,13 +300,20 @@ class AppointmentWorkflowService {
       else targetOutcome = 'Interested';
     }
 
-    const newRemark = await AppointmentRemark.create({
+    const remarkEntry = await AppointmentRemark.create({
       appointmentId: oldAppt._id,
       addedBy: user._id,
       outcomeType: targetOutcome,
       notes: finalNotes,
-      nextActionDate: finalNextDate
+      nextActionDate: finalNextDate,
+      gpsLocation,
+      photos
     });
+
+    if (targetStatus === 'FOLLOWUP_REQUIRED') {
+      if (!finalNextDate) throw new Error('Follow-up date is mandatory for follow-up status.');
+      if (!finalNotes) throw new Error('Follow-up remark is mandatory for follow-up status.');
+    }
 
     const previousState = { 
       status: oldAppt.status, 
@@ -284,6 +327,10 @@ class AppointmentWorkflowService {
     oldAppt.assigneeRemark = finalNotes;
     oldAppt.remark = finalNotes;
     oldAppt.nextFollowUpDate = finalNextDate;
+    
+    if (targetStatus === 'SALE_CONFIRMED') oldAppt.closingRemark = finalNotes;
+    if (targetStatus === 'CANCELLED') oldAppt.cancellationRemark = finalNotes;
+    
     await oldAppt.save();
 
     await AppointmentTimeline.create({
@@ -291,10 +338,10 @@ class AppointmentWorkflowService {
       actor: user._id,
       action: 'STATUS_CHANGED',
       previousState,
-      newState: { status: targetStatus, remark: finalNotes, assigneeRemark: finalNotes, nextFollowUpDate: finalNextDate }
+      newState: { status: targetStatus, remark: finalNotes, assigneeRemark: finalNotes, nextFollowUpDate: finalNextDate, gpsLocation, photos }
     });
 
-    if (eventBus) eventBus.emit('APPOINTMENT_REMARK_ADDED', { appointment: oldAppt, actorId: user._id, reqContext });
+    if (eventBus) eventBus.emit('APPOINTMENT_REMARK_ADDED', { appointment: oldAppt, remark: remarkEntry, actorId: user._id, reqContext });
 
     await Prospect.findByIdAndUpdate(oldAppt.prospect, { 
       lastInteraction: new Date(),
@@ -312,7 +359,14 @@ class AppointmentWorkflowService {
       device: reqContext.device
     });
 
-    return newRemark;
+    if (targetStatus === 'SALE_CONFIRMED' && eventBus) {
+      eventBus.emit('SALE_CLOSED_EVENT', { appointment: oldAppt, actorId: user._id, reqContext });
+    }
+    if (targetStatus === 'CANCELLED' && eventBus) {
+      eventBus.emit('APPOINTMENT_CANCELLED_EVENT', { appointment: oldAppt, actorId: user._id, reqContext });
+    }
+
+    return remarkEntry;
   }
 
   async rescheduleAppointment(id, data, actorId, reqContext = {}) {
@@ -361,18 +415,71 @@ class AppointmentWorkflowService {
   }
 
   async getStats(user) {
-    const query = { status: 'PENDING' };
-    if (user) {
-      const accessibleIds = await getAccessibleUserIds(user);
-      if (accessibleIds) {
-        query.$or = [
-          { createdBy: { $in: accessibleIds } },
-          { assignedTo: { $in: accessibleIds } }
-        ];
+    try {
+      const query = { status: 'PENDING' };
+      if (user) {
+        const accessibleIds = await getAccessibleUserIds(user);
+        if (accessibleIds) {
+          query.$or = [
+            { createdBy: { $in: accessibleIds } },
+            { assignedTo: { $in: accessibleIds } }
+          ];
+        }
       }
+      const pendingCount = await appointmentRepo.countDocuments(query);
+      return { pendingCount };
+    } catch (err) {
+      throw err;
     }
-    const pendingCount = await appointmentRepo.countDocuments(query);
-    return { pendingCount };
+  }
+
+  async getWorkload(user) {
+    try {
+      // Find all FIELD_EXEC users under this manager/accessible scope
+      const accessibleIds = await getAccessibleUserIds(user);
+      const User = mongoose.model('User');
+      
+      const fieldExecs = await User.find({
+        _id: { $in: accessibleIds },
+        role: 'FIELD_EXEC',
+        status: { $in: ['ACTIVE', 'PROBATION'] }
+      }).select('_id name');
+
+      const workload = [];
+
+      for (const exec of fieldExecs) {
+        const stats = await Appointment.aggregate([
+          { $match: { assignedTo: exec._id, isDeleted: false } },
+          {
+            $group: {
+              _id: null,
+              today: {
+                $sum: {
+                  $cond: [
+                    { $eq: [{ $dateToString: { format: "%Y-%m-%d", date: "$date" } }, { $dateToString: { format: "%Y-%m-%d", date: new Date() } }] },
+                    1, 0
+                  ]
+                }
+              },
+              pending: { $sum: { $cond: [{ $in: ["$status", ["SCHEDULED", "RESCHEDULED"]] }, 1, 0] } },
+              completed: { $sum: { $cond: [{ $in: ["$status", ["IN_PROGRESS", "SALE_CONFIRMED", "LOST"]] }, 1, 0] } },
+              followup: { $sum: { $cond: [{ $eq: ["$status", "FOLLOWUP_REQUIRED"] }, 1, 0] } },
+              cancelled: { $sum: { $cond: [{ $eq: ["$status", "CANCELLED"] }, 1, 0] } }
+            }
+          }
+        ]);
+
+        workload.push({
+          execId: exec._id,
+          name: exec.name,
+          stats: stats[0] || { today: 0, pending: 0, completed: 0, followup: 0, cancelled: 0 }
+        });
+      }
+
+      return workload;
+    } catch (err) {
+      throw err;
+    }
   }
 }
 

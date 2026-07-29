@@ -763,7 +763,7 @@ export const ScheduleAppointmentModal = ({ prospect, onClose, onSaved }) => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Date</label>
-              <input required type="date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-indigo-500" />
+              <input required type="date" min={new Date().toISOString().split('T')[0]} value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:border-indigo-500" />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Time</label>
@@ -3065,20 +3065,31 @@ export const PaymentUploadModal = ({ order, onClose, onSubmit }) => {
 export const AssignAppointmentModal = ({ appointment, onClose, onAssigned }) => {
   const { user } = useAuth();
   const [employees, setEmployees] = useState([]);
+  const [workloads, setWorkloads] = useState({});
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [selectedId, setSelectedId] = useState('');
 
   React.useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await employeeApi.list({ status: 'ACTIVE' }, user.token);
-        const filtered = (res.employees || res.data || []).filter(e => ['FIELD_EXEC', 'SALES_MANAGER', 'MD_CEO', 'ADMIN'].includes(e.role));
+        const [empRes, workRes] = await Promise.all([
+          employeeApi.list({ status: 'ACTIVE' }, user.token),
+          appointmentApi.workload(user.token).catch(() => ({ success: true, data: [] }))
+        ]);
+        
+        const filtered = (empRes.employees || empRes.data || []).filter(e => ['FIELD_EXEC', 'SALES_MANAGER', 'MD_CEO', 'ADMIN'].includes(e.role));
         setEmployees(filtered);
+        
+        if (workRes?.success && workRes.data) {
+          const wlMap = {};
+          workRes.data.forEach(w => { wlMap[w.execId] = w.stats; });
+          setWorkloads(wlMap);
+        }
       } catch (err) { console.error(err); } finally { setLoading(false); }
     };
-    fetchEmployees();
+    fetchData();
   }, [user.token]);
 
   const handleAssign = async () => {
@@ -3102,6 +3113,17 @@ export const AssignAppointmentModal = ({ appointment, onClose, onAssigned }) => 
               return <option key={e._id} value={e._id}>{e.name} ({roleName})</option>;
             })}
           </select>
+          {selectedId && workloads[selectedId] && (
+            <div className="bg-slate-50 border p-4 rounded-xl space-y-2">
+              <h3 className="font-bold text-xs text-slate-500 uppercase">Current Workload</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm font-semibold">
+                <div className="flex justify-between"><span>Today:</span> <span className="text-blue-600">{workloads[selectedId].today}</span></div>
+                <div className="flex justify-between"><span>Pending:</span> <span className="text-orange-600">{workloads[selectedId].pending}</span></div>
+                <div className="flex justify-between"><span>Follow-ups:</span> <span className="text-purple-600">{workloads[selectedId].followup}</span></div>
+                <div className="flex justify-between"><span>Completed:</span> <span className="text-emerald-600">{workloads[selectedId].completed}</span></div>
+              </div>
+            </div>
+          )}
           <div className="flex gap-3"><button onClick={onClose} className="h-12 flex-1 rounded-xl border text-sm font-bold">Cancel</button><button onClick={handleAssign} disabled={assigning || !selectedId} className="h-12 flex-1 rounded-xl bg-slate-900 text-white text-sm font-bold">{assigning ? 'Assigning...' : 'Confirm Assignment'}</button></div>
         </div>
       </div>
@@ -3118,6 +3140,36 @@ export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) 
     nextFollowUpDate: (appointment.nextFollowUpDate && !isNaN(new Date(appointment.nextFollowUpDate).getTime())) ? new Date(appointment.nextFollowUpDate).toISOString().split('T')[0] : ''
   });
   const [loading, setLoading] = useState(false);
+  const [photos, setPhotos] = useState([]);
+  const [gpsLocation, setGpsLocation] = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+
+  const captureGps = () => {
+    if (!navigator.geolocation) return alert('Geolocation is not supported by your browser.');
+    setGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGpsLoading(false);
+      },
+      (err) => {
+        alert('Could not capture GPS: ' + err.message);
+        setGpsLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+    );
+  };
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotos(prev => [...prev, reader.result]);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -3129,13 +3181,16 @@ export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) 
 
     setLoading(true);
     try {
+      const payload = {
+        assigneeRemark: formData.assigneeRemark,
+        status: formData.status,
+        nextFollowUpDate: formData.nextFollowUpDate,
+        gpsLocation,
+        photos
+      };
       const res = await appointmentApi.updateRemark(
         appointment._id,
-        {
-          assigneeRemark: formData.assigneeRemark,
-          status: formData.status,
-          nextFollowUpDate: formData.nextFollowUpDate
-        },
+        payload,
         user.token
       );
       if (res.success) {
@@ -3193,10 +3248,11 @@ export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) 
 
           {(formData.status === 'FOLLOWUP_REQUIRED' || formData.status === 'RESCHEDULED') && (
             <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Next Follow-up Date</label>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Next Follow-up Date *</label>
               <input
                 required
                 type="date"
+                min={new Date().toISOString().split('T')[0]}
                 value={formData.nextFollowUpDate}
                 onChange={e => setFormData({ ...formData, nextFollowUpDate: e.target.value })}
                 className="w-full h-12 rounded-xl border bg-white px-4 text-sm font-medium shadow-sm outline-none focus:border-emerald-500"
@@ -3204,9 +3260,59 @@ export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) 
             </div>
           )}
 
-          <div className="flex gap-3">
-            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-xl border text-sm font-bold">Cancel</button>
-            <button type="submit" disabled={loading} className="h-12 flex-1 rounded-xl bg-emerald-600 text-white text-sm font-bold">{loading ? 'Updating...' : 'Save & Close Visit'}</button>
+          {formData.status === 'CANCELLED' && (
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Cancellation Reason *</label>
+              <p className="text-xs text-slate-400 -mt-1 mb-2">Please explain why this appointment is cancelled.</p>
+            </div>
+          )}
+          
+          {formData.status === 'SALE_CONFIRMED' && (
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Closing Remarks *</label>
+              <p className="text-xs text-slate-400 -mt-1 mb-2">Record the details of the confirmed sale.</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block flex items-center justify-between">
+                <span>GPS Location</span>
+                <button type="button" onClick={captureGps} disabled={gpsLoading} className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-1 rounded hover:bg-emerald-100">
+                  {gpsLoading ? 'Locating...' : 'Capture'}
+                </button>
+              </label>
+              <div className="h-10 rounded-lg border border-dashed flex items-center justify-center text-xs text-slate-400 bg-slate-50">
+                {gpsLocation ? `Lat: ${gpsLocation.lat.toFixed(4)}, Lng: ${gpsLocation.lng.toFixed(4)}` : 'No GPS captured'}
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Photo Evidence</label>
+              <label className="h-10 w-full rounded-lg border border-dashed flex items-center justify-center text-xs text-slate-400 bg-slate-50 cursor-pointer hover:bg-slate-100">
+                <span>Upload Photo</span>
+                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+              </label>
+            </div>
+          </div>
+          
+          {photos.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {photos.map((p, i) => (
+                <div key={i} className="h-16 w-16 rounded overflow-hidden shrink-0 border relative">
+                  <img src={p} alt={`Photo ${i+1}`} className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => setPhotos(prev => prev.filter((_, idx) => idx !== i))} className="absolute top-0 right-0 bg-red-600 text-white rounded-bl p-0.5" title="Remove">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <button type="button" onClick={onClose} className="h-12 flex-1 rounded-xl border text-sm font-bold hover:bg-slate-50">Cancel</button>
+            <button type="submit" disabled={loading} className="h-12 flex-1 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-70">
+              {loading ? 'Updating...' : 'Save & Close Visit'}
+            </button>
           </div>
         </form>
       </div>

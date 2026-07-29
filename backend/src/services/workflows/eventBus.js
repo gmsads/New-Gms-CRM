@@ -45,6 +45,41 @@ class DomainEventBus extends EventEmitter {
       console.log(`[EVENT] FOLLOWUP_CREATED for prospect ${followup.prospect}`);
     });
 
+    this.on('SALE_CLOSED_EVENT', async ({ appointment, actorId, reqContext }) => {
+      console.log(`[EVENT] SALE_CLOSED_EVENT for appointment ${appointment._id}`);
+      // Notify the Sales Executive who created the appointment
+      if (appointment.createdBy) {
+        await notificationWorkflow.sendNotification({
+          recipient: appointment.createdBy,
+          sender: actorId,
+          type: 'Appointment',
+          title: 'Pending Sale Conversion',
+          message: `Appointment #${appointment._id} (${appointment.businessName}) has been converted into a Sale. Please create the Order.`,
+          link: `/appointments/${appointment._id}`
+        });
+      }
+    });
+
+    this.on('APPOINTMENT_CANCELLED_EVENT', async ({ appointment, actorId, reqContext }) => {
+      console.log(`[EVENT] APPOINTMENT_CANCELLED_EVENT for appointment ${appointment._id}`);
+      // Notify higher management
+      const rolesToNotify = ['SALES_MANAGER', 'BRANCH_HEAD', 'ADMIN', 'COO', 'CEO', 'MD_CEO'];
+      for (const role of rolesToNotify) {
+        await notificationWorkflow.broadcastToRole(role, {
+          sender: actorId,
+          type: 'Appointment',
+          title: 'Appointment Cancelled',
+          message: `Appointment #${appointment._id} has been cancelled.`,
+          link: `/appointments/${appointment._id}`
+        });
+      }
+    });
+
+    this.on('APPOINTMENT_ORDER_LINKED', async ({ appointment, actorId, reqContext }) => {
+      console.log(`[EVENT] APPOINTMENT_ORDER_LINKED for appointment ${appointment._id}`);
+      // Can perform any cleanup here if needed, like resolving the pending notification
+    });
+
     // Register other events as needed...
   }
 }

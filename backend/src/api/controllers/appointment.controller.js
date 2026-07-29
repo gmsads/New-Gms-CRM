@@ -9,7 +9,7 @@ const getReqContext = (req) => ({
 // ── POST /api/appointments ───────────────────────────────────────────────────
 exports.create = async (req, res) => {
   try {
-    const appointment = await appointmentWorkflow.createAppointment(req.body, req.user._id, getReqContext(req));
+    const appointment = await appointmentWorkflow.createAppointment(req.body, req.user, getReqContext(req));
     res.status(201).json({ success: true, data: appointment });
   } catch (err) {
     if (err.code === 'DUPLICATE_APPOINTMENT') {
@@ -65,7 +65,7 @@ exports.reschedule = async (req, res) => {
 exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
-    const appointment = await appointmentWorkflow.updateStatus(req.params.id, status, req.user, getReqContext(req));
+    const appointment = await appointmentWorkflow.updateStatus(req.params.id, status, req.user, req.body, getReqContext(req));
     res.json({ success: true, data: appointment });
   } catch (err) {
     res.status(err.message === 'Appointment not found' ? 404 : (err.message.includes('Access denied') || err.message.includes('Invalid transition') ? 403 : 500)).json({ 
@@ -82,6 +82,20 @@ exports.addRemark = async (req, res) => {
     res.json({ success: true, data: remark });
   } catch (err) {
     res.status(err.message === 'Appointment not found' ? 404 : (err.message.includes('Access denied') || err.message.includes('Invalid transition') ? 403 : 500)).json({ 
+      success: false, 
+      message: err.message 
+    });
+  }
+};
+
+// ── POST /api/appointments/:id/link-order ────────────────────────────────────────
+exports.linkOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    const appointment = await appointmentWorkflow.linkOrder(req.params.id, orderId, req.user, getReqContext(req));
+    res.json({ success: true, data: appointment });
+  } catch (err) {
+    res.status(err.message === 'Appointment not found' ? 404 : 500).json({ 
       success: false, 
       message: err.message 
     });
@@ -105,6 +119,30 @@ exports.getStats = async (req, res) => {
     res.json({ success: true, ...stats });
   } catch (err) {
     require('fs').appendFileSync('error.log', new Date().toISOString() + ' - STATS - ' + err.stack + '\n');
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── GET /api/appointments/workload ─────────────────────────────────────────────
+exports.getWorkload = async (req, res) => {
+  try {
+    const workload = await appointmentWorkflow.getWorkload(req.user);
+    res.json({ success: true, data: workload });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── POST /api/appointments/:id/link-order ───────────────────────────────────────
+exports.linkOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'orderId is required' });
+    }
+    const appointment = await appointmentWorkflow.linkOrder(req.params.id, orderId, req.user);
+    res.json({ success: true, message: 'Order linked successfully', appointment });
+  } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 };

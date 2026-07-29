@@ -6,7 +6,7 @@ const appointmentTimelineSchema = new mongoose.Schema({
   
   action: { 
     type: String, 
-    enum: ['CREATED', 'ASSIGNED', 'STATUS_CHANGED', 'REMARK_ADDED', 'ESCALATED', 'QUOTATION_GENERATED', 'ORDER_CREATED'],
+    enum: ['CREATED', 'ASSIGNED', 'STATUS_CHANGED', 'REMARK_ADDED', 'ESCALATED', 'QUOTATION_GENERATED', 'ORDER_CREATED', 'PHOTO_UPLOADED', 'GPS_CAPTURED', 'ORDER_LINKED'],
     required: true
   },
   

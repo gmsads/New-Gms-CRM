@@ -212,9 +212,12 @@ export const appointmentApi = {
     const params = typeof p1 === 'string' ? {} : (p1 || {});
     return api.get(`/appointments/stats?${new URLSearchParams(params)}`, token);
   },
+  workload:     (token)           => api.get('/appointments/workload', token),
   create:       (data, token)     => api.post('/appointments', data, token),
   assign:       (id, data, token) => api.patch(`/appointments/${id}/assign`, data, token),
+  updateStatus: (id, data, token) => api.patch(`/appointments/${id}/status`, data, token),
   updateRemark: (id, data, token) => api.post(`/appointments/${id}/remarks`, data, token),
+  linkOrder:    (id, data, token) => api.post(`/appointments/${id}/link-order`, data, token),
 };
 
 
