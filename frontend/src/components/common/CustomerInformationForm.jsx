@@ -11,8 +11,9 @@ const AddressFields = ({ prefix, title, address, onAddressChange, disabled, erro
           onChange={(e) => onAddressChange('line1', e.target.value)}
           disabled={disabled}
           placeholder="House/Flat No., Building Name, Street"
-          className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none focus:border-blue-600 disabled:bg-slate-100 disabled:text-slate-500"
+          className={`h-9 w-full rounded border ${errors[`${prefix}Line1`] ? "border-red-500 bg-red-50" : "border-slate-300"} bg-white px-3 text-sm outline-none focus:border-blue-600 disabled:bg-slate-100 disabled:text-slate-500`}
         />
+        {errors[`${prefix}Line1`] && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors[`${prefix}Line1`]}</p>}
       </div>
       <div className="md:col-span-2">
         <label className="block text-xs font-semibold text-slate-600 mb-1">Address Line 2</label>
