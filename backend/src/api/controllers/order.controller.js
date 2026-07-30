@@ -655,6 +655,17 @@ exports.create = async (req, res) => {
   try {
     const body = req.body;
 
+    if (body.clientSnapshot) {
+      if (typeof body.clientSnapshot.billingAddress === 'string') {
+        body.clientSnapshot.billingAddress = { city: body.clientSnapshot.billingAddress };
+      }
+      if (typeof body.clientSnapshot.shippingAddress === 'string') {
+        body.clientSnapshot.shippingAddress = { city: body.clientSnapshot.shippingAddress };
+      }
+      if (!body.clientSnapshot.billingAddress) body.clientSnapshot.billingAddress = { city: "" };
+      if (!body.clientSnapshot.shippingAddress) body.clientSnapshot.shippingAddress = { city: "" };
+    }
+
     if (body.designFileUrl) {
       body.designFileUrl = await saveBase64ToFileIfDataUrl(body.designFileUrl, 'orders/designs', req);
     }

@@ -1083,9 +1083,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     if (!formData.phone) newErrors.phone = 'Required';
     else if (formData.phone.length !== 10) newErrors.phone = 'Enter 10 digits';
     
-    if (!formData.billingAddress?.line1 && !formData.location) newErrors.billingLine1 = 'Required';
     if (!formData.billingAddress?.city && !formData.location) newErrors.billingCity = 'Required';
-    if (!formData.billingAddress?.state && !formData.state) newErrors.billingState = 'Required';
     if (formData.billingAddress?.pincode && formData.billingAddress.pincode.length !== 6) newErrors.billingPincode = 'Enter 6 digits';
     else if (formData.pincode && formData.pincode.length !== 6) newErrors.pincode = 'Enter 6 digits';
     if (formData.hasGst) {
@@ -1302,8 +1300,9 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
         phone: formData.phone,
         company: formData.company,
         contactPerson: formData.name,
-        address: formData.location || client?.address || client?.billingAddress || `${formData.billingAddress?.state || formData.state || 'Telangana'}, India`,
-        shippingAddress: client?.shippingAddress || formData.location || client?.address || `${formData.billingAddress?.state || formData.state || 'Telangana'}, India`,
+        address: formData.location || client?.address || "",
+        billingAddress: formData.billingAddress || { city: formData.location || "" },
+        shippingAddress: formData.shippingAddress || client?.shippingAddress || formData.billingAddress || { city: formData.location || "" },
         gstin: formData.hasGst ? (formData.gstNumber || client?.gstin || client?.gstNumber || '') : 'Unregistered',
         panNumber: formData.hasGst ? (formData.panNumber || client?.panNumber || '') : '',
         state: formData.billingAddress?.state || formData.state || client?.state || 'Telangana',
