@@ -1,24 +1,17 @@
-let Queue, Worker, Redis;
-let connection = null;
+const queueFactory = require('./queueFactory');
 let serverAdapter = null;
+let connection = null;
 
-try {
-  const bullmq = require('bullmq');
-  Queue = bullmq.Queue;
-  Worker = bullmq.Worker;
-  const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
-  const { createBullBoard } = require('@bull-board/api');
-  const { ExpressAdapter } = require('@bull-board/express');
-
-  // Re-use our centralized redis service
-  const { redisClient } = require('../cache/redis.service');
-  connection = redisClient;
-  Redis = require('ioredis');
-
-  serverAdapter = new ExpressAdapter();
-  serverAdapter.setBasePath('/api/admin/queues');
-} catch (err) {
-  console.warn('[QueueManager] bullmq or ioredis not installed. Queue features disabled.');
+if (queueFactory._isBullMQ()) {
+  try {
+    const { BullMQAdapter } = require('@bull-board/api/bullMQAdapter');
+    const { createBullBoard } = require('@bull-board/api');
+    const { ExpressAdapter } = require('@bull-board/express');
+    serverAdapter = new ExpressAdapter();
+    serverAdapter.setBasePath('/api/admin/queues');
+  } catch (err) {
+    console.warn('[QueueManager] bull-board not installed. Admin board disabled.');
+  }
 }
 
 // Use environment variables for Redis configuration
@@ -45,20 +38,18 @@ const defaultJobOptions = {
 };
 
 // Define Queues
-let notificationQueue, escalationQueue, reminderQueue, exportQueue, cacheWarmingQueue, archiveQueue, telephonyQueue, recordingQueue;
+let notificationQueue, escalationQueue, reminderQueue, exportQueue, telephonyQueue, recordingQueue;
 
-if (Queue && Worker) {
-  notificationQueue = new Queue('notificationQueue', { connection, defaultJobOptions });
-  escalationQueue = new Queue('escalationQueue', { connection, defaultJobOptions });
-  reminderQueue = new Queue('reminderQueue', { connection, defaultJobOptions });
-  exportQueue = new Queue('exportQueue', { connection, defaultJobOptions });
-  cacheWarmingQueue = require('./cacheWarming.job').cacheWarmingQueue;
-  archiveQueue = require('./archive.job').archiveQueue;
-  telephonyQueue = new Queue('telephonyQueue', { connection, defaultJobOptions });
-  recordingQueue = new Queue('recordingQueue', { connection, defaultJobOptions });
+if (queueFactory._isBullMQ()) {
+  notificationQueue = queueFactory.getQueue('notificationQueue', defaultJobOptions);
+  escalationQueue = queueFactory.getQueue('escalationQueue', defaultJobOptions);
+  reminderQueue = queueFactory.getQueue('reminderQueue', defaultJobOptions);
+  exportQueue = queueFactory.getQueue('exportQueue', defaultJobOptions);
+  telephonyQueue = queueFactory.getQueue('telephonyQueue', defaultJobOptions);
+  recordingQueue = queueFactory.getQueue('recordingQueue', defaultJobOptions);
 
   // Initialize Workers
-  const notificationWorker = new Worker('notificationQueue', async job => {
+  const notificationWorker = queueFactory.createWorker('notificationQueue', async job => {
     console.log(`[Queue] Processing notification job ${job.id}`);
     const { type, data } = job.data;
     const notificationWorkflow = require('../workflows/notificationWorkflow.service');
@@ -68,30 +59,30 @@ if (Queue && Worker) {
     } else if (type === 'BROADCAST_ROLE') {
       await notificationWorkflow.broadcastToRole(data.role, data.payload);
     }
-  }, { connection });
+  });
 
-  const escalationWorker = new Worker('escalationQueue', async job => {
+  const escalationWorker = queueFactory.createWorker('escalationQueue', async job => {
     console.log(`[Queue] Processing escalation job ${job.id}`);
     const escalationWorkflow = require('../workflows/escalationWorkflow.service');
     if (job.data.task === 'CHECK_OVERDUE') {
       await escalationWorkflow.checkOverdueAppointments();
     }
-  }, { connection });
+  });
 
-  const reminderWorker = new Worker('reminderQueue', async job => {
+  const reminderWorker = queueFactory.createWorker('reminderQueue', async job => {
     console.log(`[Queue] Processing reminder job ${job.id}`);
     const escalationWorkflow = require('../workflows/escalationWorkflow.service');
     if (job.data.task === 'CHECK_FOLLOWUPS') {
       await escalationWorkflow.checkFollowupReminders();
     }
-  }, { connection });
+  });
 
-  const exportWorker = new Worker('exportQueue', async job => {
+  const exportWorker = queueFactory.createWorker('exportQueue', async job => {
     console.log(`[Queue] Processing export job ${job.id}`);
     // Export logic would go here
-  }, { connection });
+  });
 
-  const telephonyWorker = new Worker('telephonyQueue', async job => {
+  const telephonyWorker = queueFactory.createWorker('telephonyQueue', async job => {
     console.log(`[Queue] Processing telephony webhook job ${job.id}`);
     const { provider, payload } = job.data;
     const telephonyAdapters = require('../../domains/telecrm/services/telephonyAdapters.service');
@@ -119,12 +110,12 @@ if (Queue && Worker) {
         }
       });
     }
-  }, { connection });
+  });
 
-  const recordingWorker = new Worker('recordingQueue', async job => {
+  const recordingWorker = queueFactory.createWorker('recordingQueue', async job => {
     console.log(`[Queue] Processing recording job ${job.id}`);
     // Background recording processing / S3 sync retry
-  }, { connection });
+  });
 
   // Handle worker events
   [notificationWorker, escalationWorker, reminderWorker, exportWorker, telephonyWorker, recordingWorker].forEach(worker => {
@@ -141,8 +132,6 @@ if (Queue && Worker) {
       new BullMQAdapter(escalationQueue),
       new BullMQAdapter(reminderQueue),
       new BullMQAdapter(exportQueue),
-      new BullMQAdapter(cacheWarmingQueue),
-      new BullMQAdapter(archiveQueue),
       new BullMQAdapter(telephonyQueue),
       new BullMQAdapter(recordingQueue)
     ],
@@ -189,8 +178,6 @@ if (Queue && Worker) {
   escalationQueue = makeMockQueue('escalationQueue');
   reminderQueue = makeMockQueue('reminderQueue');
   exportQueue = makeMockQueue('exportQueue');
-  cacheWarmingQueue = makeMockQueue('cacheWarmingQueue');
-  archiveQueue = makeMockQueue('archiveQueue');
   telephonyQueue = makeMockQueue('telephonyQueue');
   recordingQueue = makeMockQueue('recordingQueue');
 }
@@ -200,8 +187,6 @@ module.exports = {
   escalationQueue,
   reminderQueue,
   exportQueue,
-  cacheWarmingQueue,
-  archiveQueue,
   telephonyQueue,
   recordingQueue,
   connection,

@@ -5,20 +5,8 @@
  * Includes a resilient asynchronous Fallback Queue for local dev/testing environments where Redis/BullMQ is unavailable.
  */
 
-let Queue, Worker;
-let connection = null;
-let useBullMQ = false;
-
-try {
-  const bullmq = require('bullmq');
-  Queue = bullmq.Queue;
-  Worker = bullmq.Worker;
-  const { redisClient } = require('../../services/cache/redis.service');
-  connection = redisClient;
-  useBullMQ = true;
-} catch (err) {
-  console.warn('[CommunicationQueue] BullMQ or Redis unavailable. Using resilient async fallback queue.');
-}
+const queueFactory = require('./queueFactory');
+const useBullMQ = queueFactory._isBullMQ();
 
 const defaultJobOptions = {
   attempts: Number(process.env.QUEUE_RETRY_LIMIT || 3),
@@ -73,10 +61,10 @@ class FallbackQueue {
 
 let eventBusQueue, communicationQueue, communicationDLQ;
 
-if (useBullMQ && Queue) {
-  eventBusQueue      = new Queue('eventBusQueue', { connection, defaultJobOptions });
-  communicationQueue = new Queue('communicationQueue', { connection, defaultJobOptions });
-  communicationDLQ   = new Queue('communicationDLQ', { connection });
+if (useBullMQ) {
+  eventBusQueue      = queueFactory.getQueue('eventBusQueue', defaultJobOptions);
+  communicationQueue = queueFactory.getQueue('communicationQueue', defaultJobOptions);
+  communicationDLQ   = queueFactory.getQueue('communicationDLQ');
 } else {
   eventBusQueue      = new FallbackQueue('eventBusQueue');
   communicationQueue = new FallbackQueue('communicationQueue');
@@ -88,5 +76,5 @@ module.exports = {
   communicationQueue,
   communicationDLQ,
   useBullMQ,
-  connection
+  connection: null
 };

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { connection } = require('../../services/queues/queueManager');
+const cacheFactory = require('../../services/cache/cacheFactory');
+const queueFactory = require('../../services/queues/queueFactory');
 
 exports.checkHealth = async (req, res) => {
   const health = {
@@ -11,8 +12,13 @@ exports.checkHealth = async (req, res) => {
       mongodb: {
         status: 'disconnected'
       },
-      redis: {
-        status: 'disconnected'
+      cache: {
+        provider: cacheFactory._getProviderInfo(),
+        status: cacheFactory._getStatus()
+      },
+      queue: {
+        provider: queueFactory._getProviderInfo(),
+        status: 'enabled'
       }
     }
   };
@@ -23,15 +29,8 @@ exports.checkHealth = async (req, res) => {
   else if (readyState === 2) health.services.mongodb.status = 'connecting';
   else health.services.mongodb.status = 'disconnected';
 
-  // Check Redis
-  if (connection && connection.status === 'ready') {
-    health.services.redis.status = 'connected';
-  } else if (connection) {
-    health.services.redis.status = connection.status;
-  }
-
   // Determine overall status
-  if (health.services.mongodb.status !== 'connected' || health.services.redis.status !== 'connected') {
+  if (health.services.mongodb.status !== 'connected' || health.services.cache.status !== 'connected') {
     health.status = 'degraded';
     // Still return 200 so load balancer doesn't kill it immediately unless completely dead
   }

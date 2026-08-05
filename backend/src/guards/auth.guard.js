@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../domains/users/user.model');
 const UserPermission = require('../domains/users/user_permission.model');
-const { getCache, setCache } = require('../services/cache/redis.service');
+const { getCache, setCache } = require('../services/cache/cacheFactory');
 
 /**
  * protect — Verifies JWT and loads user.

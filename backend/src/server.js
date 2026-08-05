@@ -43,15 +43,29 @@ const startServer = async () => {
   notificationWorkflow.setSocketIo(io);
 
   // 4. Initialize Enterprise Communication Center Workers
+  let eccStatus = 'enabled';
   try {
     const { startEventBusWorker } = require('./services/workers/eventBusWorker');
     const { startCommunicationWorker } = require('./services/workers/communicationWorker');
     startEventBusWorker();
     startCommunicationWorker();
-    console.log('✅ Enterprise Communication Center workers initialized');
   } catch (workerErr) {
-    console.error('⚠️ Could not start Communication Center workers:', workerErr.message);
+    eccStatus = 'disabled';
   }
+
+  // 5. Output Clean Startup Summary
+  const cacheFactory = require('./services/cache/cacheFactory');
+  const queueFactory = require('./services/queues/queueFactory');
+  
+  console.log('\n====================================');
+  console.log('GMS CRM');
+  console.log(`Environment : ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Cache       : ${cacheFactory._getProviderInfo()}`);
+  console.log(`Queue       : ${queueFactory._getProviderInfo()}`);
+  console.log(`Mongo       : connected`);
+  console.log(`ECC         : ${eccStatus}`);
+  console.log(`Redis       : ${cacheFactory._getProviderInfo() === 'redis' ? 'enabled' : 'disabled'}`);
+  console.log('====================================\n');
 
   // Handle port already in use
   server.on('error', (err) => {
