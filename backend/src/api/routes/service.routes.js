@@ -118,7 +118,7 @@ router.post('/jobs/:orderId/:itemIndex/assign', protect, authorize('SERVICE_MANA
 });
 
 // PUT /api/service/status/:orderId/item/:itemId
-router.put('/status/:orderId/item/:itemId', protect, can('SERVICE_EXEC', 'SERVICE_MANAGER', 'ADMIN'), async (req, res, next) => {
+router.put('/status/:orderId/item/:itemId', protect, authorize('SERVICE_EXEC', 'SERVICE_MANAGER', 'ADMIN'), async (req, res, next) => {
   try {
     const { status, installedQuantity, remarks } = req.body;
     const order = await Order.findById(req.params.orderId);
