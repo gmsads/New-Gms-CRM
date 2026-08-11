@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { read, utils, writeFile } from 'xlsx';
 import { UploadCloud, X, Download, FileSpreadsheet, AlertTriangle, CheckCircle2 } from 'lucide-react';
-import leadApi from '../../../../services/lead.api';
-import { useAuth } from '../../../../context/AuthContext';
+import leadApi from '../../../services/lead.api';
+import { useAuth } from '../../../context/AuthContext';
 
 export default function ImportLeadsModal({ isOpen, onClose, onSuccess }) {
   const { user } = useAuth();
