@@ -23,6 +23,13 @@ const normalizePhone = (phone) => {
 
 class CustomerMatchingService {
   /**
+   * Expose normalizePhone for external use to prevent duplicating logic
+   */
+  normalizePhone(phone) {
+    return normalizePhone(phone);
+  }
+
+  /**
    * Find matching client or prospect based on provided data
    * @param {Object} data 
    * @param {String} data.phone

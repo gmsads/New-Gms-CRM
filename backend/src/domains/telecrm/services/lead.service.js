@@ -3,6 +3,7 @@ const LeadActivity = require('../models/leadActivity.model');
 const LeadCall = require('../models/leadCall.model');
 const LeadFollowup = require('../models/leadFollowup.model');
 const Prospect = require('../../sales/prospects/prospect.model');
+const Order = require('../../orders/order.model');
 const customerMatchingService = require('../../../services/customerMatching.service');
 
 /**
@@ -268,6 +269,162 @@ class LeadService {
       mergedCount,
       skippedCount: resolution === 'Skip' ? duplicateRows.length : 0,
       leadIds: insertedLeadIds
+    };
+  }
+
+  /**
+   * importMyLeads
+   * Used for individual Sales Executive "Import Leads" feature.
+   */
+  async importMyLeads(rows, actor) {
+    const validRows = [];
+    const invalidRows = [];
+    const duplicateRows = [];
+
+    // 1. Normalize uploaded mobile using existing CRM logic
+    const normalizedPhones = rows.map(r => customerMatchingService.normalizePhone((r.phone || '').toString())).filter(Boolean);
+    const regexes = normalizedPhones.map(p => new RegExp(p + '$'));
+
+    // 2. Query Leads, Prospects, Orders
+    let existingLeads = [];
+    let existingProspects = [];
+    let existingOrders = [];
+
+    if (regexes.length > 0) {
+      existingLeads = await Lead.find({
+        $or: [
+          { phone: { $in: regexes } },
+          { alternatePhone: { $in: regexes } }
+        ],
+        isDeleted: { $ne: true }
+      }).select('phone alternatePhone leadNumber').lean();
+
+      existingProspects = await Prospect.find({
+        $or: [
+          { phone: { $in: regexes } },
+          { alternateMobile: { $in: regexes } }
+        ],
+        isDeleted: { $ne: true }
+      }).select('phone alternateMobile name').lean();
+
+      existingOrders = await Order.find({
+        $or: [
+          { 'clientSnapshot.phone': { $in: regexes } },
+          { 'clientSnapshot.alternateMobile': { $in: regexes } }
+        ],
+        isDeleted: { $ne: true }
+      }).select('clientSnapshot.phone clientSnapshot.alternateMobile orderNumber').lean();
+    }
+
+    // 3. Build in-memory Sets mapping normalized phone to DuplicateReason
+    const duplicateMap = new Map();
+
+    const addDuplicate = (phoneVal, reason) => {
+      if (!phoneVal) return;
+      const norm = customerMatchingService.normalizePhone(phoneVal.toString());
+      if (norm && !duplicateMap.has(norm)) {
+        duplicateMap.set(norm, reason);
+      }
+    };
+
+    existingLeads.forEach(l => {
+      addDuplicate(l.phone, `Mobile already exists in Leads (${l.leadNumber})`);
+      addDuplicate(l.alternatePhone, `Mobile already exists in Leads (${l.leadNumber})`);
+    });
+
+    existingProspects.forEach(p => {
+      addDuplicate(p.phone, `Mobile already exists in Prospects (${p.name || 'Unknown'})`);
+      addDuplicate(p.alternateMobile, `Mobile already exists in Prospects (${p.name || 'Unknown'})`);
+    });
+
+    existingOrders.forEach(o => {
+      if (o.clientSnapshot) {
+        addDuplicate(o.clientSnapshot.phone, `Mobile already exists in Orders (${o.orderNumber})`);
+        addDuplicate(o.clientSnapshot.alternateMobile, `Mobile already exists in Orders (${o.orderNumber})`);
+      }
+    });
+
+    // 4. Process rows
+    rows.forEach((row, idx) => {
+      const companyName = (row.companyName || '').toString().trim();
+      const phone = (row.phone || '').toString().trim();
+      const contactPerson = (row.contactPerson || '').toString().trim();
+      
+      if (!companyName || !phone) {
+        invalidRows.push({ 
+          row: idx + 2, 
+          businessName: companyName, 
+          mobile: phone, 
+          reason: 'Business Name and Mobile Number are required.' 
+        });
+        return;
+      }
+
+      const normPhone = customerMatchingService.normalizePhone(phone);
+      if (duplicateMap.has(normPhone)) {
+        duplicateRows.push({
+          row: idx + 2,
+          businessName: companyName,
+          mobile: phone,
+          reason: duplicateMap.get(normPhone)
+        });
+        return;
+      }
+
+      validRows.push({
+        ...row,
+        companyName,
+        phone,
+        // Fallback for contactPerson because Mongoose schema requires it
+        contactPerson: contactPerson || 'Not Provided',
+        source: row.source || 'Excel',
+        city: (row.city || '').toString().trim()
+      });
+      // to avoid file-level duplicates among valid rows
+      duplicateMap.set(normPhone, 'Duplicate inside uploaded file');
+    });
+
+    let importedCount = 0;
+    if (validRows.length > 0) {
+      const baseNum = await Lead.countDocuments({});
+      const docsToInsert = validRows.map((r, idx) => ({
+        ...r,
+        leadNumber: `LD-${10001 + baseNum + idx}`,
+        createdBy: actor._id,
+        assignedEmployee: actor._id, // Assign to the executive performing the import
+        assignedDate: new Date(),
+        timeline: [{
+          type: 'IMPORTED',
+          title: 'Imported Lead',
+          description: `Imported via My Lead Desk by ${actor.name}`,
+          performedBy: actor._id,
+          performedByName: actor.name
+        }]
+      }));
+
+      const inserted = await Lead.insertMany(docsToInsert, { ordered: false });
+      importedCount = inserted.length;
+
+      // Create LeadActivities for audit log (bulk)
+      const activities = inserted.map(newLead => ({
+        leadId: newLead._id,
+        performedBy: actor._id,
+        performedByName: actor.name,
+        activityType: 'IMPORTED',
+        description: `Imported lead ${newLead.leadNumber} via My Lead Desk`
+      }));
+      await LeadActivity.insertMany(activities, { ordered: false }).catch(() => {});
+    }
+
+    return {
+      success: true,
+      summary: {
+        totalRows: rows.length,
+        imported: importedCount,
+        failed: invalidRows.length,
+        duplicates: duplicateRows.length
+      },
+      errors: [...invalidRows, ...duplicateRows]
     };
   }
 

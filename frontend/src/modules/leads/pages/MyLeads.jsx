@@ -6,8 +6,9 @@ import LeadCard from '../components/LeadCard';
 import AfterCallModal from '../components/AfterCallModal';
 import CreateLeadModal from '../components/CreateLeadModal';
 import LeadDetailsDrawer from '../components/LeadDetailsDrawer';
+import ImportLeadsModal from '../components/ImportLeadsModal';
 import { LiveSessionBar } from '../components/EnterpriseTelePanels';
-import { PhoneCall, Flame, Clock, CheckCircle2, Search, Filter, RefreshCw, Zap, Plus, X, SlidersHorizontal, Users, UserCheck } from 'lucide-react';
+import { PhoneCall, Flame, Clock, CheckCircle2, Search, Filter, RefreshCw, Zap, Plus, X, SlidersHorizontal, Users, UserCheck, UploadCloud } from 'lucide-react';
 
 /**
  * MyLeads.jsx — Executive "My Leads Desk"
@@ -36,6 +37,7 @@ export default function MyLeads() {
 
   // Modals & Drawers state
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [activeCallLead, setActiveCallLead] = useState(null);
   const [showPostModal, setShowPostModal] = useState(false);
@@ -316,12 +318,20 @@ export default function MyLeads() {
           <p className="text-xs text-muted-foreground mt-0.5">Role-based executive workspace. Manage personal queue & field visits.</p>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="w-full md:w-auto px-5 py-2.5 bg-primary text-primary-foreground font-extrabold rounded-xl shadow-lg hover:opacity-95 active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5 shrink-0"
-        >
-          <Plus className="h-4 w-4 stroke-[3]" /> Create Lead
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="w-full sm:w-auto px-5 py-2.5 bg-card border border-primary/20 text-primary font-extrabold rounded-xl shadow-sm hover:bg-muted active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5 shrink-0"
+          >
+            <UploadCloud className="h-4 w-4 stroke-[3]" /> Import Leads
+          </button>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="w-full sm:w-auto px-5 py-2.5 bg-primary text-primary-foreground font-extrabold rounded-xl shadow-lg hover:opacity-95 active:scale-95 transition-all text-xs flex items-center justify-center gap-1.5 shrink-0"
+          >
+            <Plus className="h-4 w-4 stroke-[3]" /> Create Lead
+          </button>
+        </div>
       </div>
 
       {/* ── TOP SECTION: ASSIGNED LEADS vs CREATED BY ME ───────────── */}
@@ -450,6 +460,17 @@ export default function MyLeads() {
         onClose={() => setShowCreateModal(false)}
         onSave={handleCreateSave}
         campaigns={campaigns}
+      />
+
+      {/* ── IMPORT LEADS MODAL ─────────────────────────────────────── */}
+      <ImportLeadsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={() => {
+          setOwnerTab('created');
+          setWorkflowTab('all');
+          fetchMyLeads();
+        }}
       />
 
       {/* ── ACTIVE CALL LIVE IN-PROGRESS BANNER ────────────────────── */}
