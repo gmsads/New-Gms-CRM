@@ -150,6 +150,26 @@ class LeadController {
     }
   }
 
+  // POST /api/telecrm/leads/import-my-leads
+  async importMyLeads(req, res, next) {
+    try {
+      const { rows } = req.body;
+      if (!rows || !Array.isArray(rows)) {
+        return res.status(400).json({ success: false, message: 'Invalid payload: rows array required.' });
+      }
+
+      // Max import limit
+      if (rows.length > 500) {
+        return res.status(400).json({ success: false, message: 'Maximum 500 rows allowed per import.' });
+      }
+
+      const result = await LeadService.importMyLeads(rows, req.user);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   // POST /api/telecrm/import/preview
   async previewImport(req, res, next) {
     try {

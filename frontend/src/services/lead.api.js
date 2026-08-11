@@ -13,6 +13,8 @@ export const leadApi = {
   // Bulk Import
   previewImport: (rows, token) => api.post('/telecrm/import/preview', { rows }, token),
   commitImport: (payload, token) => api.post('/telecrm/import/commit', payload, token),
+  importMyLeads: (rows, token) => api.post('/telecrm/leads/import-my-leads', { rows }, token),
+
   
   // On-Demand
   assignOnDemand: (batchSize, campaignId, token) => api.post('/telecrm/on-demand', { batchSize, campaignId }, token),
