@@ -9,10 +9,10 @@ const logger = require('../../utils/logger');
 
 const dummyLimiter = (req, res, next) => next();
 
-// Global Limiter - 1000 requests per 15 mins per IP
+// Global Limiter - 50000 requests per 15 mins per IP (Accommodates organization NAT)
 const globalLimiter = rateLimit ? rateLimit({
   windowMs: 15 * 60 * 1000, 
-  max: 1000, 
+  max: 50000, 
   standardHeaders: true, 
   legacyHeaders: false, 
   handler: (req, res, next, options) => {
@@ -25,10 +25,10 @@ const globalLimiter = rateLimit ? rateLimit({
   }
 }) : dummyLimiter;
 
-// Auth Limiter - 20 requests per 15 mins per IP (Login/Signup protection)
+// Auth Limiter - 1000 requests per 15 mins per IP (Login/Signup protection)
 const authLimiter = rateLimit ? rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20, 
+  max: 1000, 
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res, next, options) => {
@@ -41,10 +41,10 @@ const authLimiter = rateLimit ? rateLimit({
   }
 }) : dummyLimiter;
 
-// API-Heavy Endpoints Limiter (Exports, Imports, Reports) - 10 requests per minute
+// API-Heavy Endpoints Limiter (Exports, Imports, Reports) - 500 requests per minute
 const heavyEndpointLimiter = rateLimit ? rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 10,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res, next, options) => {
