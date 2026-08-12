@@ -30,6 +30,10 @@ export default function MyLeads() {
   
   const [leads, setLeads] = useState([]);
   const [displayLimit, setDisplayLimit] = useState(25);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [fetchingPage, setFetchingPage] = useState(false);
   const sentinelRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -62,14 +66,18 @@ export default function MyLeads() {
     { id: 'hot', label: 'Hot Priority' }
   ];
 
-  const fetchMyLeads = () => {
+  const fetchMyLeads = (pageNum = 1) => {
     if (!user) return;
-    setLoading(true);
+    
+    if (pageNum === 1) setLoading(true);
+    else setFetchingPage(true);
     
     // Pass tab=assigned or tab=created to trigger strict controller scoping
     const queryParams = {
       tab: workflowTab === 'all' ? ownerTab : workflowTab,
       search,
+      page: pageNum,
+      limit: 25,
       ...filters
     };
 
@@ -102,35 +110,60 @@ export default function MyLeads() {
               );
             }
           }
-          setLeads(rawLeads);
-          setDisplayLimit(25);
+          
+          setTotalRecords(res.pagination?.total || 0);
+          setTotalPages(res.pagination?.pages || 1);
+
+          if (pageNum === 1) {
+            setLeads(rawLeads);
+            setDisplayLimit(25);
+            setPage(1);
+          } else {
+            // Append safely ensuring no duplicates using _id
+            setLeads(prev => {
+              const existingIds = new Set(prev.map(l => l._id));
+              const newUniqueLeads = rawLeads.filter(l => !existingIds.has(l._id));
+              return [...prev, ...newUniqueLeads];
+            });
+            setDisplayLimit(prev => prev + 25);
+            setPage(pageNum);
+          }
         }
       })
       .catch(console.error)
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        setFetchingPage(false);
+      });
   };
 
   useEffect(() => {
     if (!user) return;
-    fetchMyLeads();
+    fetchMyLeads(1);
     leadApi.listCampaigns(user.token)
       .then(res => { if (res.success) setCampaigns(res.data || []); })
       .catch(() => {});
   }, [user, ownerTab, workflowTab, filters]);
 
-  // Scroll trigger observer for rendering batches (0-25 -> 25-50 -> 50-75)
+  // Scroll trigger observer for rendering batches and fetching next page
   useEffect(() => {
-    if (loading || leads.length <= displayLimit) return;
+    if (loading || fetchingPage) return;
     const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting) {
-        setDisplayLimit(prev => Math.min(prev + 25, leads.length));
+        if (displayLimit < leads.length) {
+          // Render next locally loaded batch
+          setDisplayLimit(prev => Math.min(prev + 25, leads.length));
+        } else if (page < totalPages) {
+          // Fetch next page from backend
+          fetchMyLeads(page + 1);
+        }
       }
     }, { threshold: 0.1 });
 
     const currentSentinel = sentinelRef.current;
     if (currentSentinel) observer.observe(currentSentinel);
     return () => { if (currentSentinel) observer.unobserve(currentSentinel); };
-  }, [loading, leads.length, displayLimit]);
+  }, [loading, fetchingPage, leads.length, displayLimit, page, totalPages]);
 
   // Socket.IO real-time listener for automated post-call disposition popup
   useEffect(() => {
@@ -368,7 +401,7 @@ export default function MyLeads() {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && fetchMyLeads()}
+              onKeyDown={e => e.key === 'Enter' && fetchMyLeads(1)}
               placeholder="Search My Leads by company, contact person, phone..."
               className="w-full pl-10 pr-4 py-2.5 bg-card border rounded-xl text-xs text-foreground shadow-sm outline-none focus:ring-2 focus:ring-primary/40 truncate"
             />
@@ -409,11 +442,16 @@ export default function MyLeads() {
       {!loading && leads.length > 0 && (
         <div className="bg-muted/30 border rounded-xl p-3 flex flex-wrap items-center justify-between text-xs gap-2">
           <span className="font-bold text-foreground bg-primary/10 text-primary px-3 py-1 rounded-lg">
-            Showing 0 to {Math.min(displayLimit, leads.length)} of {leads.length} entries
+            Showing 0 to {Math.min(displayLimit, leads.length)} of {totalRecords} entries
           </span>
-          {displayLimit > 25 && (
+          {fetchingPage && (
+            <span className="text-[11px] bg-secondary text-secondary-foreground px-2 py-0.5 rounded font-semibold animate-pulse">
+              Fetching more records...
+            </span>
+          )}
+          {!fetchingPage && displayLimit > 25 && (
             <span className="text-[11px] bg-secondary text-secondary-foreground px-2 py-0.5 rounded font-semibold">
-              Latest Scroll Batch: {displayLimit - 25} to {Math.min(displayLimit, leads.length)}
+              Latest Scroll Batch: {Math.max(0, Math.min(displayLimit, leads.length) - 25)} to {Math.min(displayLimit, leads.length)}
             </span>
           )}
         </div>
@@ -451,7 +489,11 @@ export default function MyLeads() {
 
       {/* Scroll Trigger Sentinel */}
       <div ref={sentinelRef} className="py-2 w-full flex items-center justify-center bg-transparent">
-        {displayLimit < leads.length && <div className="text-xs text-primary font-bold animate-pulse py-2">⚡ Scroll Trigger: Showing next batch ({displayLimit} to {Math.min(displayLimit + 25, leads.length)})...</div>}
+        {(displayLimit < leads.length || page < totalPages) && !loading && !fetchingPage && (
+          <div className="text-xs text-primary font-bold animate-pulse py-2">
+            ⚡ Scroll Trigger: Showing next batch...
+          </div>
+        )}
       </div>
 
       {/* ── CREATE LEAD MODAL ──────────────────────────────────────── */}
@@ -467,10 +509,9 @@ export default function MyLeads() {
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onSuccess={() => {
-          setOwnerTab('created');
-          setWorkflowTab('all');
-          fetchMyLeads();
-        }}
+  setOwnerTab('created');
+  setWorkflowTab('all');
+}}
       />
 
       {/* ── ACTIVE CALL LIVE IN-PROGRESS BANNER ────────────────────── */}
