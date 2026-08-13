@@ -8,6 +8,7 @@ import {
   Target, MapPin, Package, CreditCard, Activity, 
   AlertCircle, Quote
 } from 'lucide-react';
+import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -78,6 +79,8 @@ const AdminDashboard = () => {
         </div>
         <button onClick={() => refetch()} className="w-full lg:w-auto h-10 px-6 rounded-xl bg-slate-900 text-white text-sm font-bold hover:bg-slate-800 transition-all active:scale-95 shrink-0">Generate Report</button>
       </div>
+
+      <TodayWorkWidget />
 
       {/* Main Financial Pulse */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-6 min-w-0">

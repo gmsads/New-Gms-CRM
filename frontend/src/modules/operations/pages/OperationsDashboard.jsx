@@ -3,6 +3,7 @@ import { MapPin, CheckCircle2, Clock, Plus, Truck, AlertCircle, RefreshCw, Filte
 import { useAuth } from '../../../context/AuthContext';
 import useApi from '../../../hooks/useApi';
 import { visitApi } from '../../../services/api';
+import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
 
 const statusStyle = {
   Completed: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -410,6 +411,8 @@ const OperationsDashboard = () => {
            </button>
         </div>
       </div>
+
+      <TodayWorkWidget />
 
       {loading && !data ? (
         <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>

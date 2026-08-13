@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { CheckCircle, Clock, MapPin, UploadCloud, AlertCircle } from 'lucide-react';
 import { calculateDeliveryPriority } from '../../../utils/deliveryUtils';
+import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
 
 const ServiceExecutiveDashboard = () => {
   const { user } = useAuth();
@@ -105,6 +106,10 @@ const ServiceExecutiveDashboard = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-black text-slate-900 tracking-tight">My Tasks</h1>
         <p className="text-slate-500 text-sm font-medium mt-1">Field Operations Execution</p>
+      </div>
+
+      <div className="mb-6">
+        <TodayWorkWidget />
       </div>
 
       {loading ? (

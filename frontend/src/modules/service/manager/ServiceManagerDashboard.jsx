@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { Briefcase, Calendar, CheckCircle, RefreshCw, AlertCircle, FileText, Truck, Users, LayoutDashboard, Clock, ShieldCheck, Grid, Palette, Clock3 } from 'lucide-react';
 import { calculateDeliveryPriority } from '../../../utils/deliveryUtils';
+import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
 
 const ServiceManagerDashboard = ({ initialTab = 'queue' }) => {
   const { user } = useAuth();
@@ -162,6 +163,10 @@ const ServiceManagerDashboard = ({ initialTab = 'queue' }) => {
         </div>
       )}
       
+      <div className="mb-8">
+        <TodayWorkWidget />
+      </div>
+
       {activeTab === 'overview' ? (
         <div className="space-y-6">
           {/* Top 6 Stat Cards mimicking the reference image */}

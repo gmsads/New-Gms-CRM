@@ -29,6 +29,7 @@ import {
 import { QuotationTemplateSettings } from '../components/QuotationTemplateSettings';
 import { QuotationAnalytics } from '../components/QuotationAnalytics';
 import { ProspectTable } from '../components/ProspectTable';
+import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
 import { 
   OrderList, PaymentUploadModal, OrderDetailsModal, 
   PhoneSearchModal, ProspectDetailsModal, CreateProspectModal, 
@@ -431,6 +432,11 @@ const ExecDashboard = () => {
 
       {/* Motivational Quote */}
       <MotivationalQuote />
+
+      {/* Today's Work Widget */}
+      <div className="mb-6">
+        <TodayWorkWidget />
+      </div>
 
       {/* Global Toast */}
       {(prospectFlow.toastMsg || orderFlow.toastMsg) && (
