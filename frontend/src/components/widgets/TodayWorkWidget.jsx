@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../context/AuthContext';
-import { dailyWorkApi } from '../../../services/api';
+import { useAuth } from "../../context/AuthContext";
+import { dailyWorkApi } from "../../services/api";
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { Briefcase, CheckCircle, Clock, Users, ArrowRight } from 'lucide-react';
+import { useEffect, useState } from "react";
 
 const TodayWorkWidget = () => {
   const { user } = useAuth();
