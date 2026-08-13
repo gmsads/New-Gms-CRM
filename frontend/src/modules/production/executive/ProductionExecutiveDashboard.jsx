@@ -2,6 +2,7 @@ import React from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { Briefcase, CheckCircle } from 'lucide-react';
 import ComingSoon from '../../../components/ui/ComingSoon';
+import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
 
 const ProductionExecutiveDashboard = () => {
   const { user } = useAuth();
@@ -18,6 +19,10 @@ const ProductionExecutiveDashboard = () => {
         </p>
       </div>
       
+      <div className="mb-8">
+        <TodayWorkWidget />
+      </div>
+
       {/* Cards Section */}
       <div className="flex flex-wrap gap-6">
         {/* Pending Production Card */}

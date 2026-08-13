@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Palette, RefreshCw, ChevronDown, ChevronUp, Image as ImageIcon, FileText, CheckCircle2, Link as LinkIcon, UploadCloud, XCircle, Send } from 'lucide-react';
 import { orderApi } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
+import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
 
 const DESIGN_STATUSES = [
   'Pending',
@@ -94,6 +95,8 @@ const DesignDashboard = () => {
           </button>
         </div>
       </div>
+
+      <TodayWorkWidget />
 
       <div className="space-y-4 min-w-0">
         {loading && orders.length === 0 ? (

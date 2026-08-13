@@ -87,6 +87,7 @@ const coreRoutes = [
   ['/api/campaigns', './api/routes/campaign.routes'],
   ['/api/tasks',     './api/routes/task.routes'],
   ['/api/targets',   './api/routes/target.routes'],
+  ['/api/reports/daily-work', './api/routes/dailyWork.routes'],
 ];
 for (const [path, mod] of coreRoutes) {
   try { 

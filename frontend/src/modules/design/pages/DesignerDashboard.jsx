@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Palette, Clock, CheckSquare, AlertCircle, RefreshCw, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
 
 const StatCard = ({ title, value, icon: Icon, colorClass, loading }) => (
   <div className="bg-white border rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
@@ -80,6 +81,8 @@ const DesignerDashboard = () => {
           </button>
         </div>
       </div>
+
+      <TodayWorkWidget />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           <StatCard title="Assigned Today" value={stats.assigned} icon={LayoutDashboard} colorClass="bg-blue-500" loading={loading} />

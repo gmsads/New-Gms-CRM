@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { Briefcase, CheckCircle, RefreshCw, AlertCircle, FileText, Printer, Download, Upload } from 'lucide-react';
 import { calculateDeliveryPriority } from '../../../utils/deliveryUtils';
+import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
 
 const ProductionManagerDashboard = () => {
   const { user } = useAuth();
@@ -203,6 +204,10 @@ const ProductionManagerDashboard = () => {
         <button onClick={fetchJobs} className="w-full sm:w-auto p-2 border rounded-lg hover:bg-slate-50 transition-colors flex justify-center items-center">
           <RefreshCw className={`w-5 h-5 text-slate-600 ${loading ? 'animate-spin' : ''}`} />
         </button>
+      </div>
+
+      <div className="mb-8">
+        <TodayWorkWidget />
       </div>
       
       {/* Cards Section (Hidden if not viewing 'dashboard') */}

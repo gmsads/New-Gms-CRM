@@ -336,4 +336,8 @@ export const visitApi = {
   update:        (id, data, token) => api.patch(`/visits/${id}`, data, token),
 };
 
+export const dailyWorkApi = {
+  getEnterpriseDailyWork: (params, token) => api.get(`/reports/daily-work?${new URLSearchParams(params)}`, token),
+};
+
 export default api;

@@ -202,6 +202,7 @@ const adminMenuConfig = [
     icon: BarChart2,
     path: '/analytics-center',
     subItems: [
+      { title: 'Employee Daily Reports', path: '/enterprise-daily-work', icon: Briefcase },
       { title: 'Daily Visit Reports', path: '/daily-reports', icon: Clock },
       { title: 'Workforce Intelligence', path: '/workforce-timeline', icon: Activity },
       { title: 'Sales Reports', path: '/analytics', icon: PieChart },

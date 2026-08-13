@@ -40,6 +40,7 @@ const SalesManagerWorkspace = React.lazy(() => import('./modules/sales/pages/Sal
 const AuthorityAccess = React.lazy(() => import('./modules/admin/pages/AuthorityAccess'));
 const TargetAssignment = React.lazy(() => import('./modules/admin/pages/TargetAssignment'));
 const WorkforceTimelineDashboard = React.lazy(() => import('./modules/admin/pages/WorkforceTimelineDashboard'));
+const EnterpriseDailyWork = React.lazy(() => import('./modules/admin/pages/EnterpriseDailyWork'));
 import { ErrorBoundary } from './components/ErrorBoundary';
 const TeamDataView = React.lazy(() => import('./modules/sales/pages/TeamDataView').then(m => ({ default: m.TeamDataView })));
 import ComingSoon from './components/ui/ComingSoon';
@@ -215,6 +216,7 @@ const AppRoutes = () => {
           <Route path="performance" element={<PerformanceDashboard />} />
 
           {/* Admin Placeholder Routes */}
+          <Route path="enterprise-daily-work" element={<ErrorBoundary><EnterpriseDailyWork /></ErrorBoundary>} />
           <Route path="operations/targets" element={<ErrorBoundary><TargetAssignment /></ErrorBoundary>} />
           <Route path="operations/teams" element={<ErrorBoundary><TeamAssignment /></ErrorBoundary>} />
           <Route path="finance/transactions" element={<ComingSoon title="Transactions" />} />
