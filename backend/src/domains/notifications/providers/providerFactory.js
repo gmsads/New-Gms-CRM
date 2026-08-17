@@ -16,10 +16,14 @@ class ProviderFactory {
   /**
    * Returns provider instance for specified channel.
    * @param {string} channel - e.g. 'WHATSAPP'
+   * @param {string} [providerName] - e.g. 'META_CLOUD_API'
    * @returns {import('./notificationProvider.interface')}
    */
-  getProvider(channel) {
+  getProvider(channel, providerName) {
     const normalized = (channel || 'WHATSAPP').toUpperCase();
+    
+    // Note: Phase 5A additive integration preserves provider propagation without redesigning.
+    // Future phases (5B) will utilize the providerName for explicit multi-provider resolution.
     const provider = this.providers[normalized];
     if (!provider) {
       throw new Error(`Notification provider for channel "${normalized}" is not registered.`);
