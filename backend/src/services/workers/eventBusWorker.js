@@ -36,28 +36,11 @@ const processDomainEvent = async (job) => {
       if (channel === 'WHATSAPP') {
         let phase5A_published = false;
 
-        if (process.env.ENABLE_ECC_PHASE_5A === 'true') {
+        if (process.env.ENABLE_ECC_PHASE_5A === 'true' && policy.plan) {
           try {
-            // 2.1. Build CommunicationPlan Adapter
-            const communicationPlan = {
-              version: 1,
-              event: eventName,
-              correlationId: correlationId,
-              tenantId: tenantId,
-              branchId: payload?.branchId || null,
-              source: 'ECC',
-              channels: [
-                {
-                  channel: channel,
-                  provider: 'META_CLOUD_API',
-                  priority: payload?.priority || 'MEDIUM'
-                }
-              ]
-            };
-
-            // 2.2. Generate Execution Plan
+            // 2.2. Generate Execution Plan from Native Policy Plan
             const executionPlan = executionPlanner.createExecutionPlan({
-              plan: communicationPlan,
+              plan: policy.plan,
               context: {
                 eventId,
                 correlationId,
@@ -66,31 +49,50 @@ const processDomainEvent = async (job) => {
               }
             });
 
+            let successfulSteps = 0;
+
             // 2.3. Map and Execute Plan Steps
             for (const step of executionPlan.steps) {
-              const mapped = templateMapper.map(eventName, payload);
-              const formattedPayload = payloadBuilder.build(policy, mapped);
+              if (step.channel !== 'WHATSAPP') continue; // Phase 5A Supported Channel Boundary
 
-              await queuePublisher.publish({
-                eventId: step.context.eventId || eventId,
-                correlationId: step.context.correlationId || correlationId,
-                eventName: eventName,
-                channel: step.channel,
-                provider: step.provider,
-                payload: formattedPayload,
-                title: mapped.title,
-                summary: mapped.summary,
-                customerId: payload?.clientSnapshot?._id || payload?.prospect?._id || payload?.client?._id,
-                orderId: payload?.orderId || (eventName.includes('ORDER') ? payload._id : payload?.order?._id),
-                paymentId: eventName.includes('PAYMENT') ? payload._id : undefined,
-                tenantId: step.context.tenantId || tenantId
-              });
+              try {
+                const mapped = templateMapper.map(eventName, payload);
+                const formattedPayload = payloadBuilder.build(policy, mapped);
 
-              // Mark successful publication to prevent duplicate legacy fallback
+                await queuePublisher.publish({
+                  eventId: step.context.eventId || eventId,
+                  correlationId: step.context.correlationId || correlationId,
+                  eventName: eventName,
+                  channel: step.channel,
+                  provider: step.provider,
+                  payload: formattedPayload,
+                  title: mapped.title,
+                  summary: mapped.summary,
+                  customerId: payload?.clientSnapshot?._id || payload?.prospect?._id || payload?.client?._id,
+                  orderId: payload?.orderId || (eventName.includes('ORDER') ? payload._id : payload?.order?._id),
+                  paymentId: eventName.includes('PAYMENT') ? payload._id : undefined,
+                  tenantId: step.context.tenantId || tenantId
+                });
+
+                successfulSteps++;
+              } catch (stepErr) {
+                console.error(`[EventBusWorker] Phase 5A step execution failed for ${eventName}:`, stepErr.message);
+                await CommunicationAuditLog.create({
+                  notificationId: `ERR-${step.context.eventId || eventId}`,
+                  correlationId: step.context.correlationId || correlationId,
+                  attemptNumber: 1,
+                  action: 'STEP_EXECUTION_ERROR',
+                  errorMessage: stepErr.message
+                });
+              }
+            }
+
+            // Mark successful publication to prevent duplicate legacy fallback
+            if (successfulSteps > 0) {
               phase5A_published = true;
             }
           } catch (phase5aErr) {
-            console.error(`[EventBusWorker] Phase 5A execution failed for ${eventName}:`, phase5aErr.message);
+            console.error(`[EventBusWorker] Phase 5A planner failed for ${eventName}:`, phase5aErr.message);
           }
         }
 
