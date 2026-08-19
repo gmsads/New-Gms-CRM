@@ -12,11 +12,43 @@ const customerMatchingService = require('../../../services/customerMatching.serv
  */
 class LeadService {
   /**
+   * getNextLeadSequence
+   * Atomically gets the next N sequence numbers to prevent race conditions.
+   */
+  async getNextLeadSequence(count = 1) {
+    const Counter = require('../../../models/counter.model');
+    let counter = await Counter.findOne({ id: 'lead' });
+    if (!counter) {
+      // Initialize based on the highest existing Lead Number to prevent reusing numbers
+      const lastLead = await Lead.findOne({ leadNumber: /^LD-\d+$/i }).collation({ locale: 'en_US', numericOrdering: true }).sort({ leadNumber: -1 }).lean();
+      let startSeq = 10000;
+      if (lastLead && lastLead.leadNumber) {
+        const match = lastLead.leadNumber.match(/LD-(\d+)/i);
+        if (match) {
+          startSeq = parseInt(match[1], 10);
+        }
+      }
+      try {
+        await Counter.create({ id: 'lead', seq: startSeq });
+      } catch (err) {
+        // Ignore duplicate key error if created concurrently by another request
+      }
+    }
+    
+    const updatedCounter = await Counter.findOneAndUpdate(
+      { id: 'lead' },
+      { $inc: { seq: count } },
+      { new: true, upsert: true }
+    );
+    return updatedCounter.seq;
+  }
+
+  /**
    * generateLeadNumber
    */
   async generateLeadNumber() {
-    const count = await Lead.countDocuments({});
-    return `LD-${10001 + count}`;
+    const seq = await this.getNextLeadSequence(1);
+    return `LD-${seq}`;
   }
 
   /**
@@ -202,10 +234,11 @@ class LeadService {
 
     // 1. Insert valid non-duplicate rows
     if (validRows && validRows.length > 0) {
-      const baseNum = await Lead.countDocuments({});
+      const endSeq = await this.getNextLeadSequence(validRows.length);
+      const baseSeq = endSeq - validRows.length;
       const docsToInsert = validRows.map((r, idx) => ({
         ...r,
-        leadNumber: `LD-${10001 + baseNum + idx}`,
+        leadNumber: `LD-${baseSeq + 1 + idx}`,
         campaign: campaignId,
         createdBy: actor._id,
         timeline: [{
@@ -386,10 +419,11 @@ class LeadService {
 
     let importedCount = 0;
     if (validRows.length > 0) {
-      const baseNum = await Lead.countDocuments({});
+      const endSeq = await this.getNextLeadSequence(validRows.length);
+      const baseSeq = endSeq - validRows.length;
       const docsToInsert = validRows.map((r, idx) => ({
         ...r,
-        leadNumber: `LD-${10001 + baseNum + idx}`,
+        leadNumber: `LD-${baseSeq + 1 + idx}`,
         createdBy: actor._id,
         assignedEmployee: actor._id, // Assign to the executive performing the import
         assignedDate: new Date(),

@@ -17,6 +17,7 @@ const processNotificationDispatch = async (job) => {
     eventId,
     eventName,
     channel = 'WHATSAPP',
+    provider = 'META_CLOUD_API',
     payload,
     title,
     summary,
@@ -37,8 +38,8 @@ const processNotificationDispatch = async (job) => {
     );
 
     // 2. Resolve Provider & Format payload
-    const provider = providerFactory.getProvider(channel);
-    const formattedData = provider.formatPayload(payload);
+    const providerInstance = providerFactory.getProvider(channel, provider);
+    const formattedData = providerInstance.formatPayload(payload);
 
     // Log API request attempt
     await CommunicationAuditLog.create({
@@ -50,7 +51,7 @@ const processNotificationDispatch = async (job) => {
     });
 
     // 3. Send over network
-    const result = await provider.send(formattedData, { tenantId });
+    const result = await providerInstance.send(formattedData, { tenantId });
 
     if (result.success) {
       const now = new Date();
