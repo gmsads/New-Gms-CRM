@@ -44,8 +44,43 @@ const paymentSchema = new mongoose.Schema({
 // Auto-generate payment number
 paymentSchema.pre('save', async function () {
   if (this.isNew && !this.paymentNumber) {
-    const count = await mongoose.model('Payment').countDocuments();
-    this.paymentNumber = `PAY-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+    const Counter = require('../../models/counter.model');
+    const currentYear = new Date().getFullYear();
+    const counterId = `payment-${currentYear}`;
+    
+    let counter = await Counter.findOne({ id: counterId });
+    if (!counter) {
+      // Initialize based on the highest existing Payment Number for current year
+      const prefix = `PAY-${currentYear}-`;
+      const regex = new RegExp(`^${prefix}\\d+$`, 'i');
+      
+      const lastPayment = await mongoose.model('Payment').findOne({ paymentNumber: regex })
+        .collation({ locale: 'en_US', numericOrdering: true })
+        .sort({ paymentNumber: -1 })
+        .lean();
+
+      let startSeq = 0;
+      if (lastPayment && lastPayment.paymentNumber) {
+        const match = lastPayment.paymentNumber.match(new RegExp(`^${prefix}(\\d+)$`, 'i'));
+        if (match) {
+          startSeq = parseInt(match[1], 10);
+        }
+      }
+      
+      try {
+        await Counter.create({ id: counterId, seq: startSeq });
+      } catch (err) {
+        // Ignore duplicate key error if created concurrently by another request
+      }
+    }
+    
+    const updatedCounter = await Counter.findOneAndUpdate(
+      { id: counterId },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    
+    this.paymentNumber = `PAY-${currentYear}-${String(updatedCounter.seq).padStart(4, '0')}`;
   }
 });
 
