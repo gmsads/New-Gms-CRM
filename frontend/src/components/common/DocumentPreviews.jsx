@@ -26,6 +26,25 @@ const DefaultLogo = () => (
   </div>
 );
 
+// Context-aware scalable logo renderer for all business documents
+const DocumentLogo = ({ src, alt = "Company Logo" }) => {
+  if (!src) {
+    return (
+      <div className="flex items-center justify-start w-full h-full my-auto">
+        <DefaultLogo />
+      </div>
+    );
+  }
+  return (
+    <img 
+      src={src} 
+      alt={alt} 
+      className="w-auto h-auto max-w-full max-h-[100px] sm:max-h-[120px] object-contain object-left my-auto" 
+    />
+  );
+};
+
+
 // CSS applied globally when modal is printed to ensure exact A4 sheet print
 const printStyles = `
   @media print {
@@ -143,7 +162,8 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
   const sgstAmount = isIntrastate ? taxAmount / 2 : 0;
   const igstAmount = !isIntrastate ? taxAmount : 0;
 
-  const notesText = quotation.notes || template.termsAndConditions?.[0] || '70% ADVANCE PAYMENT NEED TO START WORK';
+  const notesText = quotation.notes;
+  const termsText = quotation.terms;
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
@@ -161,6 +181,7 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
           <div className="flex items-center gap-3 flex-wrap justify-end">
             {onClose && (
               <button 
+              
                 onClick={onClose} 
                 className="h-9 w-9 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 transition-all"
               >
@@ -178,15 +199,9 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
             <div>
               {/* Header: Logo & Company Address */}
               <div className="flex items-stretch justify-between gap-6 pb-4">
-                {/* Logo Container: Centered Horizontally & Vertically */}
-                <div className="w-[160px] sm:w-[185px] shrink-0 flex items-center justify-center pr-5">
-                  {template.logoUrl ? (
-                    <img src={template.logoUrl} alt="Logo" className="max-h-20 w-auto object-contain max-w-full mx-auto my-auto" />
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full my-auto">
-                      <DefaultLogo />
-                    </div>
-                  )}
+                {/* Logo Container: Scalable to available area without breaking layout */}
+                <div className="w-[10%] sm:w-[20%] max-w-[280px] shrink-0 flex items-center">
+                  <DocumentLogo src={template.logoUrl} />
                 </div>
 
                 {/* Company Details Content */}
@@ -278,7 +293,6 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                       <th className="py-2.5 px-3">ITEMS</th>
                       <th className="py-2.5 px-3 text-center">QTY.</th>
                       <th className="py-2.5 px-3 text-right">RATE</th>
-                      <th className="py-2.5 px-3 text-right">TAX</th>
                       <th className="py-2.5 px-3 text-right">AMOUNT</th>
                     </tr>
                   </thead>
@@ -287,7 +301,6 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                       const qty = Number(it.quantity || 1);
                       const unit = it.unit || 'PCS';
                       const rate = Number(it.unitCost || it.unitPrice || it.rate || 0);
-                      const itemTax = Number(it.taxAmount || (qty * rate * 0.18));
                       const itemAmt = Number(it.totalCost || (qty * rate));
                       const desc = it.name || it.description || 'ADVERTISEMENT ITEM';
                       const subDesc = it.details || it.notes || '';
@@ -304,10 +317,6 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                           <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
                             {rate.toLocaleString('en-IN')}
                           </td>
-                          <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
-                            <div>{itemTax.toLocaleString('en-IN')}</div>
-                            <div className="text-[10px] text-slate-500 mt-0.5 font-normal">(18% GST)</div>
-                          </td>
                           <td className="py-3 px-3 text-right font-bold text-slate-900 whitespace-nowrap">
                             {itemAmt.toLocaleString('en-IN')}
                           </td>
@@ -320,7 +329,6 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
                       <td className="py-2.5 px-3 uppercase">SUBTOTAL</td>
                       <td className="py-2.5 px-3 text-center">{totalQty}</td>
                       <td className="py-2.5 px-3"></td>
-                      <td className="py-2.5 px-3"></td>
                       <td className="py-2.5 px-3 text-right">₹ {subtotal.toLocaleString('en-IN')}</td>
                     </tr>
                   </tfoot>
@@ -331,8 +339,18 @@ export const ViewQuotationModal = ({ quotation, onClose, onSendWhatsApp }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 px-3 text-xs sm:text-[13px]">
                 {/* Notes */}
                 <div>
-                  <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-1">NOTES</h4>
-                  <p className="text-slate-800 font-normal leading-relaxed">{notesText}</p>
+                  {notesText && (
+                    <div className="mb-4">
+                      <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-1">NOTES</h4>
+                      <p className="text-slate-800 font-normal leading-relaxed whitespace-pre-wrap">{notesText}</p>
+                    </div>
+                  )}
+                  {termsText && (
+                    <div className="mb-4">
+                      <h4 className="font-bold text-slate-900 uppercase tracking-wider mb-1">TERMS AND CONDITIONS</h4>
+                      <p className="text-slate-800 font-normal leading-relaxed whitespace-pre-wrap">{termsText}</p>
+                    </div>
+                  )}
                   
                   {activeBank && (
                     <div className="mt-4 pt-3 border-t border-slate-200 text-slate-800">
@@ -600,15 +618,9 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
 
               {/* Header: Logo & Company Address */}
               <div className="flex items-stretch justify-between gap-6 pb-4">
-                {/* Logo Container: Centered Horizontally & Vertically */}
-                <div className="w-[160px] sm:w-[185px] shrink-0 flex items-center justify-center pr-5">
-                  {companySnapshot.logoUrl ? (
-                    <img src={companySnapshot.logoUrl} alt="Logo" className="max-h-20 w-auto object-contain max-w-full mx-auto my-auto" />
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full my-auto">
-                      <DefaultLogo />
-                    </div>
-                  )}
+                {/* Logo Container: Scalable to available area without breaking layout */}
+                <div className="w-[10%] sm:w-[25%] max-w-[280px] flex items-center">
+                  <DocumentLogo src={companySnapshot.logoUrl} />
                 </div>
 
                 {/* Company Details Content */}
@@ -703,7 +715,6 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                       <th className="py-2.5 px-3">ITEMS</th>
                       <th className="py-2.5 px-3 text-center">QTY.</th>
                       <th className="py-2.5 px-3 text-right">RATE</th>
-                      <th className="py-2.5 px-3 text-right">TAX</th>
                       <th className="py-2.5 px-3 text-right">AMOUNT</th>
                     </tr>
                   </thead>
@@ -712,7 +723,6 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                       const qty = Number(it.quantity || 1);
                       const unit = it.unit || 'PCS';
                       const rate = Number(it.unitPrice || it.rate || 0);
-                      const itemTax = Number(it.taxAmount || (qty * rate * 0.18));
                       const itemAmt = Number(it.amount || (qty * rate));
                       const desc = it.description || it.name || 'SERVICE ITEM';
                       const subDesc = it.details || it.notes || '';
@@ -730,10 +740,6 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                             {rate.toLocaleString('en-IN')}
                           </td>
                           <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
-                            <div>{itemTax.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">{isIntrastate ? '(CGST 9% + SGST 9%)' : '(IGST 18%)'}</div>
-                          </td>
-                          <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
                             {itemAmt.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
                           </td>
                         </tr>
@@ -745,8 +751,7 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                     <tr className="border-t-2 border-b-2 border-slate-900 font-bold text-slate-900">
                       <td className="py-2.5 px-3 uppercase">SUBTOTAL</td>
                       <td className="py-2.5 px-3 text-center">{totalQty}</td>
-                      <td className="py-2.5 px-3 text-right">₹ {taxAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</td>
-                      <td className="py-2.5 px-3 text-right"></td>
+                      <td className="py-2.5 px-3"></td>
                       <td className="py-2.5 px-3 text-right">₹ {subtotal.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</td>
                     </tr>
                   </tfoot>
