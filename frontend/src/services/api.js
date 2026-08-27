@@ -179,6 +179,8 @@ export const orderApi = {
     return api.get(`/orders/stats?${new URLSearchParams(params)}`, token);
   },
   create:         (data, token)     => api.post('/orders', data, token),
+  update:         (id, data, token) => api.patch(`/orders/${id}`, data, token),
+  delete:         (id, token)       => api.delete(`/orders/${id}`, token),
   bulkImport:     (data, token)     => runChunkedImport('/orders/bulk', data, token, true),
   confirm:        (id, token)       => api.post(`/orders/${id}/confirm`, {}, token),
   updateStatus:   (id, data, token) => api.patch(`/orders/${id}/status`, data, token),
