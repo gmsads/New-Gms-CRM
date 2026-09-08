@@ -61,16 +61,59 @@ class OrderWorkflowService {
       const oldOrder = await Order.findById(orderId).session(session).lean();
       if (!oldOrder) throw new Error('Order not found.');
 
+      const isPrivileged = ['ADMIN', 'MD_CEO', 'CEO', 'COO', 'BRANCH_HEAD'].includes(user.role);
+      
+      if (!isPrivileged) {
+        const ageInMs = new Date() - new Date(oldOrder.createdAt);
+        if (ageInMs > 24 * 60 * 60 * 1000) {
+          throw new Error('Edit window expired. Only privileged roles can modify orders after 24 hours.');
+        }
+      }
+
       if (!['Draft', 'Pending_Approval'].includes(oldOrder.status)) {
         throw new Error('Only Draft or Pending orders can be edited.');
       }
+
+      // --- START EXPLICIT ALLOWLIST ENFORCEMENT ---
+      const allowedTopLevel = ['clientSnapshot', 'deliveryDate', '__v'];
+      const invalidTopLevel = Object.keys(data).filter(k => !allowedTopLevel.includes(k));
+      if (invalidTopLevel.length > 0) {
+        throw new Error(`Order update contains unsupported fields.`);
+      }
+
+      const sanitizedUpdate = {};
+
+      if (data.clientSnapshot !== undefined) {
+        const allowedNested = ['company', 'name', 'phone'];
+        const incomingNestedKeys = Object.keys(data.clientSnapshot);
+        const invalidNested = incomingNestedKeys.filter(k => !allowedNested.includes(k));
+        
+        for (const key of invalidNested) {
+          const incomingValue = data.clientSnapshot[key];
+          const existingValue = oldOrder.clientSnapshot ? oldOrder.clientSnapshot[key] : undefined;
+          if (JSON.stringify(incomingValue) !== JSON.stringify(existingValue)) {
+            throw new Error(`Order update contains unsupported fields.`);
+          }
+        }
+        
+        if (data.clientSnapshot.company !== undefined) sanitizedUpdate['clientSnapshot.company'] = data.clientSnapshot.company;
+        if (data.clientSnapshot.name !== undefined) sanitizedUpdate['clientSnapshot.name'] = data.clientSnapshot.name;
+        if (data.clientSnapshot.phone !== undefined) sanitizedUpdate['clientSnapshot.phone'] = data.clientSnapshot.phone;
+      }
+
+      if (data.deliveryDate !== undefined) {
+        sanitizedUpdate.deliveryDate = data.deliveryDate;
+      }
+      
+      // DO NOT copy __v into sanitizedUpdate to prevent forced overwrites.
+      // --- END EXPLICIT ALLOWLIST ENFORCEMENT ---
 
       // Concurrency check inside transaction
       if (data.__v !== undefined && data.__v !== oldOrder.__v) {
         throw { name: 'VersionError' };
       }
 
-      const order = await Order.findByIdAndUpdate(orderId, data, { new: true, session });
+      const order = await Order.findByIdAndUpdate(orderId, { $set: sanitizedUpdate }, { new: true, runValidators: true, session });
       order.addTimelineEvent('Order Updated', `Updated by ${user.name}`, user);
       await order.save({ session });
 
@@ -96,6 +139,46 @@ class OrderWorkflowService {
           console.error('[OrderWorkflowService] Error publishing DELIVERY_DATE_UPDATED event:', err.message);
         });
       }
+
+      return order;
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
+  }
+  async deleteOrder(orderId, user, reqContext = {}) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const order = await Order.findById(orderId).session(session);
+      if (!order) throw new Error('Order not found.');
+
+      const isPrivileged = ['ADMIN', 'MD_CEO', 'CEO', 'COO', 'BRANCH_HEAD'].includes(user.role);
+      
+      if (!isPrivileged) {
+        const ageInMs = new Date() - new Date(order.createdAt);
+        if (ageInMs > 24 * 60 * 60 * 1000) {
+          throw new Error('Delete window expired. Only privileged roles can delete orders after 24 hours.');
+        }
+      }
+
+      // Existing workflow safety restriction for deletion: typically we shouldn't delete Completed orders
+      if (['Completed', 'Delivered'].includes(order.status)) {
+        throw new Error('Cannot delete an order that is already completed or delivered.');
+      }
+
+      const oldOrderObj = order.toObject();
+
+      await order.softDelete(user._id);
+      
+      order.addTimelineEvent('Order Deleted', `Deleted by ${user.name}`, user);
+      await order.save({ session });
+
+      await auditWorkflow.trackUpdate('Order', orderId, user._id, oldOrderObj, order.toObject(), reqContext);
+      
+      await session.commitTransaction();
+      session.endSession();
 
       return order;
     } catch (error) {

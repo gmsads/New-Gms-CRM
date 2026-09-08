@@ -46,9 +46,36 @@ router.patch('/:id/status',
   ctrl.updateStatus
 );
 
+const { selfOrManager } = require('../../guards/role.guard');
+const Order = require('../../domains/orders/order.model');
+const { getAccessibleUserIds } = require('../../utils/team.helper');
+
+// Middleware to load order and verify ownership/team access
+const loadAndVerifyOrderAccess = async (req, res, next) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found.' });
+    
+    const accessibleIds = await getAccessibleUserIds(req.user);
+    if (accessibleIds !== null) {
+      // accessibleIds is an array of allowed user IDs for this user
+      const orderOwnerId = order.salesExec?.toString();
+      if (!accessibleIds.includes(orderOwnerId)) {
+        return res.status(403).json({ message: 'Access denied. You do not have permission to modify this order.' });
+      }
+    }
+    
+    req.resource = order;
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
 router.patch('/:id/line-items/:itemIndex', can('orders:update'), ctrl.updateLineItem);
 router.delete('/:id/line-items/:itemIndex', can('orders:update'), ctrl.deleteLineItem);
-router.patch('/:id', can('orders:update'), ctrl.update);
+router.patch('/:id', can('orders:update'), loadAndVerifyOrderAccess, ctrl.update);
+router.delete('/:id', can('orders:delete'), loadAndVerifyOrderAccess, ctrl.deleteOrder);
 router.post('/:id/payments', can('orders:update'), ctrl.addPayment);
 router.post('/:id/verify', can('orders:update'), ctrl.verifyOrder);
 

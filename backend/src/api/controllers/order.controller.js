@@ -952,6 +952,19 @@ exports.update = async (req, res) => {
   }
 };
 
+exports.deleteOrder = async (req, res) => {
+  try {
+    const existing = await Order.findById(req.params.id);
+    if (existing?.orderType === 'Historical') {
+      return res.status(400).json({ success: false, message: 'Historical orders are completed old data and cannot be deleted.' });
+    }
+    const order = await orderWorkflow.deleteOrder(req.params.id, req.user, getReqContext(req));
+    res.json({ success: true, data: order });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+};
+
 // ── PATCH /api/orders/:id/line-items/:itemIndex ─────────────────────────────────
 exports.updateLineItem = async (req, res) => {
   try {
