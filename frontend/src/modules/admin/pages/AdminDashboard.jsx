@@ -20,7 +20,7 @@ const AdminDashboard = () => {
     area: ''
   });
 
-  const { data: rawData, loading, refetch } = useApi('/analytics/ceo-report', { params: filters });
+  const { data: rawData, loading, refetch } = useApi('/analytics/stats', { params: filters });
   const { data: qData, loading: qLoading } = useApi('/quotations');
 
   
