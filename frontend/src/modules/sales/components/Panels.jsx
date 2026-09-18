@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { toTitleCase } from '../../../utils/stringUtils';
 import {
   Calendar, CheckCircle, Clock, MapPin, ShieldCheck,
@@ -87,6 +87,14 @@ const getStatusBadgeStyle = (statusStr) => {
   return 'bg-blue-50 text-blue-600 border-blue-200';
 };
 
+export const canModifyOrder = (order, user) => {
+  if (!user || !order) return false;
+  const isPrivileged = ['ADMIN', 'MD_CEO', 'CEO', 'COO', 'BRANCH_HEAD'].includes(user.role);
+  if (isPrivileged) return true;
+  const ageInMs = new Date() - new Date(order.createdAt || order.date);
+  return ageInMs <= 24 * 60 * 60 * 1000;
+};
+
 export const OrderList = ({
   orders = [],
   onCreateOrder,
@@ -105,8 +113,12 @@ export const OrderList = ({
   loading = false,
 }) => {
   const { user } = useAuth();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [updatingLineItem, setUpdatingLineItem] = useState(null);
-  const [verificationTab, setVerificationTab] = useState('All');
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [deletingOrder, setDeletingOrder] = useState(null);
+  const [verificationTab, setVerificationTab] = useState(searchParams.get('verificationStatus') || 'All');
   const isVerifier = !hideVerification && ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS'].includes(user?.role);
   const isOpsOrAdmin = ['ADMIN', 'OPERATION_MANAGER', 'MD_CEO'].includes(user?.role);
   const pendingVerificationCount = (orders || []).filter(o => o.verificationStatus === 'Pending').length;
@@ -148,12 +160,12 @@ export const OrderList = ({
   const statusColors = { Confirmed: 'bg-blue-100 text-blue-700', 'In Production': 'bg-amber-100 text-amber-700', 'Design Review': 'bg-purple-100 text-purple-700', Completed: 'bg-green-100 text-green-700' };
   const paymentColors = { Partial: 'bg-orange-100 text-orange-700', Paid: 'bg-green-100 text-green-700', Pending: 'bg-red-100 text-red-700' };
 
-  const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('All');
-  const [paymentFilter, setPaymentFilter] = useState('All');
-  const [monthFilter, setMonthFilter] = useState('All Months');
-  const [yearFilter, setYearFilter] = useState('All Years');
-  const [employeeFilter, setEmployeeFilter] = useState('All Employees');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [typeFilter, setTypeFilter] = useState(searchParams.get('orderType') || 'All');
+  const [paymentFilter, setPaymentFilter] = useState(searchParams.get('paymentStatus') || location.state?.paymentFilter || 'All');
+  const [monthFilter, setMonthFilter] = useState(searchParams.get('month') || 'All Months');
+  const [yearFilter, setYearFilter] = useState(searchParams.get('year') || 'All Years');
+  const [employeeFilter, setEmployeeFilter] = useState(searchParams.get('employee') || 'All Employees');
   const [showFilters, setShowFilters] = useState(false);
   const months = ['All Months', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -182,6 +194,17 @@ export const OrderList = ({
         verificationStatus: verificationTab,
         hideCompleted
       });
+      
+      const params = new URLSearchParams(searchParams);
+      if (search) params.set('search', search); else params.delete('search');
+      if (typeFilter !== 'All') params.set('orderType', typeFilter); else params.delete('orderType');
+      if (paymentFilter !== 'All') params.set('paymentStatus', paymentFilter); else params.delete('paymentStatus');
+      if (monthFilter !== 'All Months') params.set('month', monthFilter); else params.delete('month');
+      if (yearFilter !== 'All Years') params.set('year', yearFilter); else params.delete('year');
+      if (employeeFilter !== 'All Employees') params.set('employee', employeeFilter); else params.delete('employee');
+      if (verificationTab !== 'All') params.set('verificationStatus', verificationTab); else params.delete('verificationStatus');
+      
+      setSearchParams(params, { replace: true });
     }, 350);
     return () => clearTimeout(timer);
   }, [search, typeFilter, paymentFilter, monthFilter, yearFilter, employeeFilter, verificationTab, hideCompleted]);
@@ -194,8 +217,11 @@ export const OrderList = ({
     const isSalesExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(user?.role);
     if (isSalesExec && o.status === 'Pending_Approval') return false;
 
-    const matchSearch = !search || [o.orderNumber, o.id, o.clientSnapshot?.name, o.client].some(v => String(v || '').toLowerCase().includes(search.toLowerCase()));
-    const matchType = typeFilter === 'All' || o.orderType === typeFilter;
+    const searchTerms = [
+      o.orderNumber, o.id, o.clientSnapshot?.name, o.clientSnapshot?.company, o.client, o.salesExec?.name || o.salesExec
+    ];
+    const matchSearch = !search || searchTerms.some(v => String(v || '').toLowerCase().includes(search.toLowerCase()));
+    const matchType = typeFilter === 'All' || String(o.orderType || '').toLowerCase() === String(typeFilter).toLowerCase();
     const matchPayment = paymentFilter === 'All' || o.paymentStatus === paymentFilter;
     let matchMonth = true;
     if (monthFilter !== 'All Months') {
@@ -203,7 +229,7 @@ export const OrderList = ({
       matchMonth = oMonth === monthFilter;
     }
     const empName = o.salesExec?.name || o.salesExec;
-    const matchEmployee = employeeFilter === 'All Employees' || empName === employeeFilter;
+    const matchEmployee = employeeFilter === 'All Employees' || String(empName || '').toLowerCase() === String(employeeFilter).toLowerCase();
     const matchHide = hideCompleted ? !['Completed', 'Cancelled'].includes(o.status) : true;
     const matchVerification = verificationTab === 'All' || o.verificationStatus === 'Pending';
     return matchSearch && matchType && matchPayment && matchMonth && matchEmployee && matchHide && matchVerification;
@@ -268,12 +294,13 @@ export const OrderList = ({
               <label className="text-sm font-bold text-slate-700">Payment:</label>
               <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
                 <option value="All">All Payments</option>
-                <option value="Pending">Pending</option>
+                <option value="Unpaid">Unpaid (Pending)</option>
                 <option value="Partial">Partial</option>
                 <option value="Paid">Paid</option>
+                <option value="Refunded">Refunded</option>
               </select>
             </div>
-            {uniqueEmployees.length > 0 && (
+            {['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'OPERATION_MANAGER'].includes(user?.role) && (
               <div className="flex flex-col gap-1.5 min-w-0">
                 <label className="text-sm font-bold text-slate-700">All Employees:</label>
                 <select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
@@ -468,6 +495,18 @@ export const OrderList = ({
                   <button onClick={() => onViewDetails?.(order)} className="flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition-colors flex-1 sm:flex-initial whitespace-nowrap">
                     <FileText className="h-3.5 w-3.5" /> View Details
                   </button>
+                  {canModifyOrder(order, user) ? (
+                    <>
+                      <button onClick={() => setEditingOrder(order)} className="flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-semibold hover:bg-indigo-100 transition-colors flex-1 sm:flex-initial whitespace-nowrap">
+                        <Edit className="h-3.5 w-3.5" /> Edit Order
+                      </button>
+                      <button onClick={() => setDeletingOrder(order)} className="flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg bg-red-50 text-red-700 text-xs font-semibold hover:bg-red-100 transition-colors flex-1 sm:flex-initial whitespace-nowrap">
+                        <Trash2 className="h-3.5 w-3.5" /> Delete Order
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1.5 rounded-lg">Edit/Delete disabled</span>
+                  )}
                   {isVerifier && order.verificationStatus === 'Pending' && (
                     <button 
                       onClick={async () => {
@@ -511,6 +550,30 @@ export const OrderList = ({
           onClose={() => setUpdatingLineItem(null)}
           onSuccess={() => {
             setUpdatingLineItem(null);
+            onLineItemUpdated?.();
+          }}
+        />
+      )}
+
+      {editingOrder && (
+        <EditOrderModal
+          order={editingOrder}
+          user={user}
+          onClose={() => setEditingOrder(null)}
+          onSuccess={() => {
+            setEditingOrder(null);
+            onLineItemUpdated?.();
+          }}
+        />
+      )}
+
+      {deletingOrder && (
+        <DeleteOrderModal
+          order={deletingOrder}
+          user={user}
+          onClose={() => setDeletingOrder(null)}
+          onSuccess={() => {
+            setDeletingOrder(null);
             onLineItemUpdated?.();
           }}
         />
@@ -2688,14 +2751,17 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showInvoicePreview, setShowInvoicePreview] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [deletingOrder, setDeletingOrder] = useState(null);
+
+  const fetchOrder = async () => {
+    try {
+      const res = await orderApi.get(orderId, user.token);
+      if (res.success) setOrder(res.data);
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
 
   React.useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const res = await orderApi.get(orderId, user.token);
-        if (res.success) setOrder(res.data);
-      } catch (err) { console.error(err); } finally { setLoading(false); }
-    };
     if (orderId) fetchOrder();
   }, [orderId, user.token]);
 
@@ -2758,10 +2824,20 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
                   </span>
                 )}
               </div>
-              <p className="text-slate-400 text-xs font-medium mt-0.5">Created on {new Date(order.createdAt).toLocaleDateString()}</p>
+              <p className="text-slate-400 text-xs font-medium mt-0.5">Created on {new Date(order.createdAt || order.date).toLocaleDateString()}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="h-6 w-6" /></button>
+          <div className="flex items-center gap-3">
+            {canModifyOrder(order, user) ? (
+              <div className="flex bg-slate-800 rounded p-1">
+                <button onClick={() => setEditingOrder(order)} className="px-3 py-1.5 rounded hover:bg-slate-700 text-indigo-300 text-xs font-bold transition-colors">Edit</button>
+                <button onClick={() => setDeletingOrder(order)} className="px-3 py-1.5 rounded hover:bg-slate-700 text-red-400 text-xs font-bold transition-colors">Delete</button>
+              </div>
+            ) : (
+              <span className="text-[10px] text-slate-500 px-2">Edit/Delete disabled</span>
+            )}
+            <button onClick={onClose} className="text-slate-400 hover:text-white"><X className="h-6 w-6" /></button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto bg-slate-50 p-6 space-y-6">
@@ -2925,6 +3001,30 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
       </div>
       {showInvoicePreview && order && (
         <ViewInvoiceModal order={order} onClose={() => setShowInvoicePreview(false)} />
+      )}
+      
+      {editingOrder && (
+        <EditOrderModal
+          order={editingOrder}
+          user={user}
+          onClose={() => setEditingOrder(null)}
+          onSuccess={() => {
+            setEditingOrder(null);
+            fetchOrder();
+          }}
+        />
+      )}
+
+      {deletingOrder && (
+        <DeleteOrderModal
+          order={deletingOrder}
+          user={user}
+          onClose={() => setDeletingOrder(null)}
+          onSuccess={() => {
+            setDeletingOrder(null);
+            onClose(); // Close the details modal after deleting
+          }}
+        />
       )}
     </div>
   );
@@ -3314,6 +3414,110 @@ export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) 
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+};
+
+export const DeleteOrderModal = ({ order, user, onClose, onSuccess }) => {
+  const [loading, setLoading] = useState(false);
+  const handleDelete = async () => {
+    setLoading(true);
+    try {
+      const res = await orderApi.delete(order._id || order.id, user.token);
+      if (res.success) onSuccess?.();
+    } catch (err) {
+      alert(err.message || 'Failed to delete order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-sm rounded-2xl border bg-white shadow-2xl p-6 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+        <div className="h-12 w-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4">
+          <Trash2 className="h-6 w-6" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-900 mb-2">Delete Order?</h3>
+        <p className="text-sm text-slate-500 mb-6">
+          Are you sure you want to delete order #{order.orderNumber || order.id}? This action can be audited but will remove the order from active lists.
+        </p>
+        <div className="flex w-full gap-3">
+          <button onClick={onClose} disabled={loading} className="flex-1 h-11 rounded-xl border text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+          <button onClick={handleDelete} disabled={loading} className="flex-1 h-11 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors disabled:opacity-70">
+            {loading ? 'Deleting...' : 'Yes, Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const EditOrderModal = ({ order, user, onClose, onSuccess }) => {
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    company: order.clientSnapshot?.company || '',
+    name: order.clientSnapshot?.name || '',
+    phone: order.clientSnapshot?.phone || '',
+    deliveryDate: order.deliveryDate ? new Date(order.deliveryDate).toISOString().split('T')[0] : ''
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const payload = {
+        clientSnapshot: { ...order.clientSnapshot, company: formData.company, name: formData.name, phone: formData.phone },
+        deliveryDate: formData.deliveryDate || null
+      };
+      const res = await orderApi.update(order._id || order.id, payload, user.token);
+      if (res.success) onSuccess?.();
+    } catch (err) {
+      alert(err.message || 'Failed to update order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="w-full max-w-md rounded-2xl border bg-white shadow-2xl flex flex-col overflow-hidden max-h-[90vh] animate-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b flex items-center justify-between bg-slate-50">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+              <Edit className="h-5 w-5" />
+            </div>
+            <h2 className="font-bold text-lg">Edit Order Details</h2>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-6 overflow-y-auto">
+          <form id="edit-order-form" onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Company Name</label>
+              <input type="text" required value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className="w-full h-11 px-4 rounded-xl border outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-all text-sm font-semibold" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Contact Name</label>
+              <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full h-11 px-4 rounded-xl border outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-all text-sm font-semibold" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Phone Number</label>
+              <input type="text" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full h-11 px-4 rounded-xl border outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-all text-sm font-semibold" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Delivery Date</label>
+              <input type="date" value={formData.deliveryDate} onChange={e => setFormData({...formData, deliveryDate: e.target.value})} className="w-full h-11 px-4 rounded-xl border outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-all text-sm font-semibold" />
+            </div>
+          </form>
+        </div>
+        <div className="p-6 border-t bg-slate-50 flex gap-3">
+          <button type="button" onClick={onClose} disabled={loading} className="flex-1 h-12 rounded-xl border text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors">Cancel</button>
+          <button type="submit" form="edit-order-form" disabled={loading} className="flex-1 h-12 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors disabled:opacity-70">
+            {loading ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
       </div>
     </div>
   );

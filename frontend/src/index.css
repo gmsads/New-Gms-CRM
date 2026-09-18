@@ -100,3 +100,18 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground/50;
 }
+
+/* Fix Recharts click/focus outline */
+.recharts-wrapper,
+.recharts-surface,
+.recharts-sector,
+.recharts-layer,
+.recharts-pie-sector,
+.recharts-bar-rectangle {
+  outline: none !important;
+}
+
+.recharts-wrapper *:focus,
+.recharts-surface *:focus {
+  outline: none !important;
+}

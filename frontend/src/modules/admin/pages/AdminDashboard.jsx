@@ -111,7 +111,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="relative overflow-hidden rounded-3xl bg-rose-600 p-6 text-white shadow-xl shadow-rose-200">
+        <div onClick={() => navigate('/orders', { state: { paymentFilter: 'Unpaid' } })} className="relative overflow-hidden rounded-3xl bg-rose-600 p-6 text-white shadow-xl shadow-rose-200 cursor-pointer group hover:scale-105 transition-all">
           <Clock className="absolute -right-4 -top-4 h-24 w-24 opacity-10" />
           <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">Outstanding Values</p>
           <h3 className="mt-2 text-2xl font-black">{formatINRConcise(financials.totalPending || 0)}</h3>

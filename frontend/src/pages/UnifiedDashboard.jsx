@@ -812,7 +812,7 @@ const UnifiedDashboard = () => {
                         <BarChart data={productData} layout="vertical" margin={{ top: 0, right: 15, left: 5, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                           <XAxis type="number" tickLine={false} axisLine={false} tick={{ fill: '#64748b', fontSize: 9, fontWeight: 700 }} />
-                          <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tick={{ fill: '#0f172a', fontSize: 10, fontWeight: 800 }} width={85} />
+                          <YAxis dataKey="name" type="category" tickLine={false} axisLine={false} tickFormatter={(value) => value.length > 12 ? value.substring(0, 10) + '...' : value} tick={{ fill: '#0f172a', fontSize: 10, fontWeight: 800 }} width={85} />
                           <Tooltip contentStyle={glassmorphismTooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} />
                           <Bar dataKey="quantity" fill="#8b5cf6" radius={[0, 6, 6, 0]} barSize={14} name="Qty Sold" />
                         </BarChart>

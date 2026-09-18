@@ -26,7 +26,7 @@ exports.list = async (req, res) => {
     if (paymentStatus && paymentStatus !== 'All')      filter.paymentStatus      = paymentStatus;
     if (designStatus && designStatus !== 'All')       filter.designStatus       = designStatus;
     if (verificationStatus && verificationStatus !== 'All') filter.verificationStatus = verificationStatus;
-    if (orderType && orderType !== 'All')            filter.orderType          = orderType;
+    if (orderType && orderType !== 'All')            filter.orderType          = { $regex: new RegExp(`^${orderType}$`, 'i') };
 
     // Role-based visibility
     const accessibleIds = await getAccessibleUserIds(req.user);
@@ -107,6 +107,7 @@ exports.list = async (req, res) => {
       filter.$or = [
         { orderNumber: { $regex: search, $options: 'i' } },
         { 'clientSnapshot.name': { $regex: search, $options: 'i' } },
+        { 'clientSnapshot.company': { $regex: search, $options: 'i' } },
         { 'clientSnapshot.phone': { $regex: search, $options: 'i' } },
       ];
     }

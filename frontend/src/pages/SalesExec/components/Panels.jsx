@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { toTitleCase } from "../../../utils/stringUtils";
 import {
   Calendar,
@@ -140,6 +140,7 @@ export const OrderList = ({
   loading = false,
 }) => {
   const { user } = useAuth();
+  const location = useLocation();
   const [updatingLineItem, setUpdatingLineItem] = useState(null);
   const [verificationTab, setVerificationTab] = useState('All');
   const isVerifier = ['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'SR_SALES_MANAGER', 'ACCOUNTS'].includes(user?.role);
@@ -157,12 +158,23 @@ export const OrderList = ({
     Pending: "bg-red-100 text-red-700",
   };
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [paymentFilter, setPaymentFilter] = useState("All");
-  const [monthFilter, setMonthFilter] = useState("All Months");
-  const [yearFilter, setYearFilter] = useState("All Years");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get('search') || "");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('orderType') || "All");
+  const [paymentFilter, setPaymentFilter] = useState(searchParams.get('paymentStatus') || location.state?.paymentFilter || "All");
+  const [monthFilter, setMonthFilter] = useState(searchParams.get('month') || "All Months");
+  const [yearFilter, setYearFilter] = useState(searchParams.get('year') || "All Years");
   const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (search) params.set('search', search); else params.delete('search');
+    if (statusFilter !== 'All') params.set('orderType', statusFilter); else params.delete('orderType');
+    if (paymentFilter !== 'All') params.set('paymentStatus', paymentFilter); else params.delete('paymentStatus');
+    if (monthFilter !== 'All Months') params.set('month', monthFilter); else params.delete('month');
+    if (yearFilter !== 'All Years') params.set('year', yearFilter); else params.delete('year');
+    setSearchParams(params, { replace: true });
+  }, [search, statusFilter, paymentFilter, monthFilter, yearFilter]);
   const months = [
     "All Months",
     "January",
@@ -191,9 +203,12 @@ export const OrderList = ({
     const isSalesExec = ['SALES_EXEC', 'SR_SALES_EXEC', 'FIELD_EXEC'].includes(user?.role);
     if (isSalesExec && o.status === 'Pending_Approval') return false;
 
+    const searchTerms = [
+      o.orderNumber, o.id, o.clientSnapshot?.name, o.clientSnapshot?.company, o.client, o.salesExec?.name || o.salesExec
+    ];
     const matchSearch =
       !search ||
-      [o.orderNumber, o.id, o.clientSnapshot?.name, o.client].some((v) =>
+      searchTerms.some((v) =>
         String(v || "")
           .toLowerCase()
           .includes(search.toLowerCase()),
@@ -254,9 +269,10 @@ export const OrderList = ({
               <label className="text-sm font-bold text-slate-700">Payment Status:</label>
               <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="h-10 w-full rounded-lg border border-slate-300 px-3 text-sm font-semibold text-slate-700 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 bg-white">
                 <option value="All">All Payments</option>
-                <option value="Pending">Pending</option>
+                <option value="Unpaid">Unpaid (Pending)</option>
                 <option value="Partial">Partial</option>
                 <option value="Paid">Paid</option>
+                <option value="Refunded">Refunded</option>
               </select>
             </div>
           </div>
