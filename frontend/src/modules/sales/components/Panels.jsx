@@ -161,8 +161,15 @@ export const OrderList = ({
   const paymentColors = { Partial: 'bg-orange-100 text-orange-700', Paid: 'bg-green-100 text-green-700', Pending: 'bg-red-100 text-red-700' };
 
   const [search, setSearch] = useState(searchParams.get('search') || '');
-  const [typeFilter, setTypeFilter] = useState(searchParams.get('orderType') || 'All');
-  const [paymentFilter, setPaymentFilter] = useState(searchParams.get('paymentStatus') || location.state?.paymentFilter || 'All');
+  const [typeFilter, setTypeFilter] = useState(() => {
+    const t = searchParams.get('orderType');
+    return t ? t.toLowerCase().replace(/\s+/g, '-') : 'All';
+  });
+  const [paymentFilter, setPaymentFilter] = useState(() => {
+    const p = searchParams.get('paymentStatus') || location.state?.paymentFilter;
+    if (p?.toLowerCase() === 'pending') return 'Unpaid';
+    return p || 'All';
+  });
   const [monthFilter, setMonthFilter] = useState(searchParams.get('month') || 'All Months');
   const [yearFilter, setYearFilter] = useState(searchParams.get('year') || 'All Years');
   const [employeeFilter, setEmployeeFilter] = useState(searchParams.get('employee') || 'All Employees');

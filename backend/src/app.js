@@ -37,7 +37,7 @@ try {
   const helmet = require('helmet');
   const mongoSanitize = require('express-mongo-sanitize');
   const xss = require('xss-clean');
-  app.use(helmet());
+  app.use(helmet({ crossOriginResourcePolicy: false }));
   // app.use(mongoSanitize());
   // app.use(xss()); // Disabled: Causes "Cannot set property query" crash on newer Express versions
 } catch (e) {

@@ -160,8 +160,15 @@ export const OrderList = ({
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState(searchParams.get('search') || "");
-  const [statusFilter, setStatusFilter] = useState(searchParams.get('orderType') || "All");
-  const [paymentFilter, setPaymentFilter] = useState(searchParams.get('paymentStatus') || location.state?.paymentFilter || "All");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const t = searchParams.get('orderType');
+    return t ? t.toLowerCase().replace(/\s+/g, '-') : 'All';
+  });
+  const [paymentFilter, setPaymentFilter] = useState(() => {
+    const p = searchParams.get('paymentStatus') || location.state?.paymentFilter;
+    if (p?.toLowerCase() === 'pending') return 'Unpaid';
+    return p || 'All';
+  });
   const [monthFilter, setMonthFilter] = useState(searchParams.get('month') || "All Months");
   const [yearFilter, setYearFilter] = useState(searchParams.get('year') || "All Years");
   const [showFilters, setShowFilters] = useState(false);

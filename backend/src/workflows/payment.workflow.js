@@ -104,9 +104,9 @@ const verifyPayment = async (paymentId, user) => {
   }
 
   // Conflict of interest check
-  if (payment.collectedBy.toString() === user._id.toString()) {
+  if (payment.collectedBy.toString() === user._id.toString() && !['ADMIN', 'MD_CEO'].includes(user.role)) {
     throw Object.assign(
-      new Error('You cannot verify a payment you collected.'),
+      new Error('You cannot verify a payment you collected. A manager must verify.'),
       { statusCode: 403, code: 'SELF_VERIFICATION_BLOCKED' }
     );
   }

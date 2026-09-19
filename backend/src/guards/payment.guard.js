@@ -110,7 +110,7 @@ const preventSelfVerification = (req, res, next) => {
   const collectorId = payment.collectedBy?.toString();
   const verifierId  = req.user?._id?.toString();
 
-  if (collectorId && verifierId && collectorId === verifierId) {
+  if (collectorId && verifierId && collectorId === verifierId && !['ADMIN', 'MD_CEO'].includes(req.user?.role)) {
     return res.status(403).json({
       message: 'Conflict of interest: You cannot verify a payment you collected. A manager must verify.',
     });
