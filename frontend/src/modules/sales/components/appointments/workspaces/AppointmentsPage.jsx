@@ -2,8 +2,11 @@ import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { SharedAppointmentCard } from '../ui/SharedAppointmentCard';
 import { AppointmentEmptyState } from '../ui/AppointmentEmptyState';
+import { useAuth } from '../../../../../context/AuthContext';
 
 export const AppointmentsPage = ({ appointments, loading, onAssign, onCreateOrder }) => {
+  const { user } = useAuth();
+  
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center">
@@ -12,9 +15,11 @@ export const AppointmentsPage = ({ appointments, loading, onAssign, onCreateOrde
     );
   }
 
+  const canAssign = ['ADMIN', 'MD_CEO', 'CEO', 'COO', 'BRANCH_HEAD', 'SALES_MANAGER', 'SR_SALES_MANAGER'].includes(user?.role);
+
   const renderActions = (apt) => (
     <>
-      {!apt.assignedTo && (
+      {!apt.assignedTo && canAssign && (
         <button 
           onClick={() => onAssign(apt)} 
           className="flex-1 bg-slate-900 text-white py-2 rounded-xl text-xs font-bold hover:bg-blue-600 transition-colors"
@@ -22,7 +27,7 @@ export const AppointmentsPage = ({ appointments, loading, onAssign, onCreateOrde
           Assign
         </button>
       )}
-      {apt.assignedTo && apt.status === 'FOLLOWUP_REQUIRED' && (
+      {apt.assignedTo && apt.status === 'FOLLOWUP_REQUIRED' && canAssign && (
         <button 
           onClick={() => onAssign(apt)} 
           className="flex-1 bg-amber-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-amber-700 transition-colors"
@@ -46,7 +51,9 @@ export const AppointmentsPage = ({ appointments, loading, onAssign, onCreateOrde
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Appointments Management</h1>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Appointments Created By Me</p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
+            {canAssign ? 'Team Appointments' : 'Appointments Created By Me'}
+          </p>
         </div>
       </div>
       

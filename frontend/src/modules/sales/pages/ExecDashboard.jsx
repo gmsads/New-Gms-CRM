@@ -30,6 +30,7 @@ import { QuotationTemplateSettings } from '../components/QuotationTemplateSettin
 import { QuotationAnalytics } from '../components/QuotationAnalytics';
 import { ProspectTable } from '../components/ProspectTable';
 import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
+import ClientNameLink from '../../../components/common/ClientNameLink';
 import { 
   OrderList, PaymentUploadModal, OrderDetailsModal, 
   PhoneSearchModal, ProspectDetailsModal, CreateProspectModal, 
@@ -708,7 +709,15 @@ const ExecDashboard = () => {
               ) : stats.recentOrders.map(o => (
                 <tr key={o._id || o.id} className="hover:bg-slate-50 transition-colors cursor-pointer group" onClick={() => orderFlow.setSelectedOrder(o)}>
                   <td className="py-4 font-mono font-bold text-blue-600 group-hover:translate-x-1 transition-transform">#{o.orderNumber}</td>
-                  <td className="py-4 font-bold text-slate-700">{o.clientSnapshot?.name || o.client}</td>
+                  <td className="py-4 font-bold text-slate-700">
+                    <ClientNameLink 
+                      clientId={o.client?._id || o.client || o.prospect?._id || o.prospect} 
+                      phone={o.clientSnapshot?.phone || o.client?.phone || o.prospect?.phone}
+                      clientName={o.clientSnapshot?.company 
+                        ? `${o.clientSnapshot.company} (${o.clientSnapshot.name || 'No Contact'})` 
+                        : (o.clientSnapshot?.name || o.client || o.prospect)} 
+                    />
+                  </td>
                   <td className="py-4 font-black text-slate-900">₹{o.grandTotal?.toLocaleString() || o.amount?.toLocaleString()}</td>
                   <td className="py-4"><span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${o.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-600'}`}>{o.status?.replace('_', ' ')}</span></td>
                 </tr>
@@ -956,7 +965,13 @@ export const SalesPayments = () => {
               <tr key={pmt._id} className="hover:bg-slate-50/80 transition-colors">
                 <td className="p-5 font-mono font-bold text-xs text-amber-600">{pmt.paymentNumber || pmt.reference || '—'}</td>
                 <td className="p-5">
-                  <p className="font-bold text-slate-900">{pmt.order?.clientSnapshot?.name || pmt.client?.name || 'Client'}</p>
+                  <div className="font-bold text-slate-900">
+                    <ClientNameLink 
+                      clientId={pmt.client?._id || pmt.client || pmt.prospect?._id || pmt.prospect} 
+                      phone={pmt.order?.clientSnapshot?.phone || pmt.client?.phone || pmt.prospect?.phone}
+                      clientName={pmt.order?.clientSnapshot?.company || pmt.order?.clientSnapshot?.name || pmt.client?.company || pmt.client?.name || 'Client'} 
+                    />
+                  </div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">Order #{pmt.order?.orderNumber || '—'}</p>
                 </td>
                 <td className="p-5 font-black text-slate-900 text-base">₹{pmt.amount?.toLocaleString('en-IN')}</td>

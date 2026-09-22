@@ -117,31 +117,59 @@ class AppointmentWorkflowService {
   }
 
   async listAppointments(user, filter = {}) {
-    const query = { ...filter };
+    const { salesExec, search, ...rest } = filter;
+    const query = { ...rest };
     
+    // Clean up empty string values from rest that might break mongoose
+    Object.keys(query).forEach(key => {
+      if (query[key] === '') delete query[key];
+    });
+
+    if (search) {
+      query.$or = [
+        { businessName: new RegExp(search, 'i') },
+        { contactPerson: new RegExp(search, 'i') },
+        { phone: new RegExp(search, 'i') }
+      ];
+    }
+
+    if (salesExec) {
+      // If we specifically requested a sales executive
+      query.$or = query.$or || [];
+      query.$or.push({ createdBy: salesExec }, { assignedTo: salesExec });
+    }
+
     const accessibleIds = await getAccessibleUserIds(user);
     if (accessibleIds) {
       const accessibleStrIds = accessibleIds.map(id => id.toString());
       
-      if (filter.createdBy && !accessibleStrIds.includes(filter.createdBy.toString())) {
+      if (query.createdBy && !accessibleStrIds.includes(query.createdBy.toString())) {
         query.createdBy = { $in: accessibleIds }; // Enforce intersection
       }
-      if (filter.assignedTo && !accessibleStrIds.includes(filter.assignedTo.toString())) {
+      if (query.assignedTo && !accessibleStrIds.includes(query.assignedTo.toString())) {
         query.assignedTo = { $in: accessibleIds }; // Enforce intersection
       }
-      if (filter.salesExec && !accessibleStrIds.includes(filter.salesExec.toString())) {
-        // Just enforcing some bounds if salesExec is passed manually
+      if (salesExec && !accessibleStrIds.includes(salesExec.toString())) {
+        // Enforce bounds if salesExec is invalid
         query.$or = [
           { createdBy: { $in: accessibleIds } }, 
           { assignedTo: { $in: accessibleIds } }
         ];
       }
 
-      if (!filter.createdBy && !filter.assignedTo && !filter.salesExec) {
-        query.$or = [
+      if (!query.createdBy && !query.assignedTo && !salesExec) {
+        // Automatically scope to my team
+        const teamScope = [
           { createdBy: { $in: accessibleIds } }, 
           { assignedTo: { $in: accessibleIds } }
         ];
+        
+        if (query.$or) {
+          query.$and = [{ $or: query.$or }, { $or: teamScope }];
+          delete query.$or;
+        } else {
+          query.$or = teamScope;
+        }
       }
     }
 

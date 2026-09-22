@@ -16,6 +16,7 @@ import { ProductCatalogueModal } from '../../../pages/SalesExec/components/Produ
 import { exportOrdersToExcel } from '../../../utils/orderExcel';
 import { ViewQuotationModal, ViewInvoiceModal } from '../../../components/common/DocumentPreviews';
 import CustomerInformationForm from '../../../components/common/CustomerInformationForm';
+import ClientNameLink from '../../../components/common/ClientNameLink';
 
 const getAbsoluteUrl = (path) => {
   if (!path) return path;
@@ -409,11 +410,15 @@ export const OrderList = ({
                         </span>
                       )}
                     </div>
-                    <p className="font-semibold text-sm">
-                      {order.clientSnapshot?.company 
-                        ? `${order.clientSnapshot.company} (${order.clientSnapshot.name || 'No Contact'})` 
-                        : (order.clientSnapshot?.name || order.client)}
-                    </p>
+                    <div className="font-semibold text-sm">
+                      <ClientNameLink 
+                        clientId={order.client?._id || order.client || order.prospect?._id || order.prospect} 
+                        phone={order.clientSnapshot?.phone || order.client?.phone || order.prospect?.phone}
+                        clientName={order.clientSnapshot?.company 
+                          ? `${order.clientSnapshot.company} (${order.clientSnapshot.name || 'No Contact'})` 
+                          : (order.clientSnapshot?.name || order.client || order.prospect)} 
+                      />
+                    </div>
                     <div className="flex items-center gap-3 mt-2 flex-wrap">
                       {order.deliveryDate && (
                         <div className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${calculateDeliveryPriority(order.deliveryDate).color}`}>
@@ -2017,7 +2022,11 @@ export const CreateProspectModal = ({ phone, company, executiveName, onBack, onS
 
   const handleFormSubmit = () => {
     if (!validate()) return;
-    onSubmit({ ...formData, products });
+    const finalPayload = { ...formData, products };
+    if (initialData?._id || initialData?.id) {
+      finalPayload.id = initialData._id || initialData.id;
+    }
+    onSubmit(finalPayload);
   };
 
   return (

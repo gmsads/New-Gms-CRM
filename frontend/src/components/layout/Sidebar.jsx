@@ -5,7 +5,7 @@ import {
   PieChart, Briefcase, FileText, Palette, Truck, Server, X, ShieldCheck,
   Clock, ShoppingCart, Calendar, IndianRupee, BarChart2, Search, AlertCircle, CheckCircle,
   ChevronDown, ChevronRight, UserPlus, Quote, Package, Target, Bell, Eye,
-  Image as ImageIcon, MapPin, Activity, PhoneCall, Zap
+  Image as ImageIcon, MapPin, Activity, PhoneCall, Zap, Link2, Building2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCompanyProfile } from '../../context/CompanyProfileContext';
@@ -113,7 +113,18 @@ const menuConfig = [
   { title: 'Vendor Portal',    icon: FileText,        path: '/vendors',   roles: ['ADMIN','VENDOR','OPERATION_MANAGER'] },
   { title: 'Analytics',        icon: PieChart,        path: '/analytics', roles: ['ADMIN','SALES_MANAGER','SR_SALES_MANAGER','OPERATION_MANAGER'] },
   { title: 'IT & Systems',     icon: Server,          path: '/it',        roles: ['ADMIN','IT'] },
-  { title: 'Settings',         icon: Settings,        path: '/settings',  roles: ['ADMIN', 'MD_CEO'] },
+  { 
+    title: 'Settings',         
+    icon: Settings,        
+    path: '/settings',  
+    roles: ['ADMIN', 'MD_CEO'],
+    subItems: [
+      { title: 'Organization Settings', path: '/settings', icon: Building2 },
+      { title: 'Quotation Management', path: '/quotation-management/changes', icon: Quote },
+      { title: 'Invoice Management', path: '/invoice-management/changes', icon: FileText }
+    ]
+  },
+  { title: 'Integrations',     icon: Settings,        path: '/settings/integrations', roles: ['ADMIN', 'MD_CEO'] },
 ];
 
 const adminMenuConfig = [
@@ -235,7 +246,18 @@ const adminMenuConfig = [
       { title: 'Notifications', path: '/communications/notifications', icon: Bell }
     ]
   },
-  { title: 'Settings', icon: Settings, path: '/settings' }
+   { title: 'Integrations', icon: Link2, path: '/settings/integrations' },
+  { 
+    title: 'Settings', 
+    icon: Settings, 
+    path: '/settings',
+    subItems: [
+      { title: 'Organization Settings', path: '/settings', icon: Building2 },
+      { title: 'Quotation Management', path: '/quotation-management/changes', icon: Quote },
+      { title: 'Invoice Management', path: '/invoice-management/changes', icon: FileText }
+    ]
+  }
+ 
 ];
 
 // We will define this dynamically inside the component now

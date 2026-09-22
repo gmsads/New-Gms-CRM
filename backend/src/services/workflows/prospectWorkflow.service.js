@@ -147,29 +147,20 @@ class ProspectWorkflowService {
   }
 
   async softDeleteProspect(id, actorId, reqContext = {}) {
-    const oldProspect = await Prospect.findById(id).lean();
-    if (!oldProspect || oldProspect.softDelete?.isDeleted) throw new Error('Prospect not found');
+    const prospect = await Prospect.findById(id);
+    if (!prospect || prospect.isDeleted) throw new Error('Prospect not found');
 
-    const prospect = await Prospect.findByIdAndUpdate(
-      id,
-      {
-        softDelete: {
-          isDeleted: true,
-          deletedAt: new Date(),
-          deletedBy: actorId
-        },
-        updatedBy: actorId
-      },
-      { new: true }
-    ).lean();
+    const oldProspectObj = prospect.toObject();
+    
+    await prospect.softDelete(actorId);
 
     await auditWorkflow.log({
       action: 'PROSPECT_DELETED',
       performedBy: actorId,
       targetModel: 'Prospect',
       targetId: id,
-      previousValue: oldProspect,
-      newValue: { softDelete: true },
+      previousValue: oldProspectObj,
+      newValue: { isDeleted: true },
       ipAddress: reqContext.ipAddress,
       userAgent: reqContext.userAgent,
       device: reqContext.device
@@ -179,17 +170,10 @@ class ProspectWorkflowService {
   }
 
   async restoreProspect(id, actorId, reqContext = {}) {
-    const oldProspect = await Prospect.findById(id).lean();
-    if (!oldProspect || !oldProspect.softDelete?.isDeleted) throw new Error('Prospect not found or not deleted');
+    const prospect = await Prospect.findById(id);
+    if (!prospect || !prospect.isDeleted) throw new Error('Prospect not found or not deleted');
 
-    const prospect = await Prospect.findByIdAndUpdate(
-      id,
-      {
-        $unset: { softDelete: "" },
-        updatedBy: actorId
-      },
-      { new: true }
-    ).lean();
+    await prospect.restore(actorId);
 
     await auditWorkflow.log({
       action: 'PROSPECT_RESTORED',

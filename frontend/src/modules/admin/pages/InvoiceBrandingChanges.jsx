@@ -7,7 +7,7 @@ import { quotationApi } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
 import { useCompanyProfile } from '../../../context/CompanyProfileContext';
 
-const QuotationBrandingChanges = () => {
+const InvoiceBrandingChanges = () => {
   const { user } = useAuth();
   const { updateProfile, profile } = useCompanyProfile();
   const [loading, setLoading] = useState(true);
@@ -141,8 +141,8 @@ const QuotationBrandingChanges = () => {
       {/* Header */}
       <div className="flex justify-between items-center border-b pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Quotation Branding Settings</h1>
-          <p className="text-slate-500 mt-1 font-medium">Configure corporate identity, logo, bank details and defaults for Quotations</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Invoice Branding Settings</h1>
+          <p className="text-slate-500 mt-1 font-medium">Configure corporate identity, logo, bank details and defaults for Invoices</p>
         </div>
         <button 
           onClick={handleSave} 
@@ -557,4 +557,4 @@ const QuotationBrandingChanges = () => {
   );
 };
 
-export default QuotationBrandingChanges;
+export default InvoiceBrandingChanges;

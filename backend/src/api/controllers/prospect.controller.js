@@ -15,7 +15,7 @@ exports.list = async (req, res) => {
   try {
     const { stage, priority, search, salesExec } = req.query;
     let assignedTo = req.query.assignedTo || salesExec; // Aliased to support both frontend components
-    const filter = { 'softDelete.isDeleted': { $ne: true } }; // Hide soft deleted
+    const filter = { isDeleted: { $ne: true } }; // Hide soft deleted
     if (stage) filter.stage = stage;
     if (priority) filter.priority = priority;
     

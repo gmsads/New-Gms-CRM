@@ -13,13 +13,13 @@ const mongoose = require('mongoose');
 exports.getAccessibleUserIds = async (user) => {
   if (!user || !user.role) return null;
 
-  const fullAccessRoles = ['ADMIN', 'MD_CEO', 'BRANCH_HEAD', 'HR', 'ACCOUNTS', 'IT'];
+  const fullAccessRoles = ['ADMIN', 'MD_CEO', 'CEO', 'COO', 'HR', 'ACCOUNTS', 'IT'];
   if (fullAccessRoles.includes(user.role)) {
     return null; // No filtering needed
   }
 
   const managerRoles = [
-    'SALES_MANAGER', 'SR_SALES_MANAGER', 
+    'BRANCH_HEAD', 'SALES_MANAGER', 'SR_SALES_MANAGER', 
     'OPERATION_MANAGER', 'PRODUCTION_MANAGER', 'SERVICE_MANAGER'
   ];
   

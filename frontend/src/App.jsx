@@ -13,6 +13,7 @@ const EmployeeLeaves = React.lazy(() => import('./pages/EmployeeLeaves'));
 
 // Modular Page Direct Imports
 const Clients = React.lazy(() => import('./modules/sales/pages/ClientPortfolio'));
+const Client360Ledger = React.lazy(() => import('./modules/sales/pages/Client360Ledger'));
 const Campaigns = React.lazy(() => import('./modules/operations/pages/CampaignManager'));
 const Tasks = React.lazy(() => import('./modules/operations/pages/TaskTerminal'));
 const DailyReports = React.lazy(() => import('./pages/DailyReports'));
@@ -35,7 +36,10 @@ const PaymentVerification = React.lazy(() => import('./modules/admin/pages/Payme
 const SalesApprovals = React.lazy(() => import('./modules/sales/pages/ApprovalsTerminal'));
 const QuotationManagementList = React.lazy(() => import('./modules/admin/pages/QuotationManagementList'));
 const SettingsLayout = React.lazy(() => import('./modules/admin/pages/Settings/SettingsLayout'));
+const Integrations = React.lazy(() => import('./modules/admin/pages/Settings/Integrations'));
 const InvoiceManagementList = React.lazy(() => import('./modules/admin/pages/InvoiceManagementList'));
+const QuotationBrandingChanges = React.lazy(() => import('./modules/admin/pages/QuotationBrandingChanges'));
+const InvoiceBrandingChanges = React.lazy(() => import('./modules/admin/pages/InvoiceBrandingChanges'));
 const SalesManagerWorkspace = React.lazy(() => import('./modules/sales/pages/SalesManagerWorkspace'));
 const AuthorityAccess = React.lazy(() => import('./modules/admin/pages/AuthorityAccess'));
 const TargetAssignment = React.lazy(() => import('./modules/admin/pages/TargetAssignment'));
@@ -80,7 +84,7 @@ const AuthRoleSwitch = ({ sales, admin }) => {
 
 const AdminTeamViewSwitch = ({ viewType, salesElement }) => {
   const { user } = useAuth();
-  if (['ADMIN', 'MD_CEO'].includes(user?.role)) {
+  if (['ADMIN', 'MD_CEO', 'CEO', 'COO'].includes(user?.role)) {
     return <TeamDataView viewType={viewType} />;
   }
   return salesElement;
@@ -130,6 +134,8 @@ const AppRoutes = () => {
         <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route index          element={<UnifiedDashboard />} />
           <Route path="clients"     element={<AdminTeamViewSwitch viewType="prospects" salesElement={<Clients />} />} />
+          <Route path="clients/:clientId" element={<Client360Ledger />} />
+          <Route path="clients/mobile/:phone" element={<Client360Ledger />} />
           <Route path="campaigns"   element={<Campaigns />} />
           <Route path="tasks"       element={<Tasks />} />
           <Route path="leaves"      element={<EmployeeLeaves />} />
@@ -163,9 +169,9 @@ const AppRoutes = () => {
           <Route path="product-management" element={<ProductManagement />} />
           <Route path="cost-management"    element={<CostManagement />} />
           <Route path="quotation-management/list" element={<QuotationManagementList />} />
-          <Route path="quotation-management/changes" element={<SettingsLayout />} />
+          <Route path="quotation-management/changes" element={<QuotationBrandingChanges />} />
           <Route path="invoice-management/list" element={<InvoiceManagementList />} />
-          <Route path="invoice-management/changes" element={<SettingsLayout />} />
+          <Route path="invoice-management/changes" element={<InvoiceBrandingChanges />} />
           <Route path="invoice-management" element={<InvoiceManagementList />} />
           
           <Route path="prospects"   element={<AdminTeamViewSwitch viewType="prospects" salesElement={<SalesProspects />} />} />
@@ -235,6 +241,7 @@ const AppRoutes = () => {
           <Route path="communications/notifications" element={<ComingSoon title="Notifications Center" />} />
 
           <Route path="settings"    element={<SettingsLayout />} />
+          <Route path="settings/integrations" element={<ErrorBoundary><Integrations /></ErrorBoundary>} />
           <Route path="*"           element={<div className="p-6 text-muted-foreground">Page not found.</div>} />
         </Route>
 

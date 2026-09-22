@@ -81,6 +81,12 @@ try {
   console.log('[ROUTES] ✅ permissions');
 } catch (e) { console.error('[ROUTES] ❌ permissions:', e.message); }
 
+try {
+  const integrationRoutes = require('./api/routes/integration.routes');
+  app.use('/api/integrations', integrationRoutes);
+  console.log('[ROUTES] ✅ integrations');
+} catch (e) { console.error('[ROUTES] ❌ integrations:', e.message); }
+
 // ── Core modules ─────────────────────────────────────────────────────────────
 const coreRoutes = [
   ['/api/clients',   './api/routes/client.routes'],
