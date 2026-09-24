@@ -48,13 +48,6 @@ const EnterpriseDailyWork = React.lazy(() => import('./modules/admin/pages/Enter
 import { ErrorBoundary } from './components/ErrorBoundary';
 const TeamDataView = React.lazy(() => import('./modules/sales/pages/TeamDataView').then(m => ({ default: m.TeamDataView })));
 import ComingSoon from './components/ui/ComingSoon';
-import WhatsAppInbox from './modules/whatsapp/pages/WhatsAppInbox';
-import WhatsAppLayout from './modules/whatsapp/components/WhatsAppLayout';
-import TemplateLibrary from './modules/whatsapp/pages/TemplateLibrary';
-import TemplateBuilder from './modules/whatsapp/pages/TemplateBuilder';
-const BroadcastDashboard = React.lazy(() => import('./modules/whatsapp/pages/BroadcastDashboard'));
-const CreateBroadcastWizard = React.lazy(() => import('./modules/whatsapp/pages/CreateBroadcastWizard'));
-const BroadcastDetail = React.lazy(() => import('./modules/whatsapp/pages/BroadcastDetail'));
 
 // Tele CRM Pages
 const LeadDashboard = React.lazy(() => import('./modules/leads/pages/LeadDashboard'));
@@ -242,15 +235,7 @@ const AppRoutes = () => {
           <Route path="audit/changes" element={<ComingSoon title="Change History" />} />
           <Route path="audit/logins" element={<ComingSoon title="Login History" />} />
           <Route path="audit/approvals" element={<ComingSoon title="Approval History" />} />
-          <Route path="communications/whatsapp" element={<ErrorBoundary><WhatsAppLayout /></ErrorBoundary>}>
-            <Route index element={<Navigate to="inbox" replace />} />
-            <Route path="inbox" element={<WhatsAppInbox />} />
-            <Route path="broadcasts" element={<BroadcastDashboard />} />
-            <Route path="broadcasts/create" element={<CreateBroadcastWizard />} />
-            <Route path="broadcasts/:id" element={<BroadcastDetail />} />
-            <Route path="templates" element={<TemplateLibrary />} />
-            <Route path="templates/create" element={<TemplateBuilder />} />
-          </Route>
+          <Route path="communications/whatsapp" element={<ComingSoon title="WhatsApp Integration" />} />
           <Route path="communications/email" element={<ComingSoon title="Email Campaigns" />} />
           <Route path="communications/sms" element={<ComingSoon title="SMS Integration" />} />
           <Route path="communications/notifications" element={<ComingSoon title="Notifications Center" />} />
