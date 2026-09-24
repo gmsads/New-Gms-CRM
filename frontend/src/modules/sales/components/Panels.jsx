@@ -3011,7 +3011,31 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
               🛡 Verify Order
             </button>
           )}
-          <button onClick={() => setShowInvoicePreview(true)} className="h-9 px-4 rounded-xl border bg-white text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors"><Printer className="h-3.5 w-3.5" /> Print Invoice</button>
+
+          {/* Generate Statutory Invoice Button */}
+          {['ADMIN', 'MD_CEO', 'SALES_MANAGER', 'ACCOUNTS'].includes(user?.role) && (
+            <button
+              onClick={async () => {
+                if (window.confirm("Generate a formal Statutory Invoice for this order? This will permanently allocate an invoice number.")) {
+                  try {
+                    const { invoiceApi } = await import('../../../services/api');
+                    const res = await invoiceApi.generate(order._id || order.id, user.token);
+                    if (res.success) {
+                      alert(`Invoice ${res.data.invoiceNumber} generated successfully!`);
+                      setShowInvoicePreview(true);
+                    }
+                  } catch (err) {
+                    alert(err.message || "Failed to generate invoice");
+                  }
+                }
+              }}
+              className="h-9 px-4 rounded-xl bg-indigo-600 text-white text-xs font-bold flex items-center gap-2 hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              <FileText className="h-3.5 w-3.5" /> Generate Invoice
+            </button>
+          )}
+
+          <button onClick={() => setShowInvoicePreview(true)} className="h-9 px-4 rounded-xl border bg-white text-xs font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors"><Printer className="h-3.5 w-3.5" /> View/Print Document</button>
           <button onClick={onClose} className="h-9 px-8 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors">Close View</button>
         </div>
       </div>

@@ -138,7 +138,8 @@ const adminMenuConfig = [
       { title: 'Orders', path: '/orders', icon: ShoppingCart },
       { title: 'Appointments', path: '/appointments', icon: Calendar },
       { title: 'Assigned Appointments', path: '/assigned-appointments', icon: Calendar },
-      { title: 'Quotations', path: '/quotation-management/list', icon: Quote }
+      { title: 'Quotations', path: '/quotation-management/list', icon: Quote },
+      { title: 'Invoices', path: '/invoice-management/list', icon: FileText }
     ]
   },
   { 

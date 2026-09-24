@@ -170,6 +170,7 @@ mountModule('/api/visits', './api/routes/visit.routes');
 
 // ── Sales Execution Module ────────────────────────────────────────────────────
 mountModule('/api/orders', './api/routes/order.routes');
+mountModule('/api/invoices', './api/routes/invoice.routes');
 mountModule('/api/payments', './api/routes/payment.routes');
 mountModule('/api/analytics', './api/routes/analytics.routes');
 

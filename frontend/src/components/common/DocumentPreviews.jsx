@@ -516,6 +516,8 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
     : (order.totalAmount !== undefined ? Number(order.totalAmount) : subtotal + taxAmount);
 
   const receivedAmount = order.totalPaid !== undefined ? Number(order.totalPaid) : 0;
+  
+  const isNonGst = order.invoiceType === 'NON_GST' || (!order.invoiceType && (order.totalGST === 0 || taxAmount === 0));
 
   // Dates & IDs (Follow exact guidelines: Delivery Date -> Invoice Date -> Due Date = Invoice Date + Credit Period)
   const invoiceNo = order.invoiceNumber || order.orderNumber || order.orderId || order._id?.slice(-6)?.toUpperCase() || '2074';
@@ -564,7 +566,7 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
             <div className="h-9 w-9 rounded-xl bg-slate-900 flex items-center justify-center">
               <FileText className="h-4 w-4 text-emerald-400" />
             </div>
-            <h2 className="text-lg font-black text-slate-900">Tax Invoice Preview</h2>
+            <h2 className="text-lg font-black text-slate-900">{isNonGst ? 'Invoice Preview' : 'Tax Invoice Preview'}</h2>
           </div>
           <div className="flex items-center gap-3">
             <button 
@@ -592,7 +594,7 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
             <div>
               {/* Top Document Header Bar: TAX INVOICE & ORIGINAL FOR RECIPIENT */}
               <div className="flex justify-between items-center mb-4 text-slate-900">
-                <span className="font-bold text-sm tracking-wide uppercase">TAX INVOICE</span>
+                <span className="font-bold text-sm tracking-wide uppercase">{isNonGst ? 'INVOICE' : 'TAX INVOICE'}</span>
                 <span className="border border-slate-400 px-2.5 py-0.5 text-xs font-semibold text-slate-700 tracking-wide uppercase bg-slate-50">
                   ORIGINAL FOR RECIPIENT
                 </span>
@@ -703,7 +705,7 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                       <th className="py-2.5 px-3">ITEMS</th>
                       <th className="py-2.5 px-3 text-center">QTY.</th>
                       <th className="py-2.5 px-3 text-right">RATE</th>
-                      <th className="py-2.5 px-3 text-right">TAX</th>
+                      {!isNonGst && <th className="py-2.5 px-3 text-right">TAX</th>}
                       <th className="py-2.5 px-3 text-right">AMOUNT</th>
                     </tr>
                   </thead>
@@ -729,10 +731,12 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                           <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
                             {rate.toLocaleString('en-IN')}
                           </td>
-                          <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
-                            <div>{itemTax.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</div>
-                            <div className="text-[11px] text-slate-500 mt-0.5">{isIntrastate ? '(CGST 9% + SGST 9%)' : '(IGST 18%)'}</div>
-                          </td>
+                          {!isNonGst && (
+                            <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
+                              <div>{itemTax.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</div>
+                              <div className="text-[11px] text-slate-500 mt-0.5">{isIntrastate ? '(CGST 9% + SGST 9%)' : '(IGST 18%)'}</div>
+                            </td>
+                          )}
                           <td className="py-3 px-3 text-right font-normal text-slate-900 whitespace-nowrap">
                             {itemAmt.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
                           </td>
@@ -745,8 +749,8 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                     <tr className="border-t-2 border-b-2 border-slate-900 font-bold text-slate-900">
                       <td className="py-2.5 px-3 uppercase">SUBTOTAL</td>
                       <td className="py-2.5 px-3 text-center">{totalQty}</td>
-                      <td className="py-2.5 px-3 text-right">₹ {taxAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</td>
                       <td className="py-2.5 px-3 text-right"></td>
+                      {!isNonGst && <td className="py-2.5 px-3 text-right">₹ {taxAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</td>}
                       <td className="py-2.5 px-3 text-right">₹ {subtotal.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</td>
                     </tr>
                   </tfoot>
@@ -787,22 +791,24 @@ export const ViewInvoiceModal = ({ order, onClose }) => {
                       <span>Taxable Amount</span>
                       <span>₹ {subtotal.toLocaleString('en-IN')}</span>
                     </div>
-                    {isIntrastate ? (
-                      <>
+                    {!isNonGst && (
+                      isIntrastate ? (
+                        <>
+                          <div className="flex justify-between font-normal text-slate-900">
+                            <span>CGST @9% (Intra-State)</span>
+                            <span>₹ {cgstAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
+                          </div>
+                          <div className="flex justify-between font-normal text-slate-900">
+                            <span>SGST @9% (Intra-State)</span>
+                            <span>₹ {sgstAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
+                          </div>
+                        </>
+                      ) : (
                         <div className="flex justify-between font-normal text-slate-900">
-                          <span>CGST @9% (Intra-State)</span>
-                          <span>₹ {cgstAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
+                          <span>IGST @18% (Inter-State)</span>
+                          <span>₹ {igstAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
                         </div>
-                        <div className="flex justify-between font-normal text-slate-900">
-                          <span>SGST @9% (Intra-State)</span>
-                          <span>₹ {sgstAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex justify-between font-normal text-slate-900">
-                        <span>IGST @18% (Inter-State)</span>
-                        <span>₹ {igstAmount.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
-                      </div>
+                      )
                     )}
                     <div className="border-t border-slate-300 my-2 pt-1.5 flex justify-between font-bold text-slate-900 text-sm sm:text-[14px]">
                       <span>Total Amount</span>

@@ -290,6 +290,13 @@ export const quotationApi = {
   updateStatus:   (id, data, token) => api.patch(`/quotations/${id}/status`, data, token),
 };
 
+export const invoiceApi = {
+  list:     (params, token) => api.get(`/invoices?${new URLSearchParams(params)}`, token),
+  getById:  (id, token)     => api.get(`/invoices/${id}`, token),
+  generate: (orderId, token) => api.post('/invoices', { orderId }, token),
+  cancel:   (id, reason, token) => api.post(`/invoices/${id}/cancel`, { reason }, token),
+};
+
 // ── Vendors ───────────────────────────────────────────────────────────────────
 export const vendorApi = {
   list:     (params, token)   => api.get(`/vendors?${new URLSearchParams(params)}`, token),

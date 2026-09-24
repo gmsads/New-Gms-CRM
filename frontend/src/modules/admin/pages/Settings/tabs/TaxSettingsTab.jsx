@@ -8,6 +8,8 @@ const TaxSettingsTab = ({ formData, setFormData }) => {
     hsnCode: '',
     sacCode: '',
     stateCode: '',
+    gstInvoicePrefix: 'GST/',
+    nonGstInvoicePrefix: 'NG/',
     gstSlabs: []
   };
 
@@ -75,6 +77,29 @@ const TaxSettingsTab = ({ formData, setFormData }) => {
               value={tax.hsnCode} 
               onChange={(e) => updateTax('hsnCode', e.target.value)}
               placeholder="e.g. 9983"
+              className="h-10 w-full rounded-lg border border-slate-300 px-3 outline-none focus:border-indigo-600 font-mono bg-white" 
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 border-t pt-6">
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">GST Invoice Prefix</label>
+            <p className="text-[10px] text-slate-500 mb-2">Used for Tax Invoices (e.g., GST/25-26/001)</p>
+            <input 
+              value={tax.gstInvoicePrefix} 
+              onChange={(e) => updateTax('gstInvoicePrefix', e.target.value)}
+              placeholder="GST/"
+              className="h-10 w-full rounded-lg border border-slate-300 px-3 outline-none focus:border-indigo-600 font-mono bg-white" 
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Non-GST Invoice Prefix</label>
+            <p className="text-[10px] text-slate-500 mb-2">Used for Bill of Supply (e.g., NG/25-26/001)</p>
+            <input 
+              value={tax.nonGstInvoicePrefix} 
+              onChange={(e) => updateTax('nonGstInvoicePrefix', e.target.value)}
+              placeholder="NG/"
               className="h-10 w-full rounded-lg border border-slate-300 px-3 outline-none focus:border-indigo-600 font-mono bg-white" 
             />
           </div>
