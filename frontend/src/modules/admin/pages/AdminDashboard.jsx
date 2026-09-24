@@ -4,11 +4,12 @@ import { useAuth } from '../../../context/AuthContext';
 import useApi from '../../../hooks/useApi';
 import { formatINRConcise } from '../../../utils/numberFormatters';
 import {
-  TrendingUp, CheckCircle, Clock, ShieldCheck, 
-  Target, MapPin, Package, CreditCard, Activity, 
+  TrendingUp, CheckCircle, Clock, ShieldCheck,
+  Target, MapPin, Package, CreditCard, Activity,
   AlertCircle, Quote
 } from 'lucide-react';
 import TodayWorkWidget from '../../../components/widgets/TodayWorkWidget';
+import { TrendCharts } from '../components/TrendCharts';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -23,14 +24,16 @@ const AdminDashboard = () => {
   const { data: rawData, loading, refetch } = useApi('/analytics/stats', { params: filters });
   const { data: qData, loading: qLoading } = useApi('/quotations');
 
-  
-  
+
+
   const stats = {
     financials: rawData?.financials || {},
     products:   rawData?.products   || { top: [], least: [] },
     clients:    rawData?.clients    || [],
     executives: rawData?.executives || [],
-    pendingApprovals: rawData?.pendingApprovals || 0
+    pendingApprovals: rawData?.pendingApprovals || 0,
+    weeklyTrends: rawData?.weeklyTrends || [],
+    monthlyTrends: rawData?.monthlyTrends || []
   };
 
   const handleFilterChange = (e) => {
@@ -47,7 +50,7 @@ const AdminDashboard = () => {
   const financials = stats.financials || {};
   const quotesCount = qData?.data?.length || 0;
 
-  
+
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8 pb-10 min-w-0">
       {/* CEO Filter Command Bar */}
@@ -128,6 +131,15 @@ const AdminDashboard = () => {
             <Target className="h-3 w-3 text-amber-400" /> Awaiting Action
           </div>
         </div>
+      </div>
+
+      {/* Trend Charts Section */}
+      <div className="mt-8">
+        <TrendCharts
+          data={stats}
+          selectedMonth={filters.month}
+          selectedYear={filters.year}
+        />
       </div>
     </div>
   );

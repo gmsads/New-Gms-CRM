@@ -34,8 +34,20 @@ exports.getDashboardStats = async (req, res) => {
       filter.deliveryAddress = { $regex: area, $options: 'i' };
     }
 
+    // ── Trend Data Calculation (Weekly & Monthly) ─────────────────────────────
+    let targetYear = year ? parseInt(year) : new Date().getFullYear();
+    let targetMonth = month ? parseInt(month) : new Date().getMonth() + 1; // 1-12
+
+    // 3 Months range
+    const endDate3m = new Date(targetYear, targetMonth, 1);
+    const startDate3m = new Date(targetYear, targetMonth - 3, 1);
+
+    // 1 Month range
+    const startDate1m = new Date(targetYear, targetMonth - 1, 1);
+    const endDate1m = new Date(targetYear, targetMonth, 1);
+
     // ── Main Metrics Aggregation ──────────────────────────────────────────────
-    const [mainStats, productStats, clientStats, execStats, orderApprovals, paymentApprovals] = await Promise.all([
+    const [mainStats, productStats, clientStats, execStats, orderApprovals, paymentApprovals, monthlyStatsRaw, weeklyStatsRaw] = await Promise.all([
       // 1. Overall Financials
       Order.aggregate([
         { $match: filter },
@@ -118,14 +130,80 @@ exports.getDashboardStats = async (req, res) => {
 
       // 5. Governance Items
       OrderApproval.countDocuments({ status: 'Pending' }),
-      Payment.countDocuments({ status: 'Pending' })
+      Payment.countDocuments({ status: 'Pending' }),
+
+      // 6. Monthly Stats (Last 3 Months)
+      Order.aggregate([
+        { $match: { status: { $ne: 'Cancelled' }, createdAt: { $gte: startDate3m, $lt: endDate3m } } },
+        {
+          $group: {
+            _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } },
+            revenue: { $sum: '$grandTotal' },
+            orders: { $sum: 1 }
+          }
+        }
+      ]),
+
+      // 7. Weekly Stats (Current Month)
+      Order.aggregate([
+        { $match: { status: { $ne: 'Cancelled' }, createdAt: { $gte: startDate1m, $lt: endDate1m } } },
+        {
+          $group: {
+            _id: { day: { $dayOfMonth: '$createdAt' } },
+            revenue: { $sum: '$grandTotal' },
+            orders: { $sum: 1 }
+          }
+        }
+      ])
     ]);
 
     const stats = mainStats[0] || { totalSales: 0, totalPaid: 0, totalPending: 0, count: 0 };
-    
+
     // Sort products for top/least
     const topProducts = productStats.slice(0, 5);
     const leastProducts = productStats.length > 5 ? productStats.slice(-5).reverse() : [];
+
+    // Process Weekly Data
+    const weeklyTrends = [
+      { name: 'Week 1', revenue: 0, orders: 0 },
+      { name: 'Week 2', revenue: 0, orders: 0 },
+      { name: 'Week 3', revenue: 0, orders: 0 },
+      { name: 'Week 4', revenue: 0, orders: 0 },
+      { name: 'Week 5', revenue: 0, orders: 0 }
+    ];
+
+    if (weeklyStatsRaw) {
+      weeklyStatsRaw.forEach(stat => {
+        const day = stat._id.day;
+        let weekIdx = 0;
+        if (day > 28) weekIdx = 4;
+        else if (day > 21) weekIdx = 3;
+        else if (day > 14) weekIdx = 2;
+        else if (day > 7) weekIdx = 1;
+
+        weeklyTrends[weekIdx].revenue += stat.revenue || 0;
+        weeklyTrends[weekIdx].orders += stat.orders || 0;
+      });
+    }
+
+    // Process Monthly Data
+    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const monthlyTrends = [];
+    for(let i=2; i>=0; i--) {
+      // Create a date for the target month going backwards
+      // For targetMonth (1-12), new Date(y, m-1, 1) is current month
+      const d = new Date(targetYear, targetMonth - 1 - i, 1);
+      const mName = monthNames[d.getMonth()];
+      const y = d.getFullYear();
+      const label = `${mName} ${y}`;
+
+      const found = monthlyStatsRaw ? monthlyStatsRaw.find(s => s._id.year === y && s._id.month === d.getMonth() + 1) : null;
+      monthlyTrends.push({
+        name: label,
+        revenue: found ? found.revenue : 0,
+        orders: found ? found.orders : 0
+      });
+    }
 
     res.json({
       success: true,
@@ -142,7 +220,9 @@ exports.getDashboardStats = async (req, res) => {
           least: leastProducts
         },
         clients: clientStats,
-        executives: execStats
+        executives: execStats,
+        weeklyTrends,
+        monthlyTrends
       }
     });
   } catch (err) {
