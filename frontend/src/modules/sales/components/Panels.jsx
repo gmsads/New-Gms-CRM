@@ -8,9 +8,9 @@ import {
 import { calculateDeliveryPriority } from '../../../utils/deliveryUtils';
 import { requirementTypes } from '../data/constants';
 import { useAuth } from '../../../context/AuthContext';
-import { 
-  prospectApi, orderApi, appointmentApi, 
-  employeeApi, productApi, quotationApi 
+import {
+  prospectApi, orderApi, appointmentApi,
+  employeeApi, productApi, quotationApi
 } from '../../../services/api';
 import { ProductCatalogueModal } from '../../../pages/SalesExec/components/ProductCatalogueModal';
 import { exportOrdersToExcel } from '../../../utils/orderExcel';
@@ -139,7 +139,7 @@ export const OrderList = ({
 
   const [clientTypes, setClientTypes] = useState([]);
   const [employeeList, setEmployeeList] = useState([]);
-  
+
   useEffect(() => {
     if (user?.token) {
       productApi.getClientTypes(user.token)
@@ -202,7 +202,7 @@ export const OrderList = ({
         verificationStatus: verificationTab,
         hideCompleted
       });
-      
+
       const params = new URLSearchParams(searchParams);
       if (search) params.set('search', search); else params.delete('search');
       if (typeFilter !== 'All') params.set('orderType', typeFilter); else params.delete('orderType');
@@ -211,7 +211,7 @@ export const OrderList = ({
       if (yearFilter !== 'All Years') params.set('year', yearFilter); else params.delete('year');
       if (employeeFilter !== 'All Employees') params.set('employee', employeeFilter); else params.delete('employee');
       if (verificationTab !== 'All') params.set('verificationStatus', verificationTab); else params.delete('verificationStatus');
-      
+
       setSearchParams(params, { replace: true });
     }, 350);
     return () => clearTimeout(timer);
@@ -318,7 +318,7 @@ export const OrderList = ({
               </div>
             )}
           </div>
-          
+
           <div className="mb-4 relative">
             <input
               value={search} onChange={e => setSearch(e.target.value)}
@@ -343,36 +343,59 @@ export const OrderList = ({
         </div>
       )}
 
-      <div className="rounded-2xl border bg-white shadow-sm overflow-hidden print:border-none print:shadow-none">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 border-b gap-3.5 print:border-b-2 print:border-black">
-          <div>
-            <h3 className="font-bold text-base">🧾 My Orders</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{filteredOrders.length} active orders</p>
+      <div className="rounded-2xl border bg-slate-50/50 shadow-sm print:border-none print:shadow-none">
+        <div className="sticky top-0 z-20 flex flex-col xl:flex-row items-center justify-between p-4 sm:px-6 sm:py-5 shadow-md bg-[#2a9d8f] text-white gap-4 print:border-b-2 print:border-black">
+          <div className="flex-1 w-full xl:w-auto">
+            <h3 className="font-black text-xl tracking-wide">{monthFilter !== 'All Months' ? `${monthFilter} ${yearFilter !== 'All Years' ? yearFilter : new Date().getFullYear()}` : 'My Orders'}</h3>
           </div>
-          {isVerifier && !compact && (
-            <div className="flex flex-wrap sm:flex-nowrap p-1 bg-slate-100 rounded-xl w-full sm:w-fit overflow-x-auto gap-1">
+
+          <div className="flex flex-wrap sm:flex-nowrap gap-6 sm:gap-10 items-center text-center justify-center">
+            <div className="flex flex-col items-center">
+              <span className="text-emerald-100/90 text-xs font-bold mb-0.5">Total Amount</span>
+              <span className="text-white font-black text-lg">₹{filteredOrders.reduce((s, o) => s + (o.grandTotal || o.amount || 0), 0).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-emerald-100/90 text-xs font-bold mb-0.5">Total Received</span>
+              <span className="text-yellow-300 font-black text-lg">₹{filteredOrders.reduce((s, o) => s + (o.totalPaid || 0), 0).toLocaleString('en-IN')}</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-emerald-100/90 text-xs font-bold mb-0.5">Total Balance</span>
+              <span className="text-white font-black text-lg">₹{Math.max(0, filteredOrders.reduce((s, o) => s + (o.grandTotal || o.amount || 0) - (o.totalPaid || 0), 0)).toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+
+          <div className="flex-1 w-full xl:w-auto flex justify-end items-center gap-3">
+            <div className="bg-black/10 border border-white/20 px-4 py-1.5 rounded-full font-black text-sm tracking-wide text-white whitespace-nowrap shadow-sm">
+              {filteredOrders.length} orders
+            </div>
+          </div>
+        </div>
+
+        {isVerifier && !compact && (
+          <div className="bg-slate-50 border-b p-3 flex justify-center sticky top-[92px] z-10 shadow-sm">
+            <div className="flex flex-wrap sm:flex-nowrap p-1 bg-white rounded-xl border w-full sm:w-fit overflow-x-auto gap-1 shadow-sm">
               <button
                 type="button"
                 onClick={() => setVerificationTab('All')}
-                className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center justify-center whitespace-nowrap ${verificationTab === 'All' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 sm:flex-initial px-6 py-2 rounded-lg text-xs font-bold transition-all text-center justify-center whitespace-nowrap ${verificationTab === 'All' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
               >
                 All Orders
               </button>
               <button
                 type="button"
                 onClick={() => setVerificationTab('Pending')}
-                className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${verificationTab === 'Pending' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`flex-1 sm:flex-initial px-6 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 whitespace-nowrap ${verificationTab === 'Pending' ? 'bg-blue-50 text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}
               >
                 Pending Verification
                 {pendingVerificationCount > 0 && (
-                  <span className="bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[9px] font-bold leading-none">
+                  <span className="bg-red-500 text-white rounded-full px-2 py-0.5 text-[10px] font-bold leading-none">
                     {pendingVerificationCount}
                   </span>
                 )}
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
         {loading ? (
           <div className="p-12 text-center text-slate-500 flex flex-col items-center justify-center min-h-[220px]">
             <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mb-3" />
@@ -384,123 +407,115 @@ export const OrderList = ({
             No orders match your filters
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {filteredOrders.map((order, i) => (
-              <div key={order._id || order.id || i} ref={i === triggerIndex ? lastOrderElementRef : null} className="p-4 hover:bg-green-50/20 transition-colors">
-                <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="font-mono font-bold text-sm text-blue-700">{order.orderNumber || order.id}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6 p-6">
+            {filteredOrders.map((order, i) => {
+              let combinedServiceBadge = null;
+              let anyDesignPending = false;
+              let anyProductionPending = false;
+              let anyServicePending = false;
+
+              if (order.lineItems && order.lineItems.length > 0) {
+                anyDesignPending = order.lineItems.some(item => {
+                  const st = item.designerWorkflow?.currentStatus || item.designerStatus;
+                  return !st || st === 'Pending' || st === 'designer update pending' || st === 'Assigned' || st.includes('InProgress') || st.includes('Review');
+                });
+
+                anyProductionPending = !anyDesignPending && order.lineItems.some(item => {
+                  const st = item.productionWorkflow?.status;
+                  return !st || st === 'Pending' || st === 'In_Progress';
+                });
+
+                anyServicePending = !anyDesignPending && !anyProductionPending && order.lineItems.some(item => {
+                  const st = item.serviceWorkflow?.status || item.serviceStatus;
+                  return !st || st === 'Pending' || st === 'service update pending' || st === 'In_Progress';
+                });
+
+                if (anyDesignPending) {
+                  combinedServiceBadge = <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">🎨 Design Pending</span>;
+                } else if (anyProductionPending) {
+                  combinedServiceBadge = <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-orange-100 text-orange-700 border border-orange-200">⚙️ Production Pending</span>;
+                } else if (anyServicePending) {
+                  combinedServiceBadge = <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 border border-blue-200">🛠 Service Pending</span>;
+                } else {
+                  combinedServiceBadge = <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">✅ Services Completed</span>;
+                }
+              }
+
+              const isServicesCompleted = (order.lineItems && order.lineItems.length > 0) ? (!anyDesignPending && !anyProductionPending && !anyServicePending) : (order.status === 'Completed');
+              const isFullyCompleted = order.verificationStatus === 'Verified' && order.paymentStatus === 'Paid' && isServicesCompleted;
+
+              return (
+              <div key={order._id || order.id || i} ref={i === triggerIndex ? lastOrderElementRef : null} className="bg-white border border-slate-200 rounded-[1.5rem] p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col">
+                {/* Top Row: Badges */}
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  {isFullyCompleted ? (
+                    <span className="rounded-full px-3 py-1 text-[11px] font-black bg-emerald-500 text-white shadow-sm uppercase tracking-wider border border-emerald-600 flex items-center gap-1.5">🌟 Order Completed</span>
+                  ) : (
+                    <>
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold bg-purple-100 text-purple-700 uppercase tracking-wider`}>{order.orderType || 'retail'}</span>
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${paymentColors[order.paymentStatus] || 'bg-gray-100 text-gray-600'}`}>{order.paymentStatus} Payment</span>
-                      {/* Payment Verification Pending badge — shown when any paymentRecord is Pending */}
                       {(order.paymentRecords || []).some(p => p.status === 'Pending') && (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 animate-pulse">
-                          💰 Payment Verification Pending
-                        </span>
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 animate-pulse">💰 Payment Verification Pending</span>
                       )}
                       {order.verificationStatus === 'Pending' && (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
-                          ⏳ Order Verification Pending
-                        </span>
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">⏳ Order Verification Pending</span>
                       )}
                       {order.verificationStatus === 'Verified' && (
-                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          🛡 Order Verified by {order.verifiedByName || 'Manager'} ({order.verifiedByRole?.replace('_', ' ') || 'Admin'})
-                        </span>
+                        <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">🛡 Order Verified by {order.verifiedByName || 'Manager'} ({order.verifiedByRole?.replace('_', ' ') || 'Admin'})</span>
                       )}
-                    </div>
-                    <div className="font-semibold text-sm">
-                      <ClientNameLink 
-                        clientId={order.client?._id || order.client || order.prospect?._id || order.prospect} 
-                        phone={order.clientSnapshot?.phone || order.client?.phone || order.prospect?.phone}
-                        clientName={order.clientSnapshot?.company 
-                          ? `${order.clientSnapshot.company} (${order.clientSnapshot.name || 'No Contact'})` 
-                          : (order.clientSnapshot?.name || order.client || order.prospect)} 
-                      />
-                    </div>
-                    <div className="flex items-center gap-3 mt-2 flex-wrap">
-                      {order.deliveryDate && (
-                        <div className={`px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${calculateDeliveryPriority(order.deliveryDate).color}`}>
-                          <Calendar className="w-3 h-3" />
-                          Delivery: {new Date(order.deliveryDate).toLocaleDateString('en-GB')} - {calculateDeliveryPriority(order.deliveryDate).label}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 flex-wrap">
-                      {order.salesExec && (
-                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
-                          👤 {order.salesExec?.name || order.salesExec}
-                        </span>
-                      )}
-                      <span className="text-xs text-muted-foreground">Total: <span className="font-bold text-foreground">₹{order.grandTotal?.toLocaleString('en-IN') || order.amount}</span></span>
-                      {/* Show Paid/Balance only when payments are verified OR there are no pending payment records */}
-                      {(order.paymentRecords || []).some(p => p.status === 'Pending') ? (
-                        <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
-                          💰 Advance payment awaiting verification
-                        </span>
-                      ) : (
-                        <>
-                          <span className="text-xs text-muted-foreground">Received: <span className="font-semibold text-emerald-600">₹{order.totalPaid?.toLocaleString('en-IN') || '0'}</span></span>
-                          <span className="text-xs text-muted-foreground">Pending: <span className="font-bold text-red-500">₹{( (order.grandTotal || 0) - (order.totalPaid || 0) ).toLocaleString('en-IN')}</span></span>
-                        </>
-                      )}
-                    </div>
-                    
-                    {order.lineItems && order.lineItems.length > 0 && (
-                      <div className="mt-4 flex flex-col gap-2 w-full max-w-xl">
-                        {order.lineItems.map((item, idx) => {
-                          const designerStatusText = item.designerWorkflow?.currentStatus || item.designerStatus || 'Pending';
-                          return (
-                          <div 
-                            key={idx} 
-                            className="flex flex-wrap md:flex-nowrap items-center gap-3 group p-1.5 -ml-1.5 rounded-lg transition-colors"
-                          >
-                            <span className="border border-[#d1e3ff] text-[#2563eb] bg-[#f8fbff] rounded px-2.5 py-1 text-[11px] font-semibold whitespace-normal break-words">
-                                {item.description} {item.quantity > 1 && `(x${item.quantity})`}
-                            </span>
-                            
-                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 opacity-90 group-hover:opacity-100 bg-slate-50/50 px-2 py-1 rounded-md border border-slate-100">
-                               <div className="flex items-center gap-1.5">
-                                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Design</span>
-                                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border ${getStatusBadgeStyle(designerStatusText)}`}>
-                                   {designerStatusText && designerStatusText !== 'designer update pending' && designerStatusText !== 'Assigned' ? designerStatusText.replace(/_/g, ' ') : 'Pending'}
-                                 </span>
-                               </div>
-
-                               <div className="w-px h-3 bg-slate-200" />
-                               <div className="flex items-center gap-1.5">
-                                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Production</span>
-                                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border ${getStatusBadgeStyle(item.productionWorkflow?.status || 'Pending')}`}>
-                                   {(item.productionWorkflow?.status && item.productionWorkflow?.status !== 'Pending') ? item.productionWorkflow?.status.replace(/_/g, ' ') : 'Pending'}
-                                 </span>
-                               </div>
-                               <div className="w-px h-3 bg-slate-200" />
-                               <div className="flex items-center gap-1.5">
-                                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Service</span>
-                                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border ${getStatusBadgeStyle(item.serviceWorkflow?.status || item.serviceStatus || 'Pending')}`}>
-                                   {(item.serviceWorkflow?.status || item.serviceStatus) && (item.serviceWorkflow?.status || item.serviceStatus) !== 'service update pending' ? (item.serviceWorkflow?.status || item.serviceStatus).replace(/_/g, ' ') : 'Pending'}
-                                 </span>
-                               </div>
-                            </div>
-
-                            {isOpsOrAdmin && (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleDeleteLineItem(order._id || order.id, idx); }}
-                                className="ml-auto text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-md transition-colors"
-                                title="Delete/Cancel Service"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                      {combinedServiceBadge}
+                    </>
+                  )}
                 </div>
-                <div className="flex flex-wrap gap-2 mt-4 items-center justify-start print:hidden">
+
+                {/* Second Row: Order Number & Sales Exec */}
+                <div className="flex justify-between items-start mb-2">
+                  <span className="font-mono font-bold text-lg text-blue-700">{order.orderNumber || order.id}</span>
+                  {order.salesExec && (
+                    <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100 flex items-center gap-1.5 shadow-sm">
+                      👤 {order.salesExec?.name || order.salesExec}
+                    </span>
+                  )}
+                </div>
+
+                {/* Third Row: Client Details */}
+                <div className="font-black text-slate-900 text-base mb-3 uppercase">
+                  <ClientNameLink
+                    clientId={order.client?._id || order.client || order.prospect?._id || order.prospect}
+                    phone={order.clientSnapshot?.phone || order.client?.phone || order.prospect?.phone}
+                    clientName={order.clientSnapshot?.company
+                      ? `${order.clientSnapshot.company} (${order.clientSnapshot.name || 'No Contact'})`
+                      : (order.clientSnapshot?.name || order.client || order.prospect)}
+                  />
+                </div>
+
+                {/* Delivery Date */}
+                {order.deliveryDate && (
+                  <div className="mb-3">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 ${calculateDeliveryPriority(order.deliveryDate).color}`}>
+                      <Calendar className="w-3 h-3" />
+                      Delivery: {new Date(order.deliveryDate).toLocaleDateString('en-GB')} - {calculateDeliveryPriority(order.deliveryDate).label}
+                    </span>
+                  </div>
+                )}
+
+                {/* Fourth Row: Payment Details */}
+                <div className="flex flex-wrap items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100 mb-4 w-full md:w-max">
+                  <span className="text-xs text-slate-500 font-semibold">Total: <span className="font-black text-slate-900">₹{order.grandTotal?.toLocaleString('en-IN') || order.amount}</span></span>
+                  <div className="w-px h-4 bg-slate-200" />
+                  {(order.paymentRecords || []).some(p => p.status === 'Pending') ? (
+                    <span className="text-xs font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">💰 Advance payment awaiting verification</span>
+                  ) : (
+                    <>
+                      <span className="text-xs text-slate-500 font-semibold">Received: <span className="font-black text-emerald-600">₹{order.totalPaid?.toLocaleString('en-IN') || '0'}</span></span>
+                      <div className="w-px h-4 bg-slate-200" />
+                      <span className="text-xs text-slate-500 font-semibold">Pending: <span className="font-black text-red-500">₹{( (order.grandTotal || 0) - (order.totalPaid || 0) ).toLocaleString('en-IN')}</span></span>
+                    </>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-2 items-center justify-start print:hidden">
                   <button onClick={() => onUploadPayment?.(order)} className="flex items-center justify-center gap-1.5 h-8 px-3.5 rounded-lg bg-blue-50 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition-colors flex-1 sm:flex-initial whitespace-nowrap">
                     <Upload className="h-3.5 w-3.5" /> Upload Payment
                   </button>
@@ -520,7 +535,7 @@ export const OrderList = ({
                     <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-1.5 rounded-lg">Edit/Delete disabled</span>
                   )}
                   {isVerifier && order.verificationStatus === 'Pending' && (
-                    <button 
+                    <button
                       onClick={async () => {
                         if (window.confirm(`Are you sure you want to verify payments and confirm Order #${order.orderNumber}?`)) {
                           try {
@@ -534,7 +549,7 @@ export const OrderList = ({
                             alert(err.message || 'Verification failed');
                           }
                         }
-                      }} 
+                      }}
                       className="flex items-center justify-center gap-1.5 h-8 px-4 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors shadow-sm sm:ml-auto w-full sm:w-auto whitespace-nowrap animate-bounce"
                     >
                       🛡 Verify Order
@@ -542,7 +557,8 @@ export const OrderList = ({
                   )}
                 </div>
               </div>
-            ))}
+            );
+          })}
           </div>
         )}
         {loadingMore && (
@@ -554,8 +570,8 @@ export const OrderList = ({
       </div>
 
       {updatingLineItem && (
-        <UpdateLineItemModal 
-          order={updatingLineItem.order} 
+        <UpdateLineItemModal
+          order={updatingLineItem.order}
           itemIndex={updatingLineItem.itemIndex}
           item={updatingLineItem.item}
           user={user}
@@ -598,7 +614,7 @@ export const OrderList = ({
 export const UpdateLineItemModal = ({ order, itemIndex, item, user, onClose, onSuccess }) => {
   const isDesigner = user?.role === 'DESIGNER' || user?.role === 'ADMIN' || user?.role === 'MD_CEO';
   const isOps = user?.role === 'OPERATION_EXEC' || user?.role === 'OPERATION_MANAGER' || user?.role === 'ADMIN' || user?.role === 'MD_CEO';
-  
+
   // Decide which tab to show by default
   const [activeTab, setActiveTab] = useState(isDesigner ? 'designer' : (isOps ? 'ops' : 'service'));
 
@@ -641,9 +657,9 @@ export const UpdateLineItemModal = ({ order, itemIndex, item, user, onClose, onS
         payload.serviceStatus = serviceStatus;
         payload.serviceFileUrl = serviceFileUrl;
       }
-      
+
       const res = await orderApi.updateLineItem(order._id || order.id, itemIndex, payload, user.token);
-      
+
       if (res.success) {
         onSuccess?.();
       }
@@ -909,26 +925,26 @@ export const OrderSearchModal = ({ onClose, onSearch }) => {
         <form onSubmit={handleFormSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-bold text-slate-800 mb-2 block">10-Digit Mobile Number:</label>
-            <input 
-              value={phone} 
+            <input
+              value={phone}
               onChange={e => {
                 setError('');
                 setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
-              }} 
-              placeholder="Enter mobile number" 
-              className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
+              }}
+              placeholder="Enter mobile number"
+              className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]"
             />
           </div>
           <div>
             <label className="text-sm font-bold text-slate-800 mb-2 block">Business Name:</label>
-            <input 
-              value={company} 
+            <input
+              value={company}
               onChange={e => {
                 setError('');
                 setCompany(e.target.value);
-              }} 
-              placeholder="Enter business name" 
-              className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
+              }}
+              placeholder="Enter business name"
+              className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]"
             />
           </div>
           <button
@@ -984,7 +1000,7 @@ export const OrderClientDetailsModal = ({ client, onBack, onCreateOrder, onClose
 };
 
 // ─── Create Order Modal ───────────────────────────────────────────────────────
-export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) => {
+export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit, existingOrder }) => {
   const getDefaultDeliveryDate = () => {
     const d = new Date();
     d.setDate(d.getDate() + 7);
@@ -1000,38 +1016,38 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
   };
 
   const [formData, setFormData] = useState({
-    executiveName: executiveName || '',
-    orderDate: new Date().toISOString().split('T')[0],
-    orderType: getInitialOrderType(client?.clientType),
-    hasGst: false,
-    gstNumber: '',
-    panNumber: '',
-    company: client?.company || client?.businessName || '',
-    name: client?.name || client?.contactPerson || '',
-    phone: client?.phone || '',
-    location: client?.location || client?.requirement?.location || '',
-    state: 'Telangana',
-    pincode: '',
+    executiveName: existingOrder?.salesExec?.name || executiveName || '',
+    orderDate: existingOrder?.invoiceDate ? existingOrder.invoiceDate.split('T')[0] : (existingOrder?.createdAt ? existingOrder.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]),
+    orderType: existingOrder?.orderType || getInitialOrderType(client?.clientType),
+    hasGst: existingOrder?.clientSnapshot?.gstin && existingOrder.clientSnapshot.gstin !== 'Unregistered',
+    gstNumber: existingOrder?.clientSnapshot?.gstin !== 'Unregistered' ? (existingOrder?.clientSnapshot?.gstin || '') : '',
+    panNumber: existingOrder?.clientSnapshot?.panNumber || '',
+    company: existingOrder?.clientSnapshot?.company || client?.company || client?.businessName || '',
+    name: existingOrder?.clientSnapshot?.name || existingOrder?.clientSnapshot?.contactPerson || client?.name || client?.contactPerson || '',
+    phone: existingOrder?.clientSnapshot?.phone || client?.phone || '',
+    location: existingOrder?.clientSnapshot?.address || existingOrder?.clientSnapshot?.billingAddress?.city || client?.location || client?.requirement?.location || '',
+    state: existingOrder?.clientSnapshot?.state || existingOrder?.clientSnapshot?.billingAddress?.state || 'Telangana',
+    pincode: existingOrder?.clientSnapshot?.pincode || existingOrder?.clientSnapshot?.billingAddress?.pincode || '',
     birthDate: '',
     anniversaryDate: '',
     designStatus: 'Design Provided',
-    deliveryDate: getDefaultDeliveryDate(),
+    deliveryDate: existingOrder?.deliveryDate ? existingOrder.deliveryDate.split('T')[0] : getDefaultDeliveryDate(),
   });
 
   const [lockedOrderType, setLockedOrderType] = useState(null);
 
   React.useEffect(() => {
-    if (client && (client.createdAt || client.registrationDate || client.clientType)) {
+    if (!existingOrder && client && (client.createdAt || client.registrationDate || client.clientType)) {
       const initType = getInitialOrderType(client.clientType);
       setFormData(prev => ({ ...prev, orderType: initType }));
     }
-  }, [client]);
+  }, [client, existingOrder]);
 
   const { user } = useAuth();
   const [availableProducts, setAvailableProducts] = useState([]);
   const [clientTypes, setClientTypes] = useState([]);
   const [categories, setCategories] = useState([]);
-  
+
   React.useEffect(() => {
     Promise.all([
       productApi.list(user?.token),
@@ -1041,7 +1057,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
         if (pRes.success) {
           const prods = pRes.data || [];
           setAvailableProducts(prods);
-          
+
           // Dynamically extract unique categories
           const uniqueCats = new Map();
           prods.forEach(p => {
@@ -1060,20 +1076,70 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
       .catch(console.error);
   }, [user]);
 
-  const [items, setItems] = useState([{ categoryId: '', productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, baseCost: 0, deliveryDate: getDefaultDeliveryDate(), designFileUrl: null }]);
+  const initialItems = existingOrder?.lineItems?.length > 0 ? existingOrder.lineItems.map(li => ({
+    categoryId: '',
+    productId: li.productId ? (typeof li.productId === 'object' ? li.productId._id : li.productId) : '',
+    desc: li.description || '',
+    isCustom: !li.productId,
+    customDesc: !li.productId ? li.description || '' : '',
+    qty: li.quantity || 1,
+    cost: li.unitPrice || 0,
+    baseCost: li.unitPrice || 0,
+    deliveryDate: li.deliveryDate ? li.deliveryDate.split('T')[0] : (existingOrder.deliveryDate ? existingOrder.deliveryDate.split('T')[0] : getDefaultDeliveryDate()),
+    designFileUrl: li.designFileUrl || null,
+    _id: li._id
+  })) : [{ categoryId: '', productId: '', desc: '', isCustom: false, customDesc: '', qty: 1, cost: 0, baseCost: 0, deliveryDate: getDefaultDeliveryDate(), designFileUrl: null }];
+
+  const [items, setItems] = useState(initialItems);
+
+  React.useEffect(() => {
+    if (existingOrder && existingOrder.lineItems && availableProducts.length > 0) {
+      setItems(prevItems => prevItems.map((item, i) => {
+        const originalItem = existingOrder.lineItems[i];
+        if (originalItem && !item.productId && originalItem.description) {
+           const match = availableProducts.find(p => (p.productName || p.name) === originalItem.description);
+           if (match) {
+             return {
+               ...item,
+               productId: match._id,
+               isCustom: false,
+               desc: match.productName || match.name
+             };
+           }
+        }
+        return item;
+      }));
+    }
+  }, [availableProducts, existingOrder]);
+
   const [isCatalogueOpen, setIsCatalogueOpen] = useState(false);
   const [activeItemIndex, setActiveItemIndex] = useState(null);
-  const [advance, setAdvance] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Cash');
-  const [paymentProof, setPaymentProof] = useState(null);
-  const [isPO, setIsPO] = useState(false);
-  const [poNumber, setPoNumber] = useState('');
-  const [poDate, setPoDate] = useState('');
-  const [poDocument, setPoDocument] = useState(null);
-  const [applyGst, setApplyGst] = useState(false);
-  const [discount, setDiscount] = useState(0);
+
+  // Try to find if advance is present in existing order
+  let initialAdvance = '';
+  if (existingOrder) {
+    if (existingOrder.payment?.advance !== undefined) initialAdvance = existingOrder.payment.advance;
+    else if (existingOrder.initialPayment?.amount !== undefined) initialAdvance = existingOrder.initialPayment.amount;
+    else if (existingOrder.totalPaid !== undefined) initialAdvance = existingOrder.totalPaid;
+  }
+
+  const [advance, setAdvance] = useState(initialAdvance ? String(initialAdvance) : '');
+  const [paymentMethod, setPaymentMethod] = useState(existingOrder?.payment?.paymentMethod || existingOrder?.initialPayment?.method || 'Cash');
+  const [paymentProof, setPaymentProof] = useState(existingOrder?.payment?.paymentProof || existingOrder?.initialPayment?.proofUrl || null);
+  const [isPO, setIsPO] = useState(existingOrder?.isPO || false);
+  const [poNumber, setPoNumber] = useState(existingOrder?.poNumber || '');
+  const [poDate, setPoDate] = useState(existingOrder?.poDate ? existingOrder.poDate.split('T')[0] : '');
+  const [poDocument, setPoDocument] = useState(existingOrder?.poDocument || null);
+
+  const initialGst = existingOrder ? (existingOrder.payment?.cgst > 0 || existingOrder.payment?.igst > 0) : false;
+  const [applyGst, setApplyGst] = useState(initialGst);
+
+  const initialDiscount = existingOrder?.payment?.discount ||
+    (existingOrder?.payment?.discountAmount && existingOrder?.payment?.rawSubtotal ? (existingOrder.payment.discountAmount / existingOrder.payment.rawSubtotal) * 100 : 0);
+  const [discount, setDiscount] = useState(initialDiscount || 0);
+
   const [errors, setErrors] = useState({});
-  const [designFile, setDesignFile] = useState(null);
+  const [designFile, setDesignFile] = useState(existingOrder?.designFileUrl || null);
   const getProductPriceForOrderType = (product, orderType, qty = 1) => {
     if (!product) return 0;
     let basePrice = product.pricingRules?.sellingPrice || product.pricingRules?.totalBasePrice || product.basePrice || 0;
@@ -1090,7 +1156,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
       }
     }
     if (!orderType) return basePrice;
-    
+
     if (product.clientTypePricing) {
       if (product.clientTypePricing[orderType] !== undefined) {
         return product.clientTypePricing[orderType];
@@ -1114,7 +1180,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     const targetQty = activeItemIndex !== null ? Math.max(items[activeItemIndex]?.qty || 1, moq) : moq;
     const price = getProductPriceForOrderType(product, formData.orderType, targetQty);
     const desc = product.productName || product.name;
-    
+
     if (activeItemIndex !== null) {
       setItems(prev => prev.map((item, idx) => {
         if (idx === activeItemIndex) {
@@ -1157,7 +1223,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
     if (!formData.name) newErrors.name = 'Required';
     if (!formData.phone) newErrors.phone = 'Required';
     else if (formData.phone.length !== 10) newErrors.phone = 'Enter 10 digits';
-    
+
     if (!formData.billingAddress?.city && !formData.location) newErrors.billingCity = 'Required';
     if (formData.billingAddress?.pincode && formData.billingAddress.pincode.length !== 6) newErrors.billingPincode = 'Enter 6 digits';
     else if (formData.pincode && formData.pincode.length !== 6) newErrors.pincode = 'Enter 6 digits';
@@ -1190,7 +1256,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
         newErrors.designFile = 'Please upload design file for each item requirement below';
       }
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -1238,8 +1304,8 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
   const rawSubtotal = items.reduce((s, item) => s + (item.qty * Number(item.cost || 0)), 0);
   const discountAmount = rawSubtotal * (Number(discount) / 100);
   const taxableAmount = rawSubtotal - discountAmount;
-  
-  const isInterState = formData.state !== 'Telangana'; 
+
+  const isInterState = formData.state !== 'Telangana';
   const cgst = applyGst && !isInterState ? taxableAmount * 0.09 : 0;
   const sgst = applyGst && !isInterState ? taxableAmount * 0.09 : 0;
   const igst = applyGst && isInterState ? taxableAmount * 0.18 : 0;
@@ -1277,7 +1343,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
       }));
     }
   };
-  
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -1353,15 +1419,17 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 
   const handleFormSubmit = () => {
     if (!validate()) return;
-    
+
     const lineItems = items.map(it => ({
+      _id: it._id,
       description: it.isCustom ? (it.customDesc || it.desc) : it.desc,
       quantity: Number(it.qty),
       unitPrice: Number(it.cost),
       discount: 0,
       gstRate: applyGst ? 18 : 0,
       deliveryDate: it.deliveryDate, // optional item level fallback
-      designFileUrl: it.designFileUrl || designFile || null
+      designFileUrl: it.designFileUrl || designFile || null,
+      productId: it.productId || null
     }));
 
     onSubmit({
@@ -1415,8 +1483,8 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
       <div className="w-full max-w-4xl rounded-2xl border bg-card shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between p-5 border-b shrink-0" style={{ background: 'linear-gradient(135deg, #064e3b, #065f46)' }}>
           <div>
-            <h2 className="text-white font-bold text-lg">🧾 Create New Order</h2>
-            {client && <p className="text-emerald-200 text-xs mt-0.5">Creating for {client.company || client.name}</p>}
+            <h2 className="text-white font-bold text-lg">{existingOrder ? '🧾 Edit Order Form' : '🧾 Create New Order'}</h2>
+            {client && <p className="text-emerald-200 text-xs mt-0.5">{existingOrder ? `Editing order for ${client.company || client.name}` : `Creating for ${client.company || client.name}`}</p>}
           </div>
           <button onClick={onClose} className="text-emerald-200 hover:text-white"><X className="h-5 w-5" /></button>
         </div>
@@ -1442,14 +1510,14 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                 <label className="text-xs font-bold text-slate-800 mb-1 block">
                   Order Type *
                 </label>
-                <select 
-                  name="orderType" 
-                  value={formData.orderType} 
-                  onChange={handleChange} 
+                <select
+                  name="orderType"
+                  value={formData.orderType}
+                  onChange={handleChange}
                   className={`h-9 w-full rounded border ${errors.orderType ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-green-500`}
                 >
                   <option value="">Select Type...</option>
-                  {(clientTypes.length === 0 
+                  {(clientTypes.length === 0
                     ? [
                         { _id: 'retail', key: 'retail', name: 'Retail' },
                         { _id: 'corporate', key: 'corporate', name: 'Corporate' },
@@ -1467,8 +1535,8 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 
           <div className="bg-white p-5 rounded-xl border shadow-sm">
             <h3 className="font-bold text-slate-800 mb-4 border-b pb-2">2. Client Details</h3>
-            <CustomerInformationForm 
-              data={formData} 
+            <CustomerInformationForm
+              data={formData}
               errors={errors}
               onChange={(field, value) => {
                 if (typeof field === 'object') {
@@ -1477,7 +1545,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                   setFormData(prev => ({ ...prev, [field]: value }));
                 }
                 if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
-              }} 
+              }}
             />
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-100">
@@ -1503,12 +1571,12 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
             <div className="flex items-center justify-between mb-4 border-b pb-2">
               <h3 className="font-bold text-slate-800">3. Order Requirements</h3>
               <div className="flex gap-2">
-                <button 
+                <button
                   type="button"
                   onClick={() => {
                     setActiveItemIndex(null);
                     setIsCatalogueOpen(true);
-                  }} 
+                  }}
                   className="text-xs font-bold text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition flex items-center gap-1 shadow"
                 >
                   <ShoppingBag className="h-3.5 w-3.5" /> Catalogue
@@ -1516,7 +1584,7 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                 <button onClick={addItem} className="text-xs font-bold text-white bg-green-600 px-3 py-1.5 rounded-lg hover:bg-green-700 transition flex items-center gap-1"><Plus className="h-3.5 w-3.5" />Add Item</button>
               </div>
             </div>
-            
+
             <div className="space-y-4">
               {items.map((item, i) => {
                 const prod = availableProducts.find(p => p._id === item.productId);
@@ -1548,24 +1616,24 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
 
                       <div>
                         <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Quantity (MOQ: {moq})</label>
-                        <input 
-                          type="number" 
-                          value={item.qty} 
+                        <input
+                          type="number"
+                          value={item.qty}
                           onChange={e => updateItem(i, 'qty', e.target.value === '' ? '' : +e.target.value)}
                           onBlur={() => {
                             if (Number(item.qty) < moq) updateItem(i, 'qty', moq);
                           }}
-                          className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none" 
-                          min={moq} 
+                          className="h-9 w-full rounded border border-slate-300 bg-white px-3 text-sm outline-none"
+                          min={moq}
                         />
                       </div>
 
                       <div>
                         <label className="text-[10px] font-bold uppercase text-slate-500 mb-1 block">Cost (₹)</label>
                         <div className="relative">
-                          <input 
-                            type="number" 
-                            value={item.cost} 
+                          <input
+                            type="number"
+                            value={item.cost}
                             onChange={e => {
                               const val = +e.target.value;
                               if (item.isCustom) {
@@ -1573,12 +1641,12 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
                               } else if (val >= (item.baseCost || 0)) {
                                 updateItem(i, 'cost', val);
                               }
-                            }} 
+                            }}
                             min={!item.isCustom ? (item.baseCost || 0) : 0}
-                            className={`h-9 w-full rounded border px-3 pr-8 text-sm outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!item.isCustom && item.cost <= (item.baseCost || 0) ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-300'}`} 
-                            placeholder={item.isCustom ? "Enter cost" : "Fixed cost"} 
+                            className={`h-9 w-full rounded border px-3 pr-8 text-sm outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${!item.isCustom && item.cost <= (item.baseCost || 0) ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-300'}`}
+                            placeholder={item.isCustom ? "Enter cost" : "Fixed cost"}
                           />
-                          <button 
+                          <button
                             type="button"
                             onClick={() => {
                               const currentCost = Number(item.cost) || 0;
@@ -1782,11 +1850,11 @@ export const CreateOrderModal = ({ client, executiveName, onClose, onSubmit }) =
             className="flex-1 h-11 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 flex items-center justify-center gap-2 shadow-sm"
             style={{ background: advanceLow ? '#dc2626' : '#059669' }}
           >
-            {advanceLow ? '⚠ Request Manager Approval' : '✅ Submit & Create Order'}
+            {advanceLow ? '⚠ Request Manager Approval' : (existingOrder ? '✅ Update Order' : '✅ Submit & Create Order')}
           </button>
         </div>
       </div>
-      
+
       <ProductCatalogueModal
         isOpen={isCatalogueOpen}
         onClose={() => setIsCatalogueOpen(false)}
@@ -1838,26 +1906,26 @@ export const PhoneSearchModal = ({ onClose, onSearch }) => {
         <form onSubmit={handleFormSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-bold text-slate-800 mb-2 block">10-Digit Mobile Number:</label>
-            <input 
-              value={phone} 
+            <input
+              value={phone}
               onChange={e => {
                 setError('');
                 setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
-              }} 
-              placeholder="Enter mobile number" 
-              className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
+              }}
+              placeholder="Enter mobile number"
+              className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]"
             />
           </div>
           <div>
             <label className="text-sm font-bold text-slate-800 mb-2 block">Business Name:</label>
-            <input 
-              value={company} 
+            <input
+              value={company}
               onChange={e => {
                 setError('');
                 setCompany(e.target.value);
-              }} 
-              placeholder="Enter business name" 
-              className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]" 
+              }}
+              placeholder="Enter business name"
+              className="h-10 w-full rounded border border-slate-300 bg-background px-3 text-sm outline-none focus:border-[#003366]"
             />
           </div>
           <button
@@ -1993,13 +2061,13 @@ export const CreateProspectModal = ({ phone, company, executiveName, onBack, onS
     if (!formData.name) newErrors.name = 'Required';
     if (!formData.phone) newErrors.phone = 'Required';
     else if (formData.phone.length !== 10) newErrors.phone = 'Enter 10 digits';
-    
+
     if (!formData.billingAddress?.city && !formData.location) newErrors.billingCity = 'Required';
     if (!formData.source) newErrors.source = 'Required';
     if (!formData.priority) newErrors.priority = 'Required';
     if (!formData.nextFollowUpDate) newErrors.nextFollowUpDate = 'Required';
     if (products.length === 0) newErrors.products = 'Add at least one product';
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -2038,8 +2106,8 @@ export const CreateProspectModal = ({ phone, company, executiveName, onBack, onS
         <h2 className="text-2xl font-bold text-center mb-6 text-slate-900">{initialData ? 'Edit Prospect' : 'Create New Prospect'}</h2>
         <div className="overflow-y-auto flex-1 space-y-4 pr-2">
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Executive Name</label><input name="executiveName" value={formData.executiveName} readOnly className="h-9 w-full rounded border border-slate-300 px-3 text-sm outline-none bg-slate-50" /></div>
-          <CustomerInformationForm 
-            data={formData} 
+          <CustomerInformationForm
+            data={formData}
             errors={errors}
             onChange={(field, value) => {
               if (typeof field === 'object') {
@@ -2048,7 +2116,7 @@ export const CreateProspectModal = ({ phone, company, executiveName, onBack, onS
                 setFormData(prev => ({ ...prev, [field]: value }));
               }
               if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
-            }} 
+            }}
           />
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Lead From *</label>
             <select name="source" value={formData.source} onChange={handleChange} className={`h-9 w-full rounded border ${errors.source ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`}>
@@ -2084,7 +2152,7 @@ export const CreateProspectModal = ({ phone, company, executiveName, onBack, onS
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Follow-up Date *</label><input type="date" name="nextFollowUpDate" value={formData.nextFollowUpDate} onChange={handleChange} className={`h-9 w-full rounded border ${errors.nextFollowUpDate ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} />
             {errors.nextFollowUpDate && <p className="text-[10px] text-red-500 mt-0.5 font-bold">{errors.nextFollowUpDate}</p>}
           </div>
-          
+
           <div>
             <label className="text-xs font-bold text-slate-800 mb-2 block">Products / Services Needed *</label>
             {products.length > 0 && (
@@ -2098,18 +2166,18 @@ export const CreateProspectModal = ({ phone, company, executiveName, onBack, onS
             )}
             <div className="relative">
               <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={customProduct} 
+                <input
+                  type="text"
+                  value={customProduct}
                   onChange={(e) => {
                     setCustomProduct(e.target.value);
                     setShowSuggestions(true);
-                  }} 
+                  }}
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                   onKeyDown={(e) => e.key === 'Enter' && addCustomProduct(e)}
-                  placeholder="Type product name to search or add..." 
-                  className={`h-9 flex-1 rounded border ${errors.products ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`} 
+                  placeholder="Type product name to search or add..."
+                  className={`h-9 flex-1 rounded border ${errors.products ? 'border-red-500 bg-red-50' : 'border-slate-300'} px-3 text-sm outline-none focus:border-[#003366]`}
                 />
                 <button type="button" onClick={addCustomProduct} className="h-9 px-4 rounded bg-slate-800 text-white text-sm font-semibold hover:bg-slate-700 transition-colors">Add</button>
                 <button type="button" onClick={() => setIsCatalogueOpen(true)} className="h-9 px-3 rounded bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition-colors flex items-center gap-1.5 shadow" title="Browse Product Catalogue">
@@ -2134,25 +2202,25 @@ export const CreateProspectModal = ({ phone, company, executiveName, onBack, onS
           <div><label className="text-xs font-bold text-slate-800 mb-1 block">Additional Requirement Notes</label><textarea name="notes" value={formData.notes} onChange={handleChange} className="w-full rounded border border-slate-300 px-3 py-2 text-sm outline-none focus:border-[#003366] min-h-[60px]" placeholder="Specific details..." /></div>
         </div>
         <div className="pt-6 flex justify-between shrink-0">
-          <button 
+          <button
             onClick={() => {
               if (onBack) onBack();
               navigate('/');
-            }} 
-            className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" 
+            }}
+            className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90"
             style={{ background: '#003366' }}
           >
             Back to Dashboard
           </button>
-          <button 
-            onClick={() => handleFormSubmit()} 
-            className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90" 
+          <button
+            onClick={() => handleFormSubmit()}
+            className="h-10 px-6 rounded text-white font-semibold text-sm transition-colors hover:opacity-90"
             style={{ background: '#003366' }}
           >
             {initialData ? 'Update Prospect' : 'Submit Prospect'}
           </button>
         </div>
-        
+
         <ProductCatalogueModal
           isOpen={isCatalogueOpen}
           onClose={() => setIsCatalogueOpen(false)}
@@ -2226,14 +2294,14 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
       setItems(newItems);
       await fetchVariants(product._id);
     } else {
-      const newItem = { 
-        productId: product._id, 
-        variantId: '', 
-        name: name, 
-        qty: moq, 
-        unitPrice: price, 
+      const newItem = {
+        productId: product._id,
+        variantId: '',
+        name: name,
+        qty: moq,
+        unitPrice: price,
         systemPrice: price,
-        customPrice: false 
+        customPrice: false
       };
       let newItemsList;
       if (items.length === 1 && !items[0].productId) {
@@ -2259,8 +2327,8 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
   const fetchVariants = async (productId) => {
     if (variants[productId]) return;
     try {
-      const res = await fetch(`/api/products/${productId}`, { 
-        headers: { 'Authorization': `Bearer ${user.token}` } 
+      const res = await fetch(`/api/products/${productId}`, {
+        headers: { 'Authorization': `Bearer ${user.token}` }
       }).then(async r => {
         const text = await r.text();
         return text ? JSON.parse(text) : {};
@@ -2298,7 +2366,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
       if (v) {
         newItems[index].variantId = value;
         newItems[index].name = `${productList.find(p => p._id === newItems[index].productId)?.name} (${v.name})`;
-        
+
         // Dynamic Price Fetch
         const clientType = prospect?.clientType || 'Retail';
         const priceRes = await fetch(`/api/products/price-engine?variantId=${value}&clientType=${clientType}`, {
@@ -2307,7 +2375,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
           const text = await r.text();
           return text ? JSON.parse(text) : {};
         });
-        
+
         if (priceRes.success) {
           const systemPrice = priceRes.data.unitPrice;
           newItems[index].unitPrice = systemPrice;
@@ -2353,7 +2421,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
       if (res.success) {
         const itemText = items.map(i => `• ${i.name} (x${i.qty}): ₹${(i.qty * i.unitPrice).toLocaleString()}`).join('\n');
         const text = `*QUOTATION: GMS ADS & MARKETING*\n\nHello *${prospect.name}* (${prospect.company}),\n\nFollowing is the estimate for your requirement:\n\n${itemText}\n\n--------------------------\n*Subtotal:* ₹${subtotal.toLocaleString()}\n*Discount:* ₹${discountAmount.toLocaleString()}\n*GST (18%):* ₹${gstAmount.toLocaleString()}\n*TOTAL:* ₹${Math.round(total).toLocaleString()}\n--------------------------\n\nRegards,\n*${user.name}*\nSales Executive`;
-        
+
         window.open(`https://wa.me/${prospect.phone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
         onSubmit(res.data);
         onClose();
@@ -2364,7 +2432,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
       <div className="bg-[#f8fafc] w-full max-w-[95vw] lg:max-w-7xl h-[92vh] rounded-[3rem] shadow-[0_0_100px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
-        
+
         {/* Header */}
         <div className="bg-white border-b px-8 py-6 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4">
@@ -2384,7 +2452,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
         <div className="flex-1 flex overflow-hidden">
           {/* Left: Input Configuration */}
           <div className="flex-1 overflow-y-auto p-10 space-y-10 border-r bg-white/50">
-            
+
             {/* Client Context & Editable Snapshot */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-1.5">
@@ -2392,50 +2460,50 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                 <div className="bg-slate-50 border border-slate-200 rounded-[1.5rem] p-4 space-y-3">
                   <div>
                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Company Name</label>
-                    <input 
-                      type="text" 
-                      value={clientCompany} 
-                      onChange={e => setClientCompany(e.target.value)} 
+                    <input
+                      type="text"
+                      value={clientCompany}
+                      onChange={e => setClientCompany(e.target.value)}
                       placeholder="e.g. EBO MART PRIVATE LIMITED"
                       className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Contact Person Name</label>
-                    <input 
-                      type="text" 
-                      value={clientContactPerson} 
-                      onChange={e => setClientContactPerson(e.target.value)} 
+                    <input
+                      type="text"
+                      value={clientContactPerson}
+                      onChange={e => setClientContactPerson(e.target.value)}
                       placeholder="e.g. Rajesh Kumar"
                       className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Company Address</label>
-                    <input 
-                      type="text" 
-                      value={clientAddress} 
-                      onChange={e => setClientAddress(e.target.value)} 
+                    <input
+                      type="text"
+                      value={clientAddress}
+                      onChange={e => setClientAddress(e.target.value)}
                       placeholder="e.g. Ground, First Floor, 5-4-156, Secunderabad, Hyderabad, Telangana, 500003"
                       className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Mobile Number</label>
-                    <input 
-                      type="text" 
-                      value={clientPhone} 
-                      onChange={e => setClientPhone(e.target.value)} 
+                    <input
+                      type="text"
+                      value={clientPhone}
+                      onChange={e => setClientPhone(e.target.value)}
                       placeholder="e.g. 6300380539"
                       className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
                     />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Quotation Date (Editable)</label>
-                    <input 
-                      type="date" 
-                      value={quoteDate} 
-                      onChange={e => setQuoteDate(e.target.value)} 
+                    <input
+                      type="date"
+                      value={quoteDate}
+                      onChange={e => setQuoteDate(e.target.value)}
                       className="w-full h-8 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-semibold text-slate-800 outline-none focus:border-blue-500"
                     />
                   </div>
@@ -2458,12 +2526,12 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
               <div className="flex justify-between items-center px-1">
                 <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Quotation Line Items</h3>
                 <div className="flex gap-2">
-                  <button 
+                  <button
                     type="button"
                     onClick={() => {
                       setActiveItemIndex(null);
                       setIsCatalogueOpen(true);
-                    }} 
+                    }}
                     className="h-9 px-4 bg-indigo-600 text-white rounded-xl text-[11px] font-black flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow"
                   >
                     <ShoppingBag className="h-4 w-4" /> Catalogue
@@ -2483,20 +2551,20 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                       <div className="w-full md:w-48">
                         <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Product</label>
                         <div className="flex gap-2">
-                          <select 
+                          <select
                             value={item.productId} onChange={(e) => updateItem(i, 'productId', e.target.value)}
                             className="w-full h-12 px-4 bg-slate-50 border-0 rounded-2xl text-xs font-black outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                           >
                             <option value="">Select Product...</option>
                             {productList.map(p => <option key={p._id} value={p._id}>{p.productName || p.name}</option>)}
                           </select>
-                          <button 
+                          <button
                             type="button"
                             onClick={() => {
                               setActiveItemIndex(i);
                               setIsCatalogueOpen(true);
-                            }} 
-                            className="h-12 w-12 rounded-2xl bg-indigo-600 text-white transition-colors hover:bg-indigo-700 flex items-center justify-center shrink-0 shadow" 
+                            }}
+                            className="h-12 w-12 rounded-2xl bg-indigo-600 text-white transition-colors hover:bg-indigo-700 flex items-center justify-center shrink-0 shadow"
                             title="Select from Catalogue"
                           >
                             <ShoppingBag className="h-4 w-4" />
@@ -2505,7 +2573,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                       </div>
                       <div className="flex-1 min-w-[140px]">
                         <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Variant / Size</label>
-                        <select 
+                        <select
                           value={item.variantId} onChange={(e) => updateItem(i, 'variantId', e.target.value)}
                           disabled={!item.productId}
                           className="w-full h-12 px-4 bg-slate-50 border-0 rounded-2xl text-xs font-black outline-none focus:ring-2 focus:ring-blue-500/20 transition-all disabled:opacity-50"
@@ -2516,8 +2584,8 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                       </div>
                       <div className="w-24">
                         <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Qty (MOQ: {moq})</label>
-                        <input 
-                          type="number" min={moq} value={item.qty} 
+                        <input
+                          type="number" min={moq} value={item.qty}
                           onChange={(e) => updateItem(i, 'qty', e.target.value === '' ? '' : +e.target.value)}
                           onBlur={() => {
                             if (Number(item.qty) < moq) updateItem(i, 'qty', moq);
@@ -2528,7 +2596,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                     <div className="w-40">
                       <label className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-2 block ml-1">Unit Price (₹)</label>
                       <div className="relative">
-                        <input 
+                        <input
                           type="number" value={item.unitPrice} onChange={(e) => updateItem(i, 'unitPrice', +e.target.value)}
                           className={`w-full h-12 px-4 bg-slate-50 border-0 rounded-2xl text-xs font-black outline-none transition-all ${item.customPrice ? 'text-amber-600 bg-amber-50' : 'text-slate-900'}`}
                         />
@@ -2561,21 +2629,21 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                   <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50/80 rounded-2xl border border-slate-100 animate-in slide-in-from-top-1 duration-150">
                     <div>
                       <label className="block text-[9px] font-black uppercase text-slate-400 mb-1">GST Number (GSTIN)</label>
-                      <input 
-                        type="text" 
-                        value={clientGstNumber} 
+                      <input
+                        type="text"
+                        value={clientGstNumber}
                         onChange={e => setClientGstNumber(e.target.value)}
-                        placeholder="e.g. 36AAQFG7654Q1Z1" 
+                        placeholder="e.g. 36AAQFG7654Q1Z1"
                         className="w-full h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:border-blue-500"
                       />
                     </div>
                     <div>
                       <label className="block text-[9px] font-black uppercase text-slate-400 mb-1">PAN Number</label>
-                      <input 
-                        type="text" 
-                        value={clientPanNumber} 
+                      <input
+                        type="text"
+                        value={clientPanNumber}
                         onChange={e => setClientPanNumber(e.target.value)}
-                        placeholder="e.g. AAQFG7654Q" 
+                        placeholder="e.g. AAQFG7654Q"
                         className="w-full h-9 px-3 bg-white border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:border-blue-500"
                       />
                     </div>
@@ -2603,7 +2671,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
           {/* Right: Live Preview */}
           <div className="w-[450px] bg-slate-100 overflow-y-auto p-8 border-l flex flex-col">
             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6 text-center">Live Document Preview</h4>
-            
+
             {/* Document Sheet */}
             <div className="bg-white shadow-2xl rounded-sm aspect-[1/1.414] w-full p-8 flex flex-col border border-slate-200 animate-in slide-in-from-bottom-4 duration-500">
               <div className="flex justify-between items-start mb-8">
@@ -2641,13 +2709,13 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
             <div className="mt-auto pt-6 space-y-3">
               {error && <p className="text-[10px] text-rose-500 font-black text-center animate-bounce">{error}</p>}
               <div className="grid grid-cols-2 gap-3">
-                <button 
+                <button
                   onClick={() => setIsPreviewOpen(true)}
                   className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-md"
                 >
                   <Eye className="h-4 w-4 text-blue-400" /> PREVIEW
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setIsPreviewOpen(true);
                     setTimeout(() => window.print(), 600);
@@ -2657,7 +2725,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
                   <Printer className="h-4 w-4" /> DOWNLOAD
                 </button>
               </div>
-              <button 
+              <button
                 onClick={handleSend} disabled={loading}
                 className="w-full h-14 bg-emerald-500 text-white rounded-2xl font-black text-xs flex items-center justify-center gap-3 hover:bg-emerald-600 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-200/50 disabled:opacity-50"
               >
@@ -2670,7 +2738,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
           </div>
         </div>
       </div>
-      
+
       {isPreviewOpen && (
         <ViewQuotationModal
           quotation={{
@@ -2708,7 +2776,7 @@ export const QuotationModal = ({ prospect, onClose, onSubmit }) => {
           }}
         />
       )}
-      
+
       <ProductCatalogueModal
         isOpen={isCatalogueOpen}
         onClose={() => setIsCatalogueOpen(false)}
@@ -2788,27 +2856,27 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
 
   const hasPendingPayment = (order.paymentRecords || []).some(p => p.status === 'Pending');
   const steps = [
-    { 
-      label: 'Pay Verify', 
-      status: hasPendingPayment ? 'current' : (['Confirmed', 'Design_Pending', 'Design_InProgress', 'Design_Review', 'Design_Approved', 'In_Production', 'Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : 'waiting') 
+    {
+      label: 'Pay Verify',
+      status: hasPendingPayment ? 'current' : (['Confirmed', 'Design_Pending', 'Design_InProgress', 'Design_Review', 'Design_Approved', 'In_Production', 'Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : 'waiting')
     },
-    { 
-      label: 'Ord Verify', 
-      status: order.verificationStatus === 'Verified' ? 'done' : (order.verificationStatus === 'Pending' && !hasPendingPayment ? 'current' : 'waiting') 
+    {
+      label: 'Ord Verify',
+      status: order.verificationStatus === 'Verified' ? 'done' : (order.verificationStatus === 'Pending' && !hasPendingPayment ? 'current' : 'waiting')
     },
-    { 
-      label: 'Designer', 
-      status: ['Approved', 'Completed', 'Not_Required'].includes(order.designStatus) ? 'done' : (order.status.startsWith('Design_') ? 'current' : 'waiting') 
+    {
+      label: 'Designer',
+      status: ['Approved', 'Completed', 'Not_Required'].includes(order.designStatus) ? 'done' : (order.status.startsWith('Design_') ? 'current' : 'waiting')
     },
-    { 
-      label: 'PROD MGR', 
-      status: ['Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : (order.status === 'In_Production' ? 'current' : 'waiting') 
+    {
+      label: 'PROD MGR',
+      status: ['Ready_To_Deliver', 'Delivered', 'Completed'].includes(order.status) ? 'done' : (order.status === 'In_Production' ? 'current' : 'waiting')
     },
-    { 
-      label: 'Services', 
+    {
+      label: 'Services',
       user: order.serviceManager?.name || order.serviceManager,
       role: 'SERVICE MGR',
-      status: order.status === 'Completed' ? 'done' : (order.status === 'Ready_To_Deliver' || order.status === 'Delivered' ? 'current' : 'waiting') 
+      status: order.status === 'Completed' ? 'done' : (order.status === 'Ready_To_Deliver' || order.status === 'Delivered' ? 'current' : 'waiting')
     },
   ];
 
@@ -2885,9 +2953,39 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 bg-white rounded-2xl border shadow-sm overflow-hidden">
               <div className="p-4 border-b bg-slate-50 flex items-center justify-between"><h3 className="text-xs font-black uppercase tracking-widest text-slate-500">Service Items</h3></div>
-              <div className="divide-y">{order.lineItems?.map((item, i) => (
-                <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50/50"><div><p className="text-sm font-bold text-slate-800">{item.description}</p><p className="text-[10px] text-slate-400">Qty: {item.quantity} · Price: ₹{item.unitPrice}</p></div><div className="text-right"><p className="text-sm font-black text-slate-900">₹{item.amount}</p></div></div>
-              ))}</div>
+              <div className="divide-y">{order.lineItems?.map((item, i) => {
+                const designerStatusText = item.designerWorkflow?.currentStatus || item.designerStatus || 'Pending';
+                return (
+                <div key={i} className="p-4 flex items-center justify-between hover:bg-slate-50/50">
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{item.description}</p>
+                    <p className="text-[10px] text-slate-400 mb-2.5">Qty: {item.quantity} · Price: ₹{item.unitPrice}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                       <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md">
+                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Design</span>
+                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border ${getStatusBadgeStyle(designerStatusText)}`}>
+                           {designerStatusText && designerStatusText !== 'designer update pending' && designerStatusText !== 'Assigned' ? designerStatusText.replace(/_/g, ' ') : 'Pending'}
+                         </span>
+                       </div>
+                       <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md">
+                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Production</span>
+                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border ${getStatusBadgeStyle(item.productionWorkflow?.status || 'Pending')}`}>
+                           {(item.productionWorkflow?.status && item.productionWorkflow?.status !== 'Pending') ? item.productionWorkflow?.status.replace(/_/g, ' ') : 'Pending'}
+                         </span>
+                       </div>
+                       <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1 rounded-md">
+                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Service</span>
+                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm border ${getStatusBadgeStyle(item.serviceWorkflow?.status || item.serviceStatus || 'Pending')}`}>
+                           {(item.serviceWorkflow?.status || item.serviceStatus) && (item.serviceWorkflow?.status || item.serviceStatus) !== 'service update pending' ? (item.serviceWorkflow?.status || item.serviceStatus).replace(/_/g, ' ') : 'Pending'}
+                         </span>
+                       </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-black text-slate-900">₹{item.amount}</p>
+                  </div>
+                </div>
+              )})}</div>
             </div>
             <div className="bg-slate-900 text-white rounded-2xl p-6 shadow-xl flex flex-col justify-between">
               <div className="space-y-4">
@@ -2989,7 +3087,7 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
 
         <div className="p-4 border-t bg-slate-50 flex justify-end gap-3">
           {isVerifier && order.verificationStatus === 'Pending' && (
-            <button 
+            <button
               onClick={async () => {
                 if (window.confirm(`Are you sure you want to verify payments and confirm Order #${order.orderNumber}?`)) {
                   try {
@@ -3042,7 +3140,7 @@ export const OrderDetailsModal = ({ orderId, onClose, onPaymentUpload, onVerific
       {showInvoicePreview && order && (
         <ViewInvoiceModal order={order} onClose={() => setShowInvoicePreview(false)} />
       )}
-      
+
       {editingOrder && (
         <EditOrderModal
           order={editingOrder}
@@ -3217,10 +3315,10 @@ export const AssignAppointmentModal = ({ appointment, onClose, onAssigned }) => 
           employeeApi.list({ status: 'ACTIVE' }, user.token),
           appointmentApi.workload(user.token).catch(() => ({ success: true, data: [] }))
         ]);
-        
+
         const filtered = (empRes.employees || empRes.data || []).filter(e => ['FIELD_EXEC', 'SALES_MANAGER', 'MD_CEO', 'ADMIN'].includes(e.role));
         setEmployees(filtered);
-        
+
         if (workRes?.success && workRes.data) {
           const wlMap = {};
           workRes.data.forEach(w => { wlMap[w.execId] = w.stats; });
@@ -3313,7 +3411,7 @@ export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.assigneeRemark.trim()) return alert('Please enter an assignee remark');
-    
+
     if ((formData.status === 'FOLLOWUP_REQUIRED' || formData.status === 'RESCHEDULED') && !formData.nextFollowUpDate) {
       return alert('Please select a next follow-up date');
     }
@@ -3405,7 +3503,7 @@ export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) 
               <p className="text-xs text-slate-400 -mt-1 mb-2">Please explain why this appointment is cancelled.</p>
             </div>
           )}
-          
+
           {formData.status === 'SALE_CONFIRMED' && (
             <div>
               <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Closing Remarks *</label>
@@ -3433,7 +3531,7 @@ export const UpdateAppointmentRemarkModal = ({ appointment, onClose, onSaved }) 
               </label>
             </div>
           </div>
-          
+
           {photos.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-2">
               {photos.map((p, i) => (
@@ -3496,23 +3594,13 @@ export const DeleteOrderModal = ({ order, user, onClose, onSuccess }) => {
 
 export const EditOrderModal = ({ order, user, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    company: order.clientSnapshot?.company || '',
-    name: order.clientSnapshot?.name || '',
-    phone: order.clientSnapshot?.phone || '',
-    deliveryDate: order.deliveryDate ? new Date(order.deliveryDate).toISOString().split('T')[0] : ''
-  });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (data) => {
     setLoading(true);
     try {
-      const payload = {
-        clientSnapshot: { ...order.clientSnapshot, company: formData.company, name: formData.name, phone: formData.phone },
-        deliveryDate: formData.deliveryDate || null
-      };
-      const res = await orderApi.update(order._id || order.id, payload, user.token);
+      const res = await orderApi.update(order._id || order.id, data, user.token);
       if (res.success) onSuccess?.();
+      else alert(res.message || 'Failed to update order');
     } catch (err) {
       alert(err.message || 'Failed to update order');
     } finally {
@@ -3521,44 +3609,22 @@ export const EditOrderModal = ({ order, user, onClose, onSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center px-4 py-6 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-md rounded-2xl border bg-white shadow-2xl flex flex-col overflow-hidden max-h-[90vh] animate-in zoom-in-95 duration-200">
-        <div className="px-6 py-4 border-b flex items-center justify-between bg-slate-50">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
-              <Edit className="h-5 w-5" />
-            </div>
-            <h2 className="font-bold text-lg">Edit Order Details</h2>
+    <>
+      <CreateOrderModal
+        client={order.clientSnapshot}
+        executiveName={order.salesExec?.name || order.salesExec || ''}
+        onClose={onClose}
+        onSubmit={handleSubmit}
+        existingOrder={order}
+      />
+      {loading && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/20 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-2xl shadow-xl flex flex-col items-center gap-3">
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+            <span className="font-bold text-slate-700">Updating Order...</span>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2"><X className="w-5 h-5" /></button>
         </div>
-        <div className="p-6 overflow-y-auto">
-          <form id="edit-order-form" onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Company Name</label>
-              <input type="text" required value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} className="w-full h-11 px-4 rounded-xl border outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-all text-sm font-semibold" />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Contact Name</label>
-              <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full h-11 px-4 rounded-xl border outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-all text-sm font-semibold" />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Phone Number</label>
-              <input type="text" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full h-11 px-4 rounded-xl border outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-all text-sm font-semibold" />
-            </div>
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Delivery Date</label>
-              <input type="date" value={formData.deliveryDate} onChange={e => setFormData({...formData, deliveryDate: e.target.value})} className="w-full h-11 px-4 rounded-xl border outline-none focus:border-indigo-500 bg-slate-50 focus:bg-white transition-all text-sm font-semibold" />
-            </div>
-          </form>
-        </div>
-        <div className="p-6 border-t bg-slate-50 flex gap-3">
-          <button type="button" onClick={onClose} disabled={loading} className="flex-1 h-12 rounded-xl border text-sm font-bold text-slate-700 hover:bg-slate-100 transition-colors">Cancel</button>
-          <button type="submit" form="edit-order-form" disabled={loading} className="flex-1 h-12 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 transition-colors disabled:opacity-70">
-            {loading ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 };

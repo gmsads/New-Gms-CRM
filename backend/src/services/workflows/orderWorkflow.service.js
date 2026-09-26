@@ -74,44 +74,13 @@ class OrderWorkflowService {
         throw new Error('Only Draft or Pending orders can be edited.');
       }
 
-      // --- START EXPLICIT ALLOWLIST ENFORCEMENT ---
-      const allowedTopLevel = ['clientSnapshot', 'deliveryDate', '__v'];
-      const invalidTopLevel = Object.keys(data).filter(k => !allowedTopLevel.includes(k));
-      if (invalidTopLevel.length > 0) {
-        throw new Error(`Order update contains unsupported fields.`);
-      }
-
-      const sanitizedUpdate = {};
-
-      if (data.clientSnapshot !== undefined) {
-        const allowedNested = ['company', 'name', 'phone'];
-        const incomingNestedKeys = Object.keys(data.clientSnapshot);
-        const invalidNested = incomingNestedKeys.filter(k => !allowedNested.includes(k));
-        
-        for (const key of invalidNested) {
-          const incomingValue = data.clientSnapshot[key];
-          const existingValue = oldOrder.clientSnapshot ? oldOrder.clientSnapshot[key] : undefined;
-          if (JSON.stringify(incomingValue) !== JSON.stringify(existingValue)) {
-            throw new Error(`Order update contains unsupported fields.`);
-          }
-        }
-        
-        if (data.clientSnapshot.company !== undefined) sanitizedUpdate['clientSnapshot.company'] = data.clientSnapshot.company;
-        if (data.clientSnapshot.name !== undefined) sanitizedUpdate['clientSnapshot.name'] = data.clientSnapshot.name;
-        if (data.clientSnapshot.phone !== undefined) sanitizedUpdate['clientSnapshot.phone'] = data.clientSnapshot.phone;
-      }
-
-      if (data.deliveryDate !== undefined) {
-        sanitizedUpdate.deliveryDate = data.deliveryDate;
-      }
-      
-      // DO NOT copy __v into sanitizedUpdate to prevent forced overwrites.
-      // --- END EXPLICIT ALLOWLIST ENFORCEMENT ---
-
       // Concurrency check inside transaction
       if (data.__v !== undefined && data.__v !== oldOrder.__v) {
         throw { name: 'VersionError' };
       }
+
+      const sanitizedUpdate = { ...data };
+      delete sanitizedUpdate.__v;
 
       const order = await Order.findByIdAndUpdate(orderId, { $set: sanitizedUpdate }, { new: true, runValidators: true, session });
       order.addTimelineEvent('Order Updated', `Updated by ${user.name}`, user);

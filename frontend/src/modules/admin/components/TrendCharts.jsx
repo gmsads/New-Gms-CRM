@@ -150,7 +150,7 @@ export const RevenueOrdersChart = ({ rawOrders = [], selectedMonth, selectedYear
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={primaryTrends} margin={{ top: 10, left: -30, right: -30, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-            <XAxis dataKey="name" interval={0} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#64748b', fontWeight: 700 }} dy={5} angle={-90} textAnchor="end" height={40} />
+            <XAxis dataKey="name" interval={0} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#64748b', fontWeight: 700 }} dy={5} angle={-55} textAnchor="end" height={40} />
             <YAxis yAxisId="left" axisLine={false} tickLine={false} tickFormatter={formatYAxisLakhs} tick={{ fontSize: 10, fill: '#f59e0b', fontWeight: 600 }} />
             <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#3b82f6', fontWeight: 600 }} />
             
@@ -189,32 +189,33 @@ export const Last3MonthsChart = ({ rawOrders = [], selectedMonth, selectedYear, 
         </h3>
       </div>
 
-      <div className="bg-slate-50 rounded-xl p-3 flex justify-between gap-2 w-full mb-4 border border-slate-100/60 shadow-2xs">
-        <div className="text-center flex-1 border-r border-slate-200">
-          <div className="text-base sm:text-lg font-black text-slate-900">{threeMonthOrders}</div>
-          <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mt-0.5">Orders</div>
+      <div className="bg-slate-50 rounded-xl p-3 flex justify-between items-center gap-1 w-full mb-4 border border-slate-100/60 shadow-2xs">
+        <div className="text-center flex-1 border-r border-slate-200 min-w-0">
+          <div className="text-sm sm:text-base font-black text-slate-900 truncate">{threeMonthOrders}</div>
+          <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mt-0.5 truncate">Orders</div>
         </div>
-        <div className="text-center flex-1 border-r border-slate-200">
-          <div className="text-base sm:text-lg font-black text-emerald-600">{formatINRConcise(threeMonthRevenue)}</div>
-          <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mt-0.5">Revenue</div>
+        <div className="text-center flex-1 border-r border-slate-200 min-w-0 px-1">
+          <div className="text-sm sm:text-base font-black text-emerald-600 whitespace-nowrap overflow-hidden text-ellipsis">{formatINRConcise(threeMonthRevenue)}</div>
+          <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mt-0.5 truncate">Revenue</div>
         </div>
-        <div className="text-center flex-1">
-          <div className="text-base sm:text-lg font-black text-slate-900">{avgOrders}</div>
-          <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mt-0.5">Monthly Avg</div>
+        <div className="text-center flex-1 min-w-0">
+          <div className="text-sm sm:text-base font-black text-slate-900 truncate">{avgOrders}</div>
+          <div className="text-[9px] font-black text-slate-400 uppercase tracking-wider mt-0.5 truncate">Monthly Avg</div>
         </div>
       </div>
 
       <div className="w-full h-32 sm:h-36">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={monthlyTrends} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+          <BarChart data={monthlyTrends} margin={{ top: 0, right: 10, left: -25, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
             <XAxis dataKey="name" interval={0} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#64748b', fontWeight: 700 }} dy={5} />
-            <YAxis axisLine={false} tickLine={false} tickFormatter={formatYAxisLakhs} tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} />
+            <YAxis yAxisId="left" axisLine={false} tickLine={false} tickFormatter={formatYAxisLakhs} tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 600 }} />
+            <YAxis yAxisId="right" orientation="right" axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#3b82f6', fontWeight: 600 }} />
             <Tooltip contentStyle={glassmorphismTooltipStyle} labelStyle={tooltipLabelStyle} itemStyle={tooltipItemStyle} cursor={{fill: 'rgba(241, 245, 249, 0.5)'}} />
             <Legend verticalAlign="top" height={24} iconType="square" wrapperStyle={{ fontSize: '10px', fontWeight: 800, color: '#475569' }} />
             
-            <Bar dataKey="orders" name="Orders" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={16} />
-            <Bar dataKey="revenue" name="Revenue" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={16} />
+            <Bar yAxisId="left" dataKey="revenue" name="Revenue" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={16} />
+            <Bar yAxisId="right" dataKey="orders" name="Orders" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={16} />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 // ─── Line Item ────────────────────────────────────────────────────────────────
 const lineItemSchema = new mongoose.Schema({
+  productId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
   description: { type: String, required: true },
   quantity:    { type: Number, required: true, min: 1 },
   unit:        { type: String, default: 'pcs' },

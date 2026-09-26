@@ -209,8 +209,8 @@ export default function ImportExcelModal({ isOpen, onClose, onImport, title = 'I
             Cancel
           </button>
           <button
-            onClick={handleSubmit}
-            disabled={loading || parsedData.length === 0}
+            onClick={parsedData.length === 0 ? () => fileInputRef.current?.click() : handleSubmit}
+            disabled={loading}
             className="px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 shadow-sm transition-colors"
           >
             {loading ? (
@@ -218,7 +218,7 @@ export default function ImportExcelModal({ isOpen, onClose, onImport, title = 'I
             ) : (
               <Upload className="h-4 w-4" />
             )}
-            Import Data
+            {parsedData.length === 0 ? 'Select File' : 'Import Data'}
           </button>
         </div>
       </div>
