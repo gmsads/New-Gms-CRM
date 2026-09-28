@@ -11,6 +11,7 @@ class BaseRepository {
     let query = this.model.find(filter);
     if (options.populate) query = query.populate(options.populate);
     if (options.sort) query = query.sort(options.sort);
+    if (options.select) query = query.select(options.select);
     if (options.lean) query = query.lean();
     return await query;
   }

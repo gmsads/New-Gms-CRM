@@ -112,7 +112,10 @@ exports.list = async (req, res) => {
       ];
     }
 
-    const totalCount = await Order.countDocuments(filter);
+    let totalCount = 0;
+    if (req.query.minimal !== 'true') {
+      totalCount = await Order.countDocuments(filter);
+    }
     if (countOnly === 'true') {
       return res.json({ success: true, count: totalCount, totalCount, hasMore: false, data: [] });
     }
@@ -120,14 +123,21 @@ exports.list = async (req, res) => {
     const limitVal = limit !== undefined && limit !== '' ? parseInt(limit, 10) : null;
     const skipVal = skip !== undefined && skip !== '' ? parseInt(skip, 10) : 0;
 
-    let query = Order.find(filter)
-      .populate('salesExec', 'name email role')
-      .populate('salesManager', 'name email')
-      .populate('designAssignedTo', 'name email')
-      .sort({ createdAt: -1 });
+    let query = Order.find(filter).sort({ createdAt: -1 });
+
+    if (req.query.minimal !== 'true') {
+      query = query
+        .populate('salesExec', 'name email role')
+        .populate('salesManager', 'name email')
+        .populate('designAssignedTo', 'name email');
+    }
 
     if (limitVal && !isNaN(limitVal) && limitVal > 0) {
       query = query.skip(skipVal || 0).limit(limitVal);
+    }
+
+    if (req.query.minimal === 'true') {
+      query = query.select('_id createdAt date orderDate grandTotal balanceDue status orderType prospect lineItems items clientSnapshot');
     }
 
     let orders = await query.lean();

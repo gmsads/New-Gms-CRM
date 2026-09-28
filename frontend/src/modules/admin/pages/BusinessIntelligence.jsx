@@ -14,10 +14,10 @@ const BusinessIntelligence = () => {
   const stats = apiData?.data || {};
 
   const kpis = [
-    { label: 'Cumulative Revenue', value: formatINRConcise(stats.kpis?.totalRevenue || 0), change: '+18%', up: true, icon: DollarSign, color: 'emerald' },
-    { label: 'Strategic Ad Spend', value: formatINRConcise(stats.kpis?.totalSpend || 0), change: '+12%', up: false, icon: TrendingUp, color: 'blue' },
-    { label: 'Acquisition Yield', value: (stats.kpis?.totalLeads || 0).toString(), change: '+24%', up: true, icon: Users, color: 'indigo' },
-    { label: 'Conversion Efficiency', value: stats.kpis?.avgConversion || '0%', change: '+0.8%', up: true, icon: Target, color: 'amber' },
+    { label: 'Cumulative Revenue', value: formatINRConcise(stats.financials?.totalSales || 0), change: '+18%', up: true, icon: DollarSign, color: 'emerald' },
+    { label: 'Total Orders', value: (stats.financials?.orderCount || 0).toString(), change: '+12%', up: true, icon: TrendingUp, color: 'blue' },
+    { label: 'Pending Collections', value: formatINRConcise(stats.financials?.totalPending || 0), change: '-5%', up: false, icon: Target, color: 'amber' },
+    { label: 'Pending Approvals', value: (stats.pendingApprovals || 0).toString(), change: 'Action Req', up: false, icon: Users, color: 'indigo' },
   ];
 
   if (loading && !apiData) return <div className="flex h-96 items-center justify-center"><RefreshCw className="h-8 w-8 animate-spin text-blue-600" /></div>;
@@ -55,32 +55,32 @@ const BusinessIntelligence = () => {
 
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm">
-           <h3 className="text-xl font-black text-slate-900 mb-2">Revenue vs Deployment</h3>
-           <p className="text-sm font-semibold text-slate-400 mb-8">Quarterly analysis of gross intake against operational expenditure.</p>
+           <h3 className="text-xl font-black text-slate-900 mb-2">Revenue Trends</h3>
+           <p className="text-sm font-semibold text-slate-400 mb-8">Quarterly analysis of gross revenue over the last 3 months.</p>
            <div className="h-[300px]">
              <ResponsiveContainer width="100%" height="100%">
-               <BarChart data={stats.revenueVsSpend || []}>
+               <BarChart data={stats.monthlyTrends || []}>
                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} />
+                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} />
                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
                  <Tooltip contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
                  <Bar dataKey="revenue" name="Revenue" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                 <Bar dataKey="spend" name="Ad Spend" fill="#e2e8f0" radius={[6, 6, 0, 0]} />
+                 <Bar dataKey="orders" name="Orders" fill="#e2e8f0" radius={[6, 6, 0, 0]} yAxisId="right" />
                </BarChart>
              </ResponsiveContainer>
            </div>
         </div>
 
         <div className="rounded-[2.5rem] border border-slate-100 bg-white p-8 shadow-sm">
-           <h3 className="text-xl font-black text-slate-900 mb-2">Platform Efficiency</h3>
-           <p className="text-sm font-semibold text-slate-400 mb-8">Lead distribution across multi-channel acquisition funnels.</p>
+           <h3 className="text-xl font-black text-slate-900 mb-2">Top Client Contributions</h3>
+           <p className="text-sm font-semibold text-slate-400 mb-8">Revenue distribution among the top converting companies.</p>
            <div className="h-[300px]">
              <ResponsiveContainer width="100%" height="100%">
                <PieChart>
-                 <Pie data={stats.platformBreakdown || []} cx="50%" cy="50%" innerRadius={80} outerRadius={110} paddingAngle={8} dataKey="leads" nameKey="platform">
-                   {(stats.platformBreakdown || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                 <Pie data={stats.clients || []} cx="50%" cy="50%" innerRadius={80} outerRadius={110} paddingAngle={8} dataKey="revenue" nameKey="_id">
+                   {(stats.clients || []).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                  </Pie>
-                 <Tooltip contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                 <Tooltip contentStyle={{borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} formatter={(value) => `₹${value.toLocaleString('en-IN')}`} />
                  <Legend verticalAlign="bottom" height={36}/>
                </PieChart>
              </ResponsiveContainer>

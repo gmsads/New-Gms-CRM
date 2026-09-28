@@ -164,7 +164,7 @@ exports.listTargets = async (req, res) => {
           salesExec: target.employee._id,
           createdAt: { $gte: target.startDate, $lte: target.endDate },
           status: { $nin: ['Cancelled'] }
-        });
+        }).select('grandTotal').lean();
         const actualRevenue = orders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
         target.achievedValue = Math.max(target.achievedValue || 0, actualRevenue);
       }

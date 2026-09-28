@@ -88,9 +88,9 @@ const UnifiedDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const [prospects, orders, appointments, analytics, targetsRes] = await Promise.all([
-        prospectApi.list({}, user.token).catch(() => ({ data: [] })),
-        orderApi.list({ limit: 5000 }, user.token).catch(() => ({ data: [] })),
-        appointmentApi.list(user.token).catch(() => ({ data: [] })),
+        prospectApi.list({ minimal: 'true' }, user.token).catch(() => ({ data: [] })),
+        orderApi.list({ limit: 5000, minimal: 'true' }, user.token).catch(() => ({ data: [] })),
+        appointmentApi.list({ minimal: 'true' }, user.token).catch(() => ({ data: [] })),
         analyticsApi.getStats({}, user.token).catch(() => ({ data: {} })),
         targetApi.list({ limit: 10, employee: user._id }, user.token).catch(() => ({ data: [] }))
       ]);

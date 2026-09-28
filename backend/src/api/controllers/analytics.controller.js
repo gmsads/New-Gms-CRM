@@ -47,92 +47,81 @@ exports.getDashboardStats = async (req, res) => {
     const endDate1m = new Date(targetYear, targetMonth, 1);
 
     // ── Main Metrics Aggregation ──────────────────────────────────────────────
-    const [mainStats, productStats, clientStats, execStats, orderApprovals, paymentApprovals, monthlyStatsRaw, weeklyStatsRaw] = await Promise.all([
-      // 1. Overall Financials
+    const [baseAgg, orderApprovals, paymentApprovals, monthlyStatsRaw, weeklyStatsRaw] = await Promise.all([
+      // Facet for 1-pass execution
       Order.aggregate([
         { $match: filter },
         {
-          $group: {
-            _id: null,
-            totalSales: { $sum: '$grandTotal' },
-            totalPaid: { $sum: '$totalPaid' },
-            totalPending: { $sum: '$balanceDue' },
-            count: { $sum: 1 }
+          $facet: {
+            mainStats: [
+              {
+                $group: {
+                  _id: null,
+                  totalSales: { $sum: '$grandTotal' },
+                  totalPaid: { $sum: '$totalPaid' },
+                  totalPending: { $sum: '$balanceDue' },
+                  count: { $sum: 1 }
+                }
+              }
+            ],
+            productStats: [
+              { $unwind: '$lineItems' },
+              {
+                $group: {
+                  _id: '$lineItems.description',
+                  quantity: { $sum: { $ifNull: ['$lineItems.quantity', 1] } },
+                  revenue: { $sum: { $ifNull: ['$lineItems.amount', { $multiply: ['$lineItems.quantity', '$lineItems.unitPrice'] }] } }
+                }
+              },
+              { $sort: { quantity: -1 } },
+              { $limit: 10 }
+            ],
+            clientStats: [
+              {
+                $group: {
+                  _id: '$clientSnapshot.company',
+                  orders: { $sum: 1 },
+                  revenue: { $sum: '$grandTotal' }
+                }
+              },
+              { $sort: { revenue: -1 } },
+              { $limit: 10 }
+            ],
+            execStats: [
+              {
+                $group: {
+                  _id: '$salesExec',
+                  revenue: { $sum: '$grandTotal' },
+                  orders: { $sum: 1 }
+                }
+              },
+              {
+                $lookup: {
+                  from: 'users',
+                  localField: '_id',
+                  foreignField: '_id',
+                  as: 'user'
+                }
+              },
+              { $unwind: '$user' },
+              {
+                $project: {
+                  name: '$user.name',
+                  revenue: 1,
+                  orders: 1
+                }
+              },
+              { $sort: { revenue: -1 } }
+            ]
           }
         }
-      ]),
+      ], { allowDiskUse: true }),
 
-      // 2. Product Performance (Top & Least Selling)
-      Order.aggregate([
-        { $match: filter },
-        { $unwind: '$lineItems' },
-        {
-          $lookup: {
-            from: 'orderservices',
-            localField: 'lineItems',
-            foreignField: '_id',
-            as: 'service'
-          }
-        },
-        { $unwind: '$service' },
-        {
-          $group: {
-            _id: '$service.description',
-            quantity: { $sum: '$service.quantity' },
-            revenue: { $sum: '$service.amount' }
-          }
-        },
-        { $sort: { quantity: -1 } }
-      ]),
-
-      // 3. Client Contributions
-      Order.aggregate([
-        { $match: filter },
-        {
-          $group: {
-            _id: '$clientSnapshot.company',
-            orders: { $sum: 1 },
-            revenue: { $sum: '$grandTotal' }
-          }
-        },
-        { $sort: { revenue: -1 } },
-        { $limit: 10 }
-      ]),
-
-      // 4. Sales Executive Performance
-      Order.aggregate([
-        { $match: filter },
-        {
-          $group: {
-            _id: '$salesExec',
-            revenue: { $sum: '$grandTotal' },
-            orders: { $sum: 1 }
-          }
-        },
-        {
-          $lookup: {
-            from: 'users',
-            localField: '_id',
-            foreignField: '_id',
-            as: 'user'
-          }
-        },
-        { $unwind: '$user' },
-        {
-          $project: {
-            name: '$user.name',
-            revenue: 1,
-            orders: 1
-          }
-        },
-        { $sort: { revenue: -1 } }
-      ]),
-
-      // 5. Governance Items
+      // Governance Items
       OrderApproval.countDocuments({ status: 'Pending' }),
       Payment.countDocuments({ status: 'Pending' }),
 
-      // 6. Monthly Stats (Last 3 Months)
+      // Monthly Stats (Last 3 Months)
       Order.aggregate([
         { $match: { status: { $ne: 'Cancelled' }, createdAt: { $gte: startDate3m, $lt: endDate3m } } },
         {
@@ -144,7 +133,7 @@ exports.getDashboardStats = async (req, res) => {
         }
       ]),
 
-      // 7. Weekly Stats (Current Month)
+      // Weekly Stats (Current Month)
       Order.aggregate([
         { $match: { status: { $ne: 'Cancelled' }, createdAt: { $gte: startDate1m, $lt: endDate1m } } },
         {
@@ -156,6 +145,8 @@ exports.getDashboardStats = async (req, res) => {
         }
       ])
     ]);
+
+    const { mainStats, productStats, clientStats, execStats } = baseAgg[0];
 
     const stats = mainStats[0] || { totalSales: 0, totalPaid: 0, totalPending: 0, count: 0 };
 

@@ -18,7 +18,7 @@ exports.list = async (req, res) => {
     const filter = { isDeleted: { $ne: true } }; // Hide soft deleted
     if (stage) filter.stage = stage;
     if (priority) filter.priority = priority;
-    
+
     const accessibleIds = await getAccessibleUserIds(req.user);
     if (accessibleIds) {
       // If the user requested a specific assignedTo, make sure they are allowed to see it
@@ -48,10 +48,16 @@ exports.list = async (req, res) => {
       { phone: { $regex: search, $options: 'i' } },
       { company: { $regex: search, $options: 'i' } },
     ];
-    const prospects = await Prospect.find(filter)
-      .populate('assignedTo', 'name email')
-      .sort({ updatedAt: -1 })
-      .lean();
+
+    let query = Prospect.find(filter).sort({ updatedAt: -1 });
+
+    if (req.query.minimal === 'true') {
+      query = query.select('_id createdAt date updatedAt priority stage clientType');
+    } else {
+      query = query.populate('assignedTo', 'name email');
+    }
+
+    const prospects = await query.lean();
     res.json({ success: true, data: prospects });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -63,7 +69,7 @@ exports.searchByPhone = async (req, res) => {
   try {
     const { phone, company } = req.query;
     if (!phone && !company) return res.status(400).json({ success: false, message: 'Phone or Business Name is required' });
-    
+
     const conditions = [];
     if (phone) conditions.push({ phone });
     if (company) conditions.push({ company: { $regex: new RegExp(`^${company}$`, 'i') } });
@@ -71,7 +77,7 @@ exports.searchByPhone = async (req, res) => {
     const prospect = await Prospect.findOne({ $or: conditions, 'softDelete.isDeleted': { $ne: true } })
       .populate('assignedTo', 'name email')
       .lean();
-      
+
     if (prospect) {
       return res.json({ success: true, found: true, type: 'prospect', data: prospect });
     }
@@ -212,7 +218,7 @@ exports.remove = async (req, res) => {
 exports.stats = async (req, res) => {
   try {
     const filter = { 'softDelete.isDeleted': { $ne: true } };
-    
+
     const accessibleIds = await getAccessibleUserIds(req.user);
     if (accessibleIds) {
       filter.assignedTo = { $in: accessibleIds };
@@ -230,14 +236,14 @@ exports.stats = async (req, res) => {
 
     res.json({
       success: true,
-      data: { 
-        total, 
-        inProgress, 
-        won, 
-        lost, 
-        hot, 
+      data: {
+        total,
+        inProgress,
+        won,
+        lost,
+        hot,
         pendingFollowups: followUps,
-        appointmentStage 
+        appointmentStage
       }
     });
   } catch (err) {

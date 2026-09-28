@@ -48,11 +48,11 @@ class AppointmentWorkflowService {
     session.startTransaction();
 
     try {
-      // NOTE: appointmentRepo needs to support sessions. 
-      // Using standard model directly here for session support or assume repo accepts session if we pass it? 
+      // NOTE: appointmentRepo needs to support sessions.
+      // Using standard model directly here for session support or assume repo accepts session if we pass it?
       // For safety, let's use the Model directly for transactional creates or pass { session } if repo supports it.
       // I'll assume standard mongoose methods
-      
+
       const appointment = new Appointment({
         prospect: prospect._id,
         createdBy: creatorId,
@@ -79,15 +79,15 @@ class AppointmentWorkflowService {
         newState: { status: 'PENDING' }
       }], { session });
 
-      await Prospect.findByIdAndUpdate(prospectId, { 
+      await Prospect.findByIdAndUpdate(prospectId, {
         stage: 'Appointment',
         appointmentCreated: true,
-        $push: { 
-          interactions: { 
-            type: 'Meeting', 
-            date: new Date(), 
-            notes: `Appointment scheduled for ${new Date(date).toLocaleDateString()} at ${time}` 
-          } 
+        $push: {
+          interactions: {
+            type: 'Meeting',
+            date: new Date(),
+            notes: `Appointment scheduled for ${new Date(date).toLocaleDateString()} at ${time}`
+          }
         }
       }, { session });
 
@@ -117,9 +117,9 @@ class AppointmentWorkflowService {
   }
 
   async listAppointments(user, filter = {}) {
-    const { salesExec, search, ...rest } = filter;
+    const { salesExec, search, minimal, ...rest } = filter;
     const query = { ...rest };
-    
+
     // Clean up empty string values from rest that might break mongoose
     Object.keys(query).forEach(key => {
       if (query[key] === '') delete query[key];
@@ -142,7 +142,7 @@ class AppointmentWorkflowService {
     const accessibleIds = await getAccessibleUserIds(user);
     if (accessibleIds) {
       const accessibleStrIds = accessibleIds.map(id => id.toString());
-      
+
       if (query.createdBy && !accessibleStrIds.includes(query.createdBy.toString())) {
         query.createdBy = { $in: accessibleIds }; // Enforce intersection
       }
@@ -152,7 +152,7 @@ class AppointmentWorkflowService {
       if (salesExec && !accessibleStrIds.includes(salesExec.toString())) {
         // Enforce bounds if salesExec is invalid
         query.$or = [
-          { createdBy: { $in: accessibleIds } }, 
+          { createdBy: { $in: accessibleIds } },
           { assignedTo: { $in: accessibleIds } }
         ];
       }
@@ -160,10 +160,10 @@ class AppointmentWorkflowService {
       if (!query.createdBy && !query.assignedTo && !salesExec) {
         // Automatically scope to my team
         const teamScope = [
-          { createdBy: { $in: accessibleIds } }, 
+          { createdBy: { $in: accessibleIds } },
           { assignedTo: { $in: accessibleIds } }
         ];
-        
+
         if (query.$or) {
           query.$and = [{ $or: query.$or }, { $or: teamScope }];
           delete query.$or;
@@ -171,6 +171,14 @@ class AppointmentWorkflowService {
           query.$or = teamScope;
         }
       }
+    }
+
+    if (minimal === 'true') {
+      const results = await appointmentRepo.find(query, {
+        select: '_id date startTime createdAt status',
+        lean: true
+      });
+      return results;
     }
 
     return await appointmentRepo.findWithDetails(query);
@@ -194,7 +202,7 @@ class AppointmentWorkflowService {
       previousState,
       newState: { status: 'SCHEDULED', assignedTo }
     });
-    
+
     // Side effect: notification
     await Notification.create({
       recipient: assignedTo,
@@ -255,7 +263,7 @@ class AppointmentWorkflowService {
 
     const previousState = { status: oldAppt.status };
     oldAppt.status = newStatus;
-    
+
     if (newStatus === 'SALE_CONFIRMED') oldAppt.closingRemark = closingRemark;
     if (newStatus === 'CANCELLED') oldAppt.cancellationRemark = cancellationRemark;
 
@@ -307,12 +315,12 @@ class AppointmentWorkflowService {
     const finalNextDate = nextActionDate || nextFollowUpDate || null;
 
     let targetStatus = status || oldAppt.status;
-    
+
     // Map status from select value back to enum format if lowercase/prospect format is used
     if (targetStatus === 'In-progress') targetStatus = 'IN_PROGRESS';
     else if (targetStatus === 'Sale Closed' || targetStatus === 'Sale Confirmed') targetStatus = 'SALE_CONFIRMED';
     else if (targetStatus === 'Canceled') targetStatus = 'LOST';
-    
+
     if (user.role === 'FIELD_EXEC') {
       const allowedStatuses = ['FOLLOWUP_REQUIRED', 'SALE_CONFIRMED', 'CANCELLED'];
       if (!allowedStatuses.includes(targetStatus) && targetStatus !== oldAppt.status) {
@@ -343,11 +351,11 @@ class AppointmentWorkflowService {
       if (!finalNotes) throw new Error('Follow-up remark is mandatory for follow-up status.');
     }
 
-    const previousState = { 
-      status: oldAppt.status, 
-      remark: oldAppt.remark, 
-      assigneeRemark: oldAppt.assigneeRemark, 
-      nextFollowUpDate: oldAppt.nextFollowUpDate 
+    const previousState = {
+      status: oldAppt.status,
+      remark: oldAppt.remark,
+      assigneeRemark: oldAppt.assigneeRemark,
+      nextFollowUpDate: oldAppt.nextFollowUpDate
     };
 
     // Update appointment document
@@ -355,10 +363,10 @@ class AppointmentWorkflowService {
     oldAppt.assigneeRemark = finalNotes;
     oldAppt.remark = finalNotes;
     oldAppt.nextFollowUpDate = finalNextDate;
-    
+
     if (targetStatus === 'SALE_CONFIRMED') oldAppt.closingRemark = finalNotes;
     if (targetStatus === 'CANCELLED') oldAppt.cancellationRemark = finalNotes;
-    
+
     await oldAppt.save();
 
     await AppointmentTimeline.create({
@@ -371,7 +379,7 @@ class AppointmentWorkflowService {
 
     if (eventBus) eventBus.emit('APPOINTMENT_REMARK_ADDED', { appointment: oldAppt, remark: remarkEntry, actorId: user._id, reqContext });
 
-    await Prospect.findByIdAndUpdate(oldAppt.prospect, { 
+    await Prospect.findByIdAndUpdate(oldAppt.prospect, {
       lastInteraction: new Date(),
       lastInteractionNote: `Meeting Outcome: ${targetOutcome} - ${finalNotes}`
     });
@@ -402,9 +410,9 @@ class AppointmentWorkflowService {
     const oldAppt = await Appointment.findById(id);
     if (!oldAppt) throw new Error('Appointment not found');
 
-    const previousState = { 
-      date: oldAppt.date, 
-      time: oldAppt.time, 
+    const previousState = {
+      date: oldAppt.date,
+      time: oldAppt.time,
       venue: oldAppt.venue,
       status: oldAppt.status
     };
@@ -420,9 +428,9 @@ class AppointmentWorkflowService {
       actor: actorId,
       action: 'RESCHEDULED',
       previousState,
-      newState: { 
-        date: oldAppt.date, 
-        time: oldAppt.time, 
+      newState: {
+        date: oldAppt.date,
+        time: oldAppt.time,
         venue: oldAppt.venue,
         status: oldAppt.status,
         reason
@@ -466,7 +474,7 @@ class AppointmentWorkflowService {
       // Find all FIELD_EXEC users under this manager/accessible scope
       const accessibleIds = await getAccessibleUserIds(user);
       const User = mongoose.model('User');
-      
+
       const fieldExecs = await User.find({
         _id: { $in: accessibleIds },
         role: 'FIELD_EXEC',
